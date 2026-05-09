@@ -23,7 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ScrollText, Download, Search } from "lucide-react";
+import { Loader2, ScrollText, Download, Search, CalendarIcon, X } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/audit-log")({
@@ -92,6 +97,7 @@ function AuditLogPage() {
   const { hasRole } = useAuth();
   const [filter, setFilter] = useState<ActionFilter>("all");
   const [search, setSearch] = useState("");
+  const [range, setRange] = useState<DateRange | undefined>(undefined);
   const fetchLogs = useServerFn(listAdminAuditLogs);
 
   useEffect(() => {
@@ -107,7 +113,17 @@ function AuditLogPage() {
     enabled: hasRole("admin"),
   });
 
+  const fromTs = range?.from ? new Date(range.from).setHours(0, 0, 0, 0) : null;
+  const toTs = range?.to
+    ? new Date(range.to).setHours(23, 59, 59, 999)
+    : range?.from
+    ? new Date(range.from).setHours(23, 59, 59, 999)
+    : null;
+
   const filtered = (data ?? []).filter((row) => {
+    const ts = new Date(row.created_at).getTime();
+    if (fromTs !== null && ts < fromTs) return false;
+    if (toTs !== null && ts > toTs) return false;
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     return [
@@ -143,6 +159,50 @@ function AuditLogPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "justify-start text-left font-normal",
+                  !range && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {range?.from ? (
+                  range.to ? (
+                    <>
+                      {format(range.from, "LLL d, y")} – {format(range.to, "LLL d, y")}
+                    </>
+                  ) : (
+                    format(range.from, "LLL d, y")
+                  )
+                ) : (
+                  <span>Date range</span>
+                )}
+                {range && (
+                  <X
+                    className="ml-2 h-3.5 w-3.5 opacity-60 hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setRange(undefined);
+                    }}
+                  />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                numberOfMonths={2}
+                selected={range}
+                onSelect={setRange}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
           <Select value={filter} onValueChange={(v) => setFilter(v as ActionFilter)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
