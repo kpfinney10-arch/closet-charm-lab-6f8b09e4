@@ -384,7 +384,7 @@ function NewCasePage() {
                 control={form.control}
                 name="decedent_first_name"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>First name</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -395,7 +395,7 @@ function NewCasePage() {
                 control={form.control}
                 name="decedent_last_name"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Last name *</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -406,7 +406,7 @@ function NewCasePage() {
                 control={form.control}
                 name="decedent_sex"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Sex</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value ?? ""}>
                       <FormControl>
@@ -426,7 +426,7 @@ function NewCasePage() {
                 control={form.control}
                 name="decedent_weight_lbs"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Weight (lbs)</FormLabel>
                     <FormControl><Input type="number" min={0} {...field} /></FormControl>
                     <FormMessage />
@@ -437,7 +437,7 @@ function NewCasePage() {
                 control={form.control}
                 name="decedent_dob"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Date of birth</FormLabel>
                     <FormControl><Input type="date" {...field} /></FormControl>
                     <FormMessage />
@@ -448,7 +448,7 @@ function NewCasePage() {
                 control={form.control}
                 name="decedent_dod"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Date/time of death</FormLabel>
                     <FormControl><Input type="datetime-local" {...field} /></FormControl>
                     <FormMessage />
@@ -459,7 +459,7 @@ function NewCasePage() {
                 control={form.control}
                 name="special_handling"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
+                  <FormItem className={cn("md:col-span-2", hl(field.name))}>
                     <FormLabel>Special handling</FormLabel>
                     <FormControl>
                       <Textarea rows={2} placeholder="Bariatric, infectious, evidence hold, etc." {...field} />
@@ -481,7 +481,7 @@ function NewCasePage() {
                 control={form.control}
                 name="pickup_facility_id"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
+                  <FormItem className={cn("md:col-span-2", hl(field.name))}>
                     <FormLabel>Facility</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value ?? NONE}>
                       <FormControl>
@@ -502,7 +502,7 @@ function NewCasePage() {
                 control={form.control}
                 name="pickup_address"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
+                  <FormItem className={cn("md:col-span-2", hl(field.name))}>
                     <FormLabel>Address</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -513,7 +513,7 @@ function NewCasePage() {
                 control={form.control}
                 name="pickup_city"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>City</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -525,7 +525,7 @@ function NewCasePage() {
                   control={form.control}
                   name="pickup_state"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className={hl(field.name)}>
                       <FormLabel>State</FormLabel>
                       <FormControl><Input {...field} /></FormControl>
                       <FormMessage />
@@ -536,7 +536,7 @@ function NewCasePage() {
                   control={form.control}
                   name="pickup_zip"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className={hl(field.name)}>
                       <FormLabel>ZIP</FormLabel>
                       <FormControl><Input {...field} /></FormControl>
                       <FormMessage />
@@ -548,7 +548,7 @@ function NewCasePage() {
                 control={form.control}
                 name="pickup_contact_name"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Contact name</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -559,7 +559,7 @@ function NewCasePage() {
                 control={form.control}
                 name="pickup_contact_phone"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Contact phone</FormLabel>
                     <FormControl><Input type="tel" {...field} /></FormControl>
                     <FormMessage />
@@ -570,7 +570,7 @@ function NewCasePage() {
                 control={form.control}
                 name="pickup_notes"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
+                  <FormItem className={cn("md:col-span-2", hl(field.name))}>
                     <FormLabel>Notes</FormLabel>
                     <FormControl><Textarea rows={2} {...field} /></FormControl>
                     <FormMessage />
@@ -590,7 +590,7 @@ function NewCasePage() {
                 control={form.control}
                 name="dropoff_facility_id"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
+                  <FormItem className={cn("md:col-span-2", hl(field.name))}>
                     <FormLabel>Facility</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value ?? NONE}>
                       <FormControl>
@@ -611,7 +611,7 @@ function NewCasePage() {
                 control={form.control}
                 name="dropoff_address"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
+                  <FormItem className={cn("md:col-span-2", hl(field.name))}>
                     <FormLabel>Address</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -622,7 +622,7 @@ function NewCasePage() {
                 control={form.control}
                 name="dropoff_city"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>City</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -634,7 +634,7 @@ function NewCasePage() {
                   control={form.control}
                   name="dropoff_state"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className={hl(field.name)}>
                       <FormLabel>State</FormLabel>
                       <FormControl><Input {...field} /></FormControl>
                       <FormMessage />
@@ -645,7 +645,7 @@ function NewCasePage() {
                   control={form.control}
                   name="dropoff_zip"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className={hl(field.name)}>
                       <FormLabel>ZIP</FormLabel>
                       <FormControl><Input {...field} /></FormControl>
                       <FormMessage />
@@ -657,7 +657,7 @@ function NewCasePage() {
                 control={form.control}
                 name="dropoff_notes"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
+                  <FormItem className={cn("md:col-span-2", hl(field.name))}>
                     <FormLabel>Notes</FormLabel>
                     <FormControl><Textarea rows={2} {...field} /></FormControl>
                     <FormMessage />
@@ -676,7 +676,7 @@ function NewCasePage() {
                 control={form.control}
                 name="authorizing_party_name"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Authorizing party</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
@@ -687,7 +687,7 @@ function NewCasePage() {
                 control={form.control}
                 name="authorizing_party_relation"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Relation</FormLabel>
                     <FormControl><Input placeholder="Spouse, NOK, ME office..." {...field} /></FormControl>
                     <FormMessage />
@@ -698,7 +698,7 @@ function NewCasePage() {
                 control={form.control}
                 name="authorizing_party_phone"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Authorizing phone</FormLabel>
                     <FormControl><Input type="tel" {...field} /></FormControl>
                     <FormMessage />
@@ -709,7 +709,7 @@ function NewCasePage() {
                 control={form.control}
                 name="scheduled_at"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Scheduled pickup</FormLabel>
                     <FormControl><Input type="datetime-local" {...field} /></FormControl>
                     <FormMessage />
@@ -720,7 +720,7 @@ function NewCasePage() {
                 control={form.control}
                 name="status"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className={hl(field.name)}>
                     <FormLabel>Initial status *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
