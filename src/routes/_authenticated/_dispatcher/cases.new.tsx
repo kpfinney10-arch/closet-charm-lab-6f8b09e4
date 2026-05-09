@@ -212,6 +212,8 @@ function NewCasePage() {
       toast.error("Failed to save draft", { description: msg });
     }
   };
+
+  const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
     try {
       const empty = (v?: string) => (v && v.trim() !== "" ? v : null);
