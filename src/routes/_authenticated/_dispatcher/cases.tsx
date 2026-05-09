@@ -92,7 +92,7 @@ function CasesListPage() {
   useEffect(() => {
     const t = setTimeout(() => {
       if (qInput !== search.q) {
-        void navigate({ search: (prev) => ({ ...prev, q: qInput }) });
+        void navigate({ search: (prev: Search) => ({ ...prev, q: qInput }) });
       }
     }, 250);
     return () => clearTimeout(t);
@@ -177,7 +177,7 @@ function CasesListPage() {
         </div>
         <Select
           value={search.status}
-          onValueChange={(v) => navigate({ search: (prev) => ({ ...prev, status: v }) })}
+          onValueChange={(v) => navigate({ search: (prev: Search) => ({ ...prev, status: v }) })}
         >
           <SelectTrigger className="w-[200px]">
             <SelectValue />
