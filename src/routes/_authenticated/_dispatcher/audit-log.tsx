@@ -1,0 +1,173 @@
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { listAdminAuditLogs } from "@/lib/admin-users.functions";
+import { useAuth } from "@/contexts/auth-context";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2, ScrollText } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+export const Route = createFileRoute("/_authenticated/_dispatcher/audit-log")({
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) throw redirect({ to: "/login" });
+  },
+  component: AuditLogPage,
+  head: () => ({
+    meta: [{ title: "Audit log — Transport Dispatch" }],
+  }),
+});
+
+const ACTIONS = [
+  "user_created",
+  "user_disabled",
+  "user_enabled",
+  "user_deleted",
+  "role_changed",
+  "password_reset",
+] as const;
+type ActionFilter = (typeof ACTIONS)[number] | "all";
+
+function actionLabel(a: string) {
+  switch (a) {
+    case "user_created": return "User created";
+    case "user_disabled": return "User disabled";
+    case "user_enabled": return "User enabled";
+    case "user_deleted": return "User deleted";
+    case "role_changed": return "Role changed";
+    case "password_reset": return "Password reset";
+    default: return a;
+  }
+}
+
+function actionVariant(a: string): "default" | "secondary" | "destructive" | "outline" {
+  if (a === "user_deleted" || a === "user_disabled") return "destructive";
+  if (a === "user_created" || a === "user_enabled") return "default";
+  return "secondary";
+}
+
+function AuditLogPage() {
+  const { hasRole } = useAuth();
+  const [filter, setFilter] = useState<ActionFilter>("all");
+  const fetchLogs = useServerFn(listAdminAuditLogs);
+
+  useEffect(() => {
+    if (!hasRole("admin")) {
+      window.location.replace("/dashboard");
+    }
+  }, [hasRole]);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin-audit-logs", filter],
+    queryFn: () =>
+      fetchLogs({ data: { action: filter === "all" ? null : filter, limit: 200 } }),
+    enabled: hasRole("admin"),
+  });
+
+  return (
+    <div className="container mx-auto max-w-6xl space-y-6 p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <ScrollText className="h-6 w-6" /> Audit log
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Record of administrative changes to user accounts.
+          </p>
+        </div>
+        <Select value={filter} onValueChange={(v) => setFilter(v as ActionFilter)}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All actions</SelectItem>
+            {ACTIONS.map((a) => (
+              <SelectItem key={a} value={a}>
+                {actionLabel(a)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Recent activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <p className="text-sm text-destructive">Failed to load audit log.</p>
+          ) : !data || data.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No audit entries yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Target</TableHead>
+                    <TableHead>By</TableHead>
+                    <TableHead>Details</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                        {new Date(row.created_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={actionVariant(row.action)}>
+                          {actionLabel(row.action)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {row.target_email ?? row.target_user_id ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {row.actor_email ?? row.actor_id}
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        {row.details && Object.keys(row.details).length > 0 ? (
+                          <code className="block truncate text-xs text-muted-foreground">
+                            {JSON.stringify(row.details)}
+                          </code>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
