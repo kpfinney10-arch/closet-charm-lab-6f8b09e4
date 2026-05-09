@@ -217,6 +217,8 @@ function NewCasePage() {
     setDraftSavedAt(null);
     setSaveStatus("idle");
     setSaveError(null);
+    setRestoredFields(new Set());
+    setRestoredAt(null);
   };
 
   const discardDraft = () => {
