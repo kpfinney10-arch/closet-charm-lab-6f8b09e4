@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
@@ -113,6 +113,11 @@ function LoginPage() {
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
                 </Button>
+                <div className="text-center text-sm">
+                  <Link to="/forgot-password" className="text-muted-foreground underline">
+                    Forgot password?
+                  </Link>
+                </div>
               </form>
             </TabsContent>
 
