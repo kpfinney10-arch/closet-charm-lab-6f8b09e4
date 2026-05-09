@@ -263,17 +263,42 @@ function NewCasePage() {
             Intake a new transport. Required fields are marked with *.
           </p>
         </div>
-        {draftSavedAt && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>
+        <div
+          className="flex items-center gap-2 text-xs"
+          role="status"
+          aria-live="polite"
+        >
+          {saveStatus === "saving" && (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Saving draft…
+            </span>
+          )}
+          {saveStatus === "saved" && draftSavedAt && (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Check className="h-3.5 w-3.5 text-emerald-600" />
               Draft saved{" "}
               {draftSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
+          )}
+          {saveStatus === "error" && (
+            <span className="flex items-center gap-1.5 text-destructive" title={saveError ?? undefined}>
+              <TriangleAlert className="h-3.5 w-3.5" />
+              Autosave failed
+            </span>
+          )}
+          {saveStatus === "idle" && !draftSavedAt && (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <CloudOff className="h-3.5 w-3.5" />
+              No draft yet
+            </span>
+          )}
+          {draftSavedAt && (
             <Button type="button" variant="ghost" size="sm" onClick={discardDraft}>
               Discard draft
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <Form {...form}>
