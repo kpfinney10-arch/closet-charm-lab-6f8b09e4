@@ -21,17 +21,19 @@ import {
   LogOut,
   Truck,
   Plus,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 const NAV = [
-  { to: "/dashboard", label: "Dispatch", icon: LayoutDashboard },
-  { to: "/cases", label: "Cases", icon: ClipboardList },
-  { to: "/drivers", label: "Drivers", icon: Users },
-  { to: "/facilities", label: "Facilities", icon: Building2 },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/dashboard", label: "Dispatch", icon: LayoutDashboard, adminOnly: false },
+  { to: "/cases", label: "Cases", icon: ClipboardList, adminOnly: false },
+  { to: "/drivers", label: "Drivers", icon: Users, adminOnly: false },
+  { to: "/facilities", label: "Facilities", icon: Building2, adminOnly: false },
+  { to: "/reports", label: "Reports", icon: BarChart3, adminOnly: false },
+  { to: "/users", label: "Users", icon: ShieldCheck, adminOnly: true },
+  { to: "/settings", label: "Settings", icon: Settings, adminOnly: false },
 ] as const;
 
 export function DispatcherShell({ children }: { children?: ReactNode }) {
