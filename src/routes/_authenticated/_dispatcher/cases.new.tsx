@@ -372,6 +372,24 @@ function NewCasePage() {
         </div>
       </div>
 
+      {restoredAt && restoredFields.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-400/60 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          <span className="flex-1">
+            Restored a draft from <strong>{restoredAt.toLocaleString()}</strong>.{" "}
+            {restoredFields.size} field{restoredFields.size === 1 ? "" : "s"} highlighted below.
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={dismissHighlights}
+            className="border-amber-400/60"
+          >
+            Dismiss highlights
+          </Button>
+        </div>
+      )}
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
