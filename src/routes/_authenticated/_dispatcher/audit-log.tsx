@@ -168,7 +168,14 @@ function AuditLogPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent activity</CardTitle>
+          <CardTitle className="text-base">
+            Recent activity
+            {!isLoading && data ? (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                ({filtered.length}{filtered.length !== data.length ? ` of ${data.length}` : ""})
+              </span>
+            ) : null}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -180,6 +187,10 @@ function AuditLogPage() {
           ) : !data || data.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
               No audit entries yet.
+            </p>
+          ) : filtered.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No entries match your search.
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -194,7 +205,7 @@ function AuditLogPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.map((row) => (
+                  {filtered.map((row) => (
                     <TableRow key={row.id}>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                         {new Date(row.created_at).toLocaleString()}
