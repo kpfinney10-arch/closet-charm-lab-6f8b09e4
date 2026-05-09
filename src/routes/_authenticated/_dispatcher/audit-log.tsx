@@ -159,6 +159,50 @@ function AuditLogPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "justify-start text-left font-normal",
+                  !range && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {range?.from ? (
+                  range.to ? (
+                    <>
+                      {format(range.from, "LLL d, y")} – {format(range.to, "LLL d, y")}
+                    </>
+                  ) : (
+                    format(range.from, "LLL d, y")
+                  )
+                ) : (
+                  <span>Date range</span>
+                )}
+                {range && (
+                  <X
+                    className="ml-2 h-3.5 w-3.5 opacity-60 hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setRange(undefined);
+                    }}
+                  />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                numberOfMonths={2}
+                selected={range}
+                onSelect={setRange}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
           <Select value={filter} onValueChange={(v) => setFilter(v as ActionFilter)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
