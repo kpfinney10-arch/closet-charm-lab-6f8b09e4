@@ -97,6 +97,7 @@ function AuditLogPage() {
   const { hasRole } = useAuth();
   const [filter, setFilter] = useState<ActionFilter>("all");
   const [search, setSearch] = useState("");
+  const [range, setRange] = useState<DateRange | undefined>(undefined);
   const fetchLogs = useServerFn(listAdminAuditLogs);
 
   useEffect(() => {
@@ -112,7 +113,17 @@ function AuditLogPage() {
     enabled: hasRole("admin"),
   });
 
+  const fromTs = range?.from ? new Date(range.from).setHours(0, 0, 0, 0) : null;
+  const toTs = range?.to
+    ? new Date(range.to).setHours(23, 59, 59, 999)
+    : range?.from
+    ? new Date(range.from).setHours(23, 59, 59, 999)
+    : null;
+
   const filtered = (data ?? []).filter((row) => {
+    const ts = new Date(row.created_at).getTime();
+    if (fromTs !== null && ts < fromTs) return false;
+    if (toTs !== null && ts > toTs) return false;
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     return [
