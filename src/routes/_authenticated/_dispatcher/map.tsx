@@ -57,6 +57,28 @@ function LiveMapPage() {
     },
   });
 
+  const activeCasesQ = useQuery({
+    queryKey: ["driver-active-cases"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cases")
+        .select(
+          "id, case_number, status, decedent_first_name, decedent_last_name, pickup_city, dropoff_city, primary_driver_id, secondary_driver_id",
+        )
+        .in("status", [
+          "new",
+          "assigned",
+          "en_route_pickup",
+          "on_scene",
+          "in_custody",
+          "en_route_dropoff",
+        ]);
+      if (error) throw error;
+      return data ?? [];
+    },
+    refetchInterval: 30000,
+  });
+
   // Realtime
   useEffect(() => {
     const ch = supabase
@@ -70,6 +92,11 @@ function LiveMapPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "profiles" },
         () => void profilesQ.refetch(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "cases" },
+        () => void activeCasesQ.refetch(),
       )
       .subscribe();
     return () => {
@@ -88,6 +115,27 @@ function LiveMapPage() {
     const profMap = new Map(
       (profilesQ.data ?? []).map((p) => [p.id, p]),
     );
+    const casesByDriver = new Map<string, NonNullable<DriverPin["cases"]>>();
+    for (const c of activeCasesQ.data ?? []) {
+      const decedent =
+        [c.decedent_first_name, c.decedent_last_name].filter(Boolean).join(" ") ||
+        "Unnamed decedent";
+      const route = [c.pickup_city, c.dropoff_city].filter(Boolean).join(" → ");
+      const entry = {
+        id: c.id,
+        case_number: c.case_number,
+        status: c.status as string,
+        decedent,
+        route,
+      };
+      for (const driverId of [c.primary_driver_id, c.secondary_driver_id]) {
+        if (!driverId) continue;
+        const arr = casesByDriver.get(driverId) ?? [];
+        arr.push(entry);
+        casesByDriver.set(driverId, arr);
+      }
+    }
+
     return (locationsQ.data ?? [])
       .filter((l) => profMap.has(l.user_id))
       .map((l) => {
@@ -101,10 +149,11 @@ function LiveMapPage() {
           updated_at: l.updated_at,
           speed: l.speed,
           accuracy: l.accuracy,
+          cases: casesByDriver.get(l.user_id) ?? [],
         };
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locationsQ.data, profilesQ.data, tick]);
+  }, [locationsQ.data, profilesQ.data, activeCasesQ.data, tick]);
 
   const onDutyCount = pins.filter((p) => p.on_duty).length;
   const staleCutoff = Date.now() - STALE_MINUTES * 60 * 1000;
