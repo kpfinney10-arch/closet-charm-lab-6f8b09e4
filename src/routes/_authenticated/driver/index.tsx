@@ -19,7 +19,14 @@ export const Route = createFileRoute("/_authenticated/driver/")({
   }),
 });
 
-const ACTIVE = ["new", "assigned", "en_route_pickup", "on_scene", "in_custody", "en_route_dropoff"] as const;
+const ACTIVE: Database["public"]["Enums"]["case_status"][] = [
+  "new",
+  "assigned",
+  "en_route_pickup",
+  "on_scene",
+  "in_custody",
+  "en_route_dropoff",
+];
 
 function DriverQueue() {
   const { user } = useAuth();
@@ -47,7 +54,7 @@ function DriverQueue() {
         .from("cases")
         .select("*")
         .or(`primary_driver_id.eq.${user!.id},secondary_driver_id.eq.${user!.id}`)
-        .in("status", ACTIVE as unknown as string[])
+        .in("status", ACTIVE)
         .order("scheduled_at", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as CaseRow[];
