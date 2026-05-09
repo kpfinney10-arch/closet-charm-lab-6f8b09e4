@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -74,6 +74,10 @@ function NewCasePage() {
   const { user } = useAuth();
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
+  const draftKey = user ? `case-intake-draft:${user.id}` : null;
+  const restoredRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -121,6 +125,59 @@ function NewCasePage() {
         setFacilities(data ?? []);
       });
   }, []);
+
+  // Restore draft on mount
+  useEffect(() => {
+    if (!draftKey || restoredRef.current) return;
+    restoredRef.current = true;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { values: Partial<FormValues>; savedAt: string };
+      if (parsed?.values) {
+        form.reset({ ...form.getValues(), ...parsed.values });
+        setDraftSavedAt(new Date(parsed.savedAt));
+        toast.info("Draft restored", { description: "Picked up where you left off." });
+      }
+    } catch (err) {
+      console.error("Failed to restore draft", err);
+    }
+  }, [draftKey, form]);
+
+  // Debounced autosave on any change
+  useEffect(() => {
+    if (!draftKey) return;
+    const sub = form.watch((values) => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        try {
+          const savedAt = new Date();
+          localStorage.setItem(
+            draftKey,
+            JSON.stringify({ values, savedAt: savedAt.toISOString() }),
+          );
+          setDraftSavedAt(savedAt);
+        } catch (err) {
+          console.error("Failed to save draft", err);
+        }
+      }, 600);
+    });
+    return () => {
+      sub.unsubscribe();
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [draftKey, form]);
+
+  const clearDraft = () => {
+    if (draftKey) localStorage.removeItem(draftKey);
+    setDraftSavedAt(null);
+  };
+
+  const discardDraft = () => {
+    clearDraft();
+    form.reset();
+    toast.success("Draft discarded");
+  };
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
