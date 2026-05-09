@@ -53,7 +53,8 @@ function UsersAdminPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-users"] });
 
   const createMut = useMutation({
-    mutationFn: (data: Parameters<typeof create>[0]["data"]) => create({ data }),
+    mutationFn: (data: { email: string; password: string; full_name?: string; phone?: string; role: Role }) =>
+      create({ data }),
     onSuccess: () => { toast.success("User created"); invalidate(); },
     onError: (e: Error) => toast.error(e.message),
   });
