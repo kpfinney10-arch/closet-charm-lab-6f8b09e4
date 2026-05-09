@@ -86,6 +86,30 @@ export function DriverMap({ pins }: { pins: DriverPin[] }) {
               {typeof p.speed === "number" && (
                 <div className="text-xs">Speed: {Math.round(p.speed * 2.237)} mph</div>
               )}
+              {p.cases && p.cases.length > 0 && (
+                <div className="mt-2 border-t pt-2">
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Active {p.cases.length === 1 ? "case" : "cases"}
+                  </div>
+                  <ul className="space-y-1.5">
+                    {p.cases.map((c) => (
+                      <li key={c.id} className="text-xs">
+                        <a
+                          href={`/cases/${c.id}`}
+                          className="font-mono text-[11px] text-primary hover:underline"
+                        >
+                          {c.case_number}
+                        </a>{" "}
+                        <span className="font-medium">{c.decedent}</span>
+                        <div className="text-muted-foreground capitalize">
+                          {c.status.replaceAll("_", " ")}
+                          {c.route ? ` · ${c.route}` : ""}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </Popup>
         </Marker>
