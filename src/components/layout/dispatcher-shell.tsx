@@ -21,23 +21,26 @@ import {
   LogOut,
   Truck,
   Plus,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 const NAV = [
-  { to: "/dashboard", label: "Dispatch", icon: LayoutDashboard },
-  { to: "/cases", label: "Cases", icon: ClipboardList },
-  { to: "/drivers", label: "Drivers", icon: Users },
-  { to: "/facilities", label: "Facilities", icon: Building2 },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/dashboard", label: "Dispatch", icon: LayoutDashboard, adminOnly: false },
+  { to: "/cases", label: "Cases", icon: ClipboardList, adminOnly: false },
+  { to: "/drivers", label: "Drivers", icon: Users, adminOnly: false },
+  { to: "/facilities", label: "Facilities", icon: Building2, adminOnly: false },
+  { to: "/reports", label: "Reports", icon: BarChart3, adminOnly: false },
+  { to: "/users", label: "Users", icon: ShieldCheck, adminOnly: true },
+  { to: "/settings", label: "Settings", icon: Settings, adminOnly: false },
 ] as const;
 
 export function DispatcherShell({ children }: { children?: ReactNode }) {
-  const { user, roles, signOut } = useAuth();
+  const { user, roles, signOut, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const nav = NAV.filter((n) => !n.adminOnly || hasRole("admin"));
 
   const initials = (user?.email ?? "U").slice(0, 2).toUpperCase();
 
@@ -53,7 +56,7 @@ export function DispatcherShell({ children }: { children?: ReactNode }) {
         </div>
 
         <nav className="flex-1 space-y-1 p-2">
-          {NAV.map(({ to, label, icon: Icon }) => {
+          {nav.map(({ to, label, icon: Icon }) => {
             const active = location.pathname.startsWith(to);
             return (
               <Link
@@ -133,7 +136,7 @@ export function DispatcherShell({ children }: { children?: ReactNode }) {
 
         {/* Mobile bottom nav */}
         <nav className="order-2 grid grid-cols-5 border-t bg-background md:hidden">
-          {NAV.slice(0, 5).map(({ to, label, icon: Icon }) => {
+          {nav.slice(0, 5).map(({ to, label, icon: Icon }) => {
             const active = location.pathname.startsWith(to);
             return (
               <Link
