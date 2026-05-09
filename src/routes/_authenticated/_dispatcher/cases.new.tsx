@@ -6,6 +6,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { ArrowLeft, Check, CloudOff, Loader2, TriangleAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,6 +78,8 @@ function NewCasePage() {
   const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [restoredFields, setRestoredFields] = useState<Set<string>>(new Set());
+  const [restoredAt, setRestoredAt] = useState<Date | null>(null);
   const draftKey = user ? `case-intake-draft:${user.id}` : null;
   const restoredRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -137,14 +140,48 @@ function NewCasePage() {
       if (!raw) return;
       const parsed = JSON.parse(raw) as { values: Partial<FormValues>; savedAt: string };
       if (parsed?.values) {
-        form.reset({ ...form.getValues(), ...parsed.values });
-        setDraftSavedAt(new Date(parsed.savedAt));
-        toast.info("Draft restored", { description: "Picked up where you left off." });
+        const defaults = form.getValues();
+        const restored = new Set<string>();
+        for (const [k, v] of Object.entries(parsed.values)) {
+          const def = (defaults as Record<string, unknown>)[k];
+          const isEmpty = v === undefined || v === null || v === "" || v === NONE;
+          if (!isEmpty && v !== def) restored.add(k);
+        }
+        form.reset({ ...defaults, ...parsed.values });
+        const savedAt = new Date(parsed.savedAt);
+        setDraftSavedAt(savedAt);
+        setRestoredAt(savedAt);
+        setRestoredFields(restored);
+        toast.info("Draft restored", {
+          description: `${restored.size} field${restored.size === 1 ? "" : "s"} from ${savedAt.toLocaleString()}`,
+        });
       }
     } catch (err) {
       console.error("Failed to restore draft", err);
     }
   }, [draftKey, form]);
+
+  // Clear a field's restored highlight when the user edits it
+  useEffect(() => {
+    if (restoredFields.size === 0) return;
+    const sub = form.watch((_values, { name, type }) => {
+      if (!name || type !== "change") return;
+      setRestoredFields((prev) => {
+        if (!prev.has(name)) return prev;
+        const next = new Set(prev);
+        next.delete(name);
+        return next;
+      });
+    });
+    return () => sub.unsubscribe();
+  }, [form, restoredFields.size]);
+
+  const hl = (name: string) =>
+    restoredFields.has(name)
+      ? "rounded-md ring-2 ring-amber-400/70 ring-offset-2 ring-offset-background p-2 -m-2"
+      : "";
+
+  const dismissHighlights = () => setRestoredFields(new Set());
 
   // Debounced autosave on any change
   useEffect(() => {
