@@ -4,8 +4,33 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, MapPin, X } from "lucide-react";
 import type { DriverPin } from "@/components/driver-map";
+import type { Database } from "@/integrations/supabase/types";
+
+type CaseStatus = Database["public"]["Enums"]["case_status"];
+
+const ACTIVE_STATUSES: CaseStatus[] = [
+  "new",
+  "assigned",
+  "en_route_pickup",
+  "on_scene",
+  "in_custody",
+  "en_route_dropoff",
+];
+
+const STATUS_LABEL: Record<CaseStatus, string> = {
+  new: "New",
+  assigned: "Assigned",
+  en_route_pickup: "En route pickup",
+  on_scene: "On scene",
+  in_custody: "In custody",
+  en_route_dropoff: "En route dropoff",
+  delivered: "Delivered",
+  closed: "Closed",
+  cancelled: "Cancelled",
+};
 
 const DriverMap = lazy(() =>
   import("@/components/driver-map").then((m) => ({ default: m.DriverMap })),
