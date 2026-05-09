@@ -23,12 +23,14 @@ import {
   Plus,
   ShieldCheck,
   ScrollText,
+  Map as MapIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 const NAV = [
   { to: "/dashboard", label: "Dispatch", icon: LayoutDashboard, adminOnly: false },
+  { to: "/map", label: "Live map", icon: MapIcon, adminOnly: false },
   { to: "/cases", label: "Cases", icon: ClipboardList, adminOnly: false },
   { to: "/drivers", label: "Drivers", icon: Users, adminOnly: false },
   { to: "/facilities", label: "Facilities", icon: Building2, adminOnly: false },
