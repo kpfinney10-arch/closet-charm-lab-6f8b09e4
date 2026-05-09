@@ -50,6 +50,7 @@ const STALE_MINUTES = 15;
 
 function LiveMapPage() {
   const [tick, setTick] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<Set<CaseStatus>>(new Set());
 
   const locationsQ = useQuery({
     queryKey: ["driver-locations"],
