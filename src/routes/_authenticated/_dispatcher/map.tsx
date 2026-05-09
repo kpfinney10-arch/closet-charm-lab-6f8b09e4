@@ -1,11 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, MapPin } from "lucide-react";
-import { DriverMap, type DriverPin } from "@/components/driver-map";
+import type { DriverPin } from "@/components/driver-map";
+
+const DriverMap = lazy(() =>
+  import("@/components/driver-map").then((m) => ({ default: m.DriverMap })),
+);
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/map")({
   component: LiveMapPage,
