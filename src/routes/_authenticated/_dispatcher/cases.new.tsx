@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -74,6 +74,10 @@ function NewCasePage() {
   const { user } = useAuth();
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
+  const draftKey = user ? `case-intake-draft:${user.id}` : null;
+  const restoredRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -121,6 +125,59 @@ function NewCasePage() {
         setFacilities(data ?? []);
       });
   }, []);
+
+  // Restore draft on mount
+  useEffect(() => {
+    if (!draftKey || restoredRef.current) return;
+    restoredRef.current = true;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { values: Partial<FormValues>; savedAt: string };
+      if (parsed?.values) {
+        form.reset({ ...form.getValues(), ...parsed.values });
+        setDraftSavedAt(new Date(parsed.savedAt));
+        toast.info("Draft restored", { description: "Picked up where you left off." });
+      }
+    } catch (err) {
+      console.error("Failed to restore draft", err);
+    }
+  }, [draftKey, form]);
+
+  // Debounced autosave on any change
+  useEffect(() => {
+    if (!draftKey) return;
+    const sub = form.watch((values) => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        try {
+          const savedAt = new Date();
+          localStorage.setItem(
+            draftKey,
+            JSON.stringify({ values, savedAt: savedAt.toISOString() }),
+          );
+          setDraftSavedAt(savedAt);
+        } catch (err) {
+          console.error("Failed to save draft", err);
+        }
+      }, 600);
+    });
+    return () => {
+      sub.unsubscribe();
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [draftKey, form]);
+
+  const clearDraft = () => {
+    if (draftKey) localStorage.removeItem(draftKey);
+    setDraftSavedAt(null);
+  };
+
+  const discardDraft = () => {
+    clearDraft();
+    form.reset();
+    toast.success("Draft discarded");
+  };
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
@@ -172,6 +229,7 @@ function NewCasePage() {
 
       if (error) throw error;
 
+      clearDraft();
       toast.success(`Case ${data.case_number} created`);
       void navigate({ to: "/cases/$caseId", params: { caseId: data.id } });
     } catch (err) {
@@ -184,18 +242,29 @@ function NewCasePage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/cases">
             <ArrowLeft className="mr-1 h-4 w-4" /> Cases
           </Link>
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-semibold">New case</h1>
           <p className="text-sm text-muted-foreground">
             Intake a new transport. Required fields are marked with *.
           </p>
         </div>
+        {draftSavedAt && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>
+              Draft saved{" "}
+              {draftSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            <Button type="button" variant="ghost" size="sm" onClick={discardDraft}>
+              Discard draft
+            </Button>
+          </div>
+        )}
       </div>
 
       <Form {...form}>
