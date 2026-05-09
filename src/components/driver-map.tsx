@@ -12,6 +12,13 @@ export type DriverPin = {
   updated_at: string;
   speed?: number | null;
   accuracy?: number | null;
+  cases?: {
+    id: string;
+    case_number: string;
+    status: string;
+    decedent: string;
+    route: string;
+  }[];
 };
 
 function makeIcon(color: string) {
