@@ -13,7 +13,13 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDispatcherRouteImport } from './routes/_authenticated/_dispatcher'
+import { Route as AuthenticatedDispatcherReportsRouteImport } from './routes/_authenticated/_dispatcher/reports'
+import { Route as AuthenticatedDispatcherFacilitiesRouteImport } from './routes/_authenticated/_dispatcher/facilities'
+import { Route as AuthenticatedDispatcherDriversRouteImport } from './routes/_authenticated/_dispatcher/drivers'
 import { Route as AuthenticatedDispatcherDashboardRouteImport } from './routes/_authenticated/_dispatcher/dashboard'
+import { Route as AuthenticatedDispatcherCasesRouteImport } from './routes/_authenticated/_dispatcher/cases'
+import { Route as AuthenticatedDispatcherCasesNewRouteImport } from './routes/_authenticated/_dispatcher/cases.new'
+import { Route as AuthenticatedDispatcherCasesCaseIdRouteImport } from './routes/_authenticated/_dispatcher/cases.$caseId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -33,22 +39,70 @@ const AuthenticatedDispatcherRoute = AuthenticatedDispatcherRouteImport.update({
   id: '/_dispatcher',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedDispatcherReportsRoute =
+  AuthenticatedDispatcherReportsRouteImport.update({
+    id: '/reports',
+    path: '/reports',
+    getParentRoute: () => AuthenticatedDispatcherRoute,
+  } as any)
+const AuthenticatedDispatcherFacilitiesRoute =
+  AuthenticatedDispatcherFacilitiesRouteImport.update({
+    id: '/facilities',
+    path: '/facilities',
+    getParentRoute: () => AuthenticatedDispatcherRoute,
+  } as any)
+const AuthenticatedDispatcherDriversRoute =
+  AuthenticatedDispatcherDriversRouteImport.update({
+    id: '/drivers',
+    path: '/drivers',
+    getParentRoute: () => AuthenticatedDispatcherRoute,
+  } as any)
 const AuthenticatedDispatcherDashboardRoute =
   AuthenticatedDispatcherDashboardRouteImport.update({
     id: '/dashboard',
     path: '/dashboard',
     getParentRoute: () => AuthenticatedDispatcherRoute,
   } as any)
+const AuthenticatedDispatcherCasesRoute =
+  AuthenticatedDispatcherCasesRouteImport.update({
+    id: '/cases',
+    path: '/cases',
+    getParentRoute: () => AuthenticatedDispatcherRoute,
+  } as any)
+const AuthenticatedDispatcherCasesNewRoute =
+  AuthenticatedDispatcherCasesNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedDispatcherCasesRoute,
+  } as any)
+const AuthenticatedDispatcherCasesCaseIdRoute =
+  AuthenticatedDispatcherCasesCaseIdRouteImport.update({
+    id: '/$caseId',
+    path: '/$caseId',
+    getParentRoute: () => AuthenticatedDispatcherCasesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
   '/dashboard': typeof AuthenticatedDispatcherDashboardRoute
+  '/drivers': typeof AuthenticatedDispatcherDriversRoute
+  '/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
+  '/reports': typeof AuthenticatedDispatcherReportsRoute
+  '/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
+  '/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
   '/dashboard': typeof AuthenticatedDispatcherDashboardRoute
+  '/drivers': typeof AuthenticatedDispatcherDriversRoute
+  '/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
+  '/reports': typeof AuthenticatedDispatcherReportsRoute
+  '/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
+  '/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -56,20 +110,50 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/_dispatcher': typeof AuthenticatedDispatcherRouteWithChildren
+  '/_authenticated/_dispatcher/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
   '/_authenticated/_dispatcher/dashboard': typeof AuthenticatedDispatcherDashboardRoute
+  '/_authenticated/_dispatcher/drivers': typeof AuthenticatedDispatcherDriversRoute
+  '/_authenticated/_dispatcher/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
+  '/_authenticated/_dispatcher/reports': typeof AuthenticatedDispatcherReportsRoute
+  '/_authenticated/_dispatcher/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
+  '/_authenticated/_dispatcher/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/cases'
+    | '/dashboard'
+    | '/drivers'
+    | '/facilities'
+    | '/reports'
+    | '/cases/$caseId'
+    | '/cases/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboard'
+  to:
+    | '/'
+    | '/login'
+    | '/cases'
+    | '/dashboard'
+    | '/drivers'
+    | '/facilities'
+    | '/reports'
+    | '/cases/$caseId'
+    | '/cases/new'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
     | '/_authenticated/_dispatcher'
+    | '/_authenticated/_dispatcher/cases'
     | '/_authenticated/_dispatcher/dashboard'
+    | '/_authenticated/_dispatcher/drivers'
+    | '/_authenticated/_dispatcher/facilities'
+    | '/_authenticated/_dispatcher/reports'
+    | '/_authenticated/_dispatcher/cases/$caseId'
+    | '/_authenticated/_dispatcher/cases/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -108,6 +192,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDispatcherRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/_dispatcher/reports': {
+      id: '/_authenticated/_dispatcher/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedDispatcherReportsRouteImport
+      parentRoute: typeof AuthenticatedDispatcherRoute
+    }
+    '/_authenticated/_dispatcher/facilities': {
+      id: '/_authenticated/_dispatcher/facilities'
+      path: '/facilities'
+      fullPath: '/facilities'
+      preLoaderRoute: typeof AuthenticatedDispatcherFacilitiesRouteImport
+      parentRoute: typeof AuthenticatedDispatcherRoute
+    }
+    '/_authenticated/_dispatcher/drivers': {
+      id: '/_authenticated/_dispatcher/drivers'
+      path: '/drivers'
+      fullPath: '/drivers'
+      preLoaderRoute: typeof AuthenticatedDispatcherDriversRouteImport
+      parentRoute: typeof AuthenticatedDispatcherRoute
+    }
     '/_authenticated/_dispatcher/dashboard': {
       id: '/_authenticated/_dispatcher/dashboard'
       path: '/dashboard'
@@ -115,17 +220,65 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDispatcherDashboardRouteImport
       parentRoute: typeof AuthenticatedDispatcherRoute
     }
+    '/_authenticated/_dispatcher/cases': {
+      id: '/_authenticated/_dispatcher/cases'
+      path: '/cases'
+      fullPath: '/cases'
+      preLoaderRoute: typeof AuthenticatedDispatcherCasesRouteImport
+      parentRoute: typeof AuthenticatedDispatcherRoute
+    }
+    '/_authenticated/_dispatcher/cases/new': {
+      id: '/_authenticated/_dispatcher/cases/new'
+      path: '/new'
+      fullPath: '/cases/new'
+      preLoaderRoute: typeof AuthenticatedDispatcherCasesNewRouteImport
+      parentRoute: typeof AuthenticatedDispatcherCasesRoute
+    }
+    '/_authenticated/_dispatcher/cases/$caseId': {
+      id: '/_authenticated/_dispatcher/cases/$caseId'
+      path: '/$caseId'
+      fullPath: '/cases/$caseId'
+      preLoaderRoute: typeof AuthenticatedDispatcherCasesCaseIdRouteImport
+      parentRoute: typeof AuthenticatedDispatcherCasesRoute
+    }
   }
 }
 
+interface AuthenticatedDispatcherCasesRouteChildren {
+  AuthenticatedDispatcherCasesCaseIdRoute: typeof AuthenticatedDispatcherCasesCaseIdRoute
+  AuthenticatedDispatcherCasesNewRoute: typeof AuthenticatedDispatcherCasesNewRoute
+}
+
+const AuthenticatedDispatcherCasesRouteChildren: AuthenticatedDispatcherCasesRouteChildren =
+  {
+    AuthenticatedDispatcherCasesCaseIdRoute:
+      AuthenticatedDispatcherCasesCaseIdRoute,
+    AuthenticatedDispatcherCasesNewRoute: AuthenticatedDispatcherCasesNewRoute,
+  }
+
+const AuthenticatedDispatcherCasesRouteWithChildren =
+  AuthenticatedDispatcherCasesRoute._addFileChildren(
+    AuthenticatedDispatcherCasesRouteChildren,
+  )
+
 interface AuthenticatedDispatcherRouteChildren {
+  AuthenticatedDispatcherCasesRoute: typeof AuthenticatedDispatcherCasesRouteWithChildren
   AuthenticatedDispatcherDashboardRoute: typeof AuthenticatedDispatcherDashboardRoute
+  AuthenticatedDispatcherDriversRoute: typeof AuthenticatedDispatcherDriversRoute
+  AuthenticatedDispatcherFacilitiesRoute: typeof AuthenticatedDispatcherFacilitiesRoute
+  AuthenticatedDispatcherReportsRoute: typeof AuthenticatedDispatcherReportsRoute
 }
 
 const AuthenticatedDispatcherRouteChildren: AuthenticatedDispatcherRouteChildren =
   {
+    AuthenticatedDispatcherCasesRoute:
+      AuthenticatedDispatcherCasesRouteWithChildren,
     AuthenticatedDispatcherDashboardRoute:
       AuthenticatedDispatcherDashboardRoute,
+    AuthenticatedDispatcherDriversRoute: AuthenticatedDispatcherDriversRoute,
+    AuthenticatedDispatcherFacilitiesRoute:
+      AuthenticatedDispatcherFacilitiesRoute,
+    AuthenticatedDispatcherReportsRoute: AuthenticatedDispatcherReportsRoute,
   }
 
 const AuthenticatedDispatcherRouteWithChildren =
