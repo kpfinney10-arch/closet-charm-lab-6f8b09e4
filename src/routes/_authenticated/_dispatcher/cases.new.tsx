@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check, CloudOff, Loader2, TriangleAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,8 @@ function NewCasePage() {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const draftKey = user ? `case-intake-draft:${user.id}` : null;
   const restoredRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -149,6 +151,7 @@ function NewCasePage() {
     if (!draftKey) return;
     const sub = form.watch((values) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      setSaveStatus("saving");
       saveTimerRef.current = setTimeout(() => {
         try {
           const savedAt = new Date();
@@ -157,8 +160,12 @@ function NewCasePage() {
             JSON.stringify({ values, savedAt: savedAt.toISOString() }),
           );
           setDraftSavedAt(savedAt);
+          setSaveError(null);
+          setSaveStatus("saved");
         } catch (err) {
           console.error("Failed to save draft", err);
+          setSaveError(err instanceof Error ? err.message : "Unknown error");
+          setSaveStatus("error");
         }
       }, 600);
     });
@@ -171,6 +178,8 @@ function NewCasePage() {
   const clearDraft = () => {
     if (draftKey) localStorage.removeItem(draftKey);
     setDraftSavedAt(null);
+    setSaveStatus("idle");
+    setSaveError(null);
   };
 
   const discardDraft = () => {
@@ -254,17 +263,42 @@ function NewCasePage() {
             Intake a new transport. Required fields are marked with *.
           </p>
         </div>
-        {draftSavedAt && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>
+        <div
+          className="flex items-center gap-2 text-xs"
+          role="status"
+          aria-live="polite"
+        >
+          {saveStatus === "saving" && (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Saving draft…
+            </span>
+          )}
+          {saveStatus === "saved" && draftSavedAt && (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Check className="h-3.5 w-3.5 text-emerald-600" />
               Draft saved{" "}
               {draftSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
+          )}
+          {saveStatus === "error" && (
+            <span className="flex items-center gap-1.5 text-destructive" title={saveError ?? undefined}>
+              <TriangleAlert className="h-3.5 w-3.5" />
+              Autosave failed
+            </span>
+          )}
+          {saveStatus === "idle" && !draftSavedAt && (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <CloudOff className="h-3.5 w-3.5" />
+              No draft yet
+            </span>
+          )}
+          {draftSavedAt && (
             <Button type="button" variant="ghost" size="sm" onClick={discardDraft}>
               Discard draft
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <Form {...form}>
