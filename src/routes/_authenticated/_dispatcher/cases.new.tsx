@@ -188,7 +188,30 @@ function NewCasePage() {
     toast.success("Draft discarded");
   };
 
-  const onSubmit = async (values: FormValues) => {
+  const saveDraftNow = () => {
+    if (!draftKey) {
+      toast.error("Sign in required to save drafts");
+      return;
+    }
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    try {
+      const savedAt = new Date();
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({ values: form.getValues(), savedAt: savedAt.toISOString() }),
+      );
+      setDraftSavedAt(savedAt);
+      setSaveError(null);
+      setSaveStatus("saved");
+      toast.success("Draft saved");
+    } catch (err) {
+      console.error("Failed to save draft", err);
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setSaveError(msg);
+      setSaveStatus("error");
+      toast.error("Failed to save draft", { description: msg });
+    }
+  };
     setSubmitting(true);
     try {
       const empty = (v?: string) => (v && v.trim() !== "" ? v : null);
