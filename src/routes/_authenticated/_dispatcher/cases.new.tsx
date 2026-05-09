@@ -229,6 +229,7 @@ function NewCasePage() {
 
       if (error) throw error;
 
+      clearDraft();
       toast.success(`Case ${data.case_number} created`);
       void navigate({ to: "/cases/$caseId", params: { caseId: data.id } });
     } catch (err) {
