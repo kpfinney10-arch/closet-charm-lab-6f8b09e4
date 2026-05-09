@@ -37,9 +37,10 @@ const NAV = [
 ] as const;
 
 export function DispatcherShell({ children }: { children?: ReactNode }) {
-  const { user, roles, signOut } = useAuth();
+  const { user, roles, signOut, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const nav = NAV.filter((n) => !n.adminOnly || hasRole("admin"));
 
   const initials = (user?.email ?? "U").slice(0, 2).toUpperCase();
 
