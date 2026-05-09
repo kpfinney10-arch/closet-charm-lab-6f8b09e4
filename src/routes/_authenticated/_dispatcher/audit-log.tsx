@@ -193,6 +193,55 @@ function AuditLogPage() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
+              <div className="flex flex-wrap gap-1 border-b p-2">
+                {[
+                  {
+                    label: "Today",
+                    get: () => {
+                      const d = new Date();
+                      return { from: d, to: d };
+                    },
+                  },
+                  {
+                    label: "Last 7 days",
+                    get: () => {
+                      const to = new Date();
+                      const from = new Date();
+                      from.setDate(to.getDate() - 6);
+                      return { from, to };
+                    },
+                  },
+                  {
+                    label: "Last 30 days",
+                    get: () => {
+                      const to = new Date();
+                      const from = new Date();
+                      from.setDate(to.getDate() - 29);
+                      return { from, to };
+                    },
+                  },
+                  {
+                    label: "This month",
+                    get: () => {
+                      const now = new Date();
+                      return {
+                        from: new Date(now.getFullYear(), now.getMonth(), 1),
+                        to: now,
+                      };
+                    },
+                  },
+                ].map((p) => (
+                  <Button
+                    key={p.label}
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setRange(p.get())}
+                  >
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
               <Calendar
                 mode="range"
                 numberOfMonths={2}
