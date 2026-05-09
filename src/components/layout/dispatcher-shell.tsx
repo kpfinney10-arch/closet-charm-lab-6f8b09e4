@@ -136,7 +136,7 @@ export function DispatcherShell({ children }: { children?: ReactNode }) {
 
         {/* Mobile bottom nav */}
         <nav className="order-2 grid grid-cols-5 border-t bg-background md:hidden">
-          {NAV.slice(0, 5).map(({ to, label, icon: Icon }) => {
+          {nav.slice(0, 5).map(({ to, label, icon: Icon }) => {
             const active = location.pathname.startsWith(to);
             return (
               <Link
