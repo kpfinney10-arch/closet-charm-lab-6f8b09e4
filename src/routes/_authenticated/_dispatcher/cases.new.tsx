@@ -318,6 +318,15 @@ function NewCasePage() {
               No draft yet
             </span>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={saveDraftNow}
+            disabled={saveStatus === "saving"}
+          >
+            Save draft now
+          </Button>
           {draftSavedAt && (
             <Button type="button" variant="ghost" size="sm" onClick={discardDraft}>
               Discard draft
