@@ -20,6 +20,7 @@ import { Route as AuthenticatedDriverIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedDispatcherUsersRouteImport } from './routes/_authenticated/_dispatcher/users'
 import { Route as AuthenticatedDispatcherSettingsRouteImport } from './routes/_authenticated/_dispatcher/settings'
 import { Route as AuthenticatedDispatcherReportsRouteImport } from './routes/_authenticated/_dispatcher/reports'
+import { Route as AuthenticatedDispatcherMapRouteImport } from './routes/_authenticated/_dispatcher/map'
 import { Route as AuthenticatedDispatcherFacilitiesRouteImport } from './routes/_authenticated/_dispatcher/facilities'
 import { Route as AuthenticatedDispatcherDriversRouteImport } from './routes/_authenticated/_dispatcher/drivers'
 import { Route as AuthenticatedDispatcherDashboardRouteImport } from './routes/_authenticated/_dispatcher/dashboard'
@@ -85,6 +86,12 @@ const AuthenticatedDispatcherReportsRoute =
     path: '/reports',
     getParentRoute: () => AuthenticatedDispatcherRoute,
   } as any)
+const AuthenticatedDispatcherMapRoute =
+  AuthenticatedDispatcherMapRouteImport.update({
+    id: '/map',
+    path: '/map',
+    getParentRoute: () => AuthenticatedDispatcherRoute,
+  } as any)
 const AuthenticatedDispatcherFacilitiesRoute =
   AuthenticatedDispatcherFacilitiesRouteImport.update({
     id: '/facilities',
@@ -139,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDispatcherDashboardRoute
   '/drivers': typeof AuthenticatedDispatcherDriversRoute
   '/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
+  '/map': typeof AuthenticatedDispatcherMapRoute
   '/reports': typeof AuthenticatedDispatcherReportsRoute
   '/settings': typeof AuthenticatedDispatcherSettingsRoute
   '/users': typeof AuthenticatedDispatcherUsersRoute
@@ -156,6 +164,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDispatcherDashboardRoute
   '/drivers': typeof AuthenticatedDispatcherDriversRoute
   '/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
+  '/map': typeof AuthenticatedDispatcherMapRoute
   '/reports': typeof AuthenticatedDispatcherReportsRoute
   '/settings': typeof AuthenticatedDispatcherSettingsRoute
   '/users': typeof AuthenticatedDispatcherUsersRoute
@@ -177,6 +186,7 @@ export interface FileRoutesById {
   '/_authenticated/_dispatcher/dashboard': typeof AuthenticatedDispatcherDashboardRoute
   '/_authenticated/_dispatcher/drivers': typeof AuthenticatedDispatcherDriversRoute
   '/_authenticated/_dispatcher/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
+  '/_authenticated/_dispatcher/map': typeof AuthenticatedDispatcherMapRoute
   '/_authenticated/_dispatcher/reports': typeof AuthenticatedDispatcherReportsRoute
   '/_authenticated/_dispatcher/settings': typeof AuthenticatedDispatcherSettingsRoute
   '/_authenticated/_dispatcher/users': typeof AuthenticatedDispatcherUsersRoute
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/drivers'
     | '/facilities'
+    | '/map'
     | '/reports'
     | '/settings'
     | '/users'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/drivers'
     | '/facilities'
+    | '/map'
     | '/reports'
     | '/settings'
     | '/users'
@@ -234,6 +246,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_dispatcher/dashboard'
     | '/_authenticated/_dispatcher/drivers'
     | '/_authenticated/_dispatcher/facilities'
+    | '/_authenticated/_dispatcher/map'
     | '/_authenticated/_dispatcher/reports'
     | '/_authenticated/_dispatcher/settings'
     | '/_authenticated/_dispatcher/users'
@@ -329,6 +342,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDispatcherReportsRouteImport
       parentRoute: typeof AuthenticatedDispatcherRoute
     }
+    '/_authenticated/_dispatcher/map': {
+      id: '/_authenticated/_dispatcher/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof AuthenticatedDispatcherMapRouteImport
+      parentRoute: typeof AuthenticatedDispatcherRoute
+    }
     '/_authenticated/_dispatcher/facilities': {
       id: '/_authenticated/_dispatcher/facilities'
       path: '/facilities'
@@ -404,6 +424,7 @@ interface AuthenticatedDispatcherRouteChildren {
   AuthenticatedDispatcherDashboardRoute: typeof AuthenticatedDispatcherDashboardRoute
   AuthenticatedDispatcherDriversRoute: typeof AuthenticatedDispatcherDriversRoute
   AuthenticatedDispatcherFacilitiesRoute: typeof AuthenticatedDispatcherFacilitiesRoute
+  AuthenticatedDispatcherMapRoute: typeof AuthenticatedDispatcherMapRoute
   AuthenticatedDispatcherReportsRoute: typeof AuthenticatedDispatcherReportsRoute
   AuthenticatedDispatcherSettingsRoute: typeof AuthenticatedDispatcherSettingsRoute
   AuthenticatedDispatcherUsersRoute: typeof AuthenticatedDispatcherUsersRoute
@@ -419,6 +440,7 @@ const AuthenticatedDispatcherRouteChildren: AuthenticatedDispatcherRouteChildren
     AuthenticatedDispatcherDriversRoute: AuthenticatedDispatcherDriversRoute,
     AuthenticatedDispatcherFacilitiesRoute:
       AuthenticatedDispatcherFacilitiesRoute,
+    AuthenticatedDispatcherMapRoute: AuthenticatedDispatcherMapRoute,
     AuthenticatedDispatcherReportsRoute: AuthenticatedDispatcherReportsRoute,
     AuthenticatedDispatcherSettingsRoute: AuthenticatedDispatcherSettingsRoute,
     AuthenticatedDispatcherUsersRoute: AuthenticatedDispatcherUsersRoute,
