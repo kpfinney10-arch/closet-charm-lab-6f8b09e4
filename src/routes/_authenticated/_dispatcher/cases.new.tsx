@@ -242,18 +242,29 @@ function NewCasePage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/cases">
             <ArrowLeft className="mr-1 h-4 w-4" /> Cases
           </Link>
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-semibold">New case</h1>
           <p className="text-sm text-muted-foreground">
             Intake a new transport. Required fields are marked with *.
           </p>
         </div>
+        {draftSavedAt && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>
+              Draft saved{" "}
+              {draftSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            <Button type="button" variant="ghost" size="sm" onClick={discardDraft}>
+              Discard draft
+            </Button>
+          </div>
+        )}
       </div>
 
       <Form {...form}>
