@@ -5,6 +5,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = "admin" | "dispatcher" | "driver" | "viewer";
+type AuditAction =
+  | "user_created"
+  | "user_disabled"
+  | "user_enabled"
+  | "user_deleted"
+  | "role_changed"
+  | "password_reset";
 
 function getAdmin() {
   const url = process.env.SUPABASE_URL;
@@ -24,6 +31,27 @@ async function assertAdmin(supabase: ReturnType<typeof getAdmin>, userId: string
     .maybeSingle();
   if (error) throw new Response(error.message, { status: 500 });
   if (!data) throw new Response("Forbidden: admin role required", { status: 403 });
+}
+
+async function writeAudit(
+  supabase: ReturnType<typeof getAdmin>,
+  params: {
+    action: AuditAction;
+    actor_id: string;
+    target_user_id?: string | null;
+    target_email?: string | null;
+    details?: Record<string, unknown>;
+  }
+) {
+  const { data: actor } = await supabase.auth.admin.getUserById(params.actor_id);
+  await supabase.from("admin_audit_logs").insert({
+    action: params.action,
+    actor_id: params.actor_id,
+    actor_email: actor?.user?.email ?? null,
+    target_user_id: params.target_user_id ?? null,
+    target_email: params.target_email ?? null,
+    details: (params.details ?? {}) as never,
+  });
 }
 
 export const listAdminUsers = createServerFn({ method: "GET" })
@@ -87,11 +115,18 @@ export const createAdminUser = createServerFn({ method: "POST" })
     });
     if (error || !created.user) throw new Response(error?.message ?? "Failed", { status: 400 });
 
-    // Profile is auto-created by trigger; ensure role is set.
     const { error: rErr } = await admin
       .from("user_roles")
       .insert({ user_id: created.user.id, role: data.role });
     if (rErr) throw new Response(rErr.message, { status: 500 });
+
+    await writeAudit(admin, {
+      action: "user_created",
+      actor_id: context.userId,
+      target_user_id: created.user.id,
+      target_email: created.user.email ?? data.email,
+      details: { role: data.role, full_name: data.full_name ?? null },
+    });
 
     return { id: created.user.id };
   });
@@ -106,10 +141,17 @@ export const disableAdminUser = createServerFn({ method: "POST" })
     await assertAdmin(admin, context.userId);
     if (data.user_id === context.userId)
       throw new Response("You cannot disable your own account", { status: 400 });
+    const { data: target } = await admin.auth.admin.getUserById(data.user_id);
     const { error } = await admin.auth.admin.updateUserById(data.user_id, {
-      ban_duration: "876000h", // ~100 years
+      ban_duration: "876000h",
     });
     if (error) throw new Response(error.message, { status: 500 });
+    await writeAudit(admin, {
+      action: "user_disabled",
+      actor_id: context.userId,
+      target_user_id: data.user_id,
+      target_email: target?.user?.email ?? null,
+    });
     return { ok: true };
   });
 
@@ -119,10 +161,17 @@ export const enableAdminUser = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const admin = getAdmin();
     await assertAdmin(admin, context.userId);
+    const { data: target } = await admin.auth.admin.getUserById(data.user_id);
     const { error } = await admin.auth.admin.updateUserById(data.user_id, {
       ban_duration: "none",
     });
     if (error) throw new Response(error.message, { status: 500 });
+    await writeAudit(admin, {
+      action: "user_enabled",
+      actor_id: context.userId,
+      target_user_id: data.user_id,
+      target_email: target?.user?.email ?? null,
+    });
     return { ok: true };
   });
 
@@ -137,10 +186,17 @@ export const resetAdminUserPassword = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const admin = getAdmin();
     await assertAdmin(admin, context.userId);
+    const { data: target } = await admin.auth.admin.getUserById(data.user_id);
     const { error } = await admin.auth.admin.updateUserById(data.user_id, {
       password: data.new_password,
     });
     if (error) throw new Response(error.message, { status: 500 });
+    await writeAudit(admin, {
+      action: "password_reset",
+      actor_id: context.userId,
+      target_user_id: data.user_id,
+      target_email: target?.user?.email ?? null,
+    });
     return { ok: true };
   });
 
@@ -155,7 +211,11 @@ export const setAdminUserRole = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const admin = getAdmin();
     await assertAdmin(admin, context.userId);
-    // Replace roles with single role for simplicity
+    const { data: target } = await admin.auth.admin.getUserById(data.user_id);
+    const { data: prevRoles } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user_id);
     const { error: dErr } = await admin
       .from("user_roles")
       .delete()
@@ -165,6 +225,16 @@ export const setAdminUserRole = createServerFn({ method: "POST" })
       .from("user_roles")
       .insert({ user_id: data.user_id, role: data.role });
     if (iErr) throw new Response(iErr.message, { status: 500 });
+    await writeAudit(admin, {
+      action: "role_changed",
+      actor_id: context.userId,
+      target_user_id: data.user_id,
+      target_email: target?.user?.email ?? null,
+      details: {
+        from: (prevRoles ?? []).map((r) => r.role),
+        to: data.role,
+      },
+    });
     return { ok: true };
   });
 
@@ -176,7 +246,46 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     await assertAdmin(admin, context.userId);
     if (data.user_id === context.userId)
       throw new Response("You cannot delete your own account", { status: 400 });
+    const { data: target } = await admin.auth.admin.getUserById(data.user_id);
     const { error } = await admin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Response(error.message, { status: 500 });
+    await writeAudit(admin, {
+      action: "user_deleted",
+      actor_id: context.userId,
+      target_user_id: data.user_id,
+      target_email: target?.user?.email ?? null,
+    });
     return { ok: true };
+  });
+
+const auditQuerySchema = z.object({
+  limit: z.number().int().min(1).max(500).optional(),
+  action: z
+    .enum([
+      "user_created",
+      "user_disabled",
+      "user_enabled",
+      "user_deleted",
+      "role_changed",
+      "password_reset",
+    ])
+    .optional()
+    .nullable(),
+});
+
+export const listAdminAuditLogs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => auditQuerySchema.parse(d ?? {}))
+  .handler(async ({ data, context }) => {
+    const admin = getAdmin();
+    await assertAdmin(admin, context.userId);
+    let q = admin
+      .from("admin_audit_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(data.limit ?? 200);
+    if (data.action) q = q.eq("action", data.action);
+    const { data: rows, error } = await q;
+    if (error) throw new Response(error.message, { status: 500 });
+    return rows ?? [];
   });

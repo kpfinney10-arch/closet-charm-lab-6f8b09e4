@@ -22,6 +22,7 @@ import {
   Truck,
   Plus,
   ShieldCheck,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
@@ -33,6 +34,7 @@ const NAV = [
   { to: "/facilities", label: "Facilities", icon: Building2, adminOnly: false },
   { to: "/reports", label: "Reports", icon: BarChart3, adminOnly: false },
   { to: "/users", label: "Users", icon: ShieldCheck, adminOnly: true },
+  { to: "/audit-log", label: "Audit log", icon: ScrollText, adminOnly: true },
   { to: "/settings", label: "Settings", icon: Settings, adminOnly: false },
 ] as const;
 

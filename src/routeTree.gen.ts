@@ -24,6 +24,7 @@ import { Route as AuthenticatedDispatcherFacilitiesRouteImport } from './routes/
 import { Route as AuthenticatedDispatcherDriversRouteImport } from './routes/_authenticated/_dispatcher/drivers'
 import { Route as AuthenticatedDispatcherDashboardRouteImport } from './routes/_authenticated/_dispatcher/dashboard'
 import { Route as AuthenticatedDispatcherCasesRouteImport } from './routes/_authenticated/_dispatcher/cases'
+import { Route as AuthenticatedDispatcherAuditLogRouteImport } from './routes/_authenticated/_dispatcher/audit-log'
 import { Route as AuthenticatedDispatcherCasesNewRouteImport } from './routes/_authenticated/_dispatcher/cases.new'
 import { Route as AuthenticatedDispatcherCasesCaseIdRouteImport } from './routes/_authenticated/_dispatcher/cases.$caseId'
 
@@ -108,6 +109,12 @@ const AuthenticatedDispatcherCasesRoute =
     path: '/cases',
     getParentRoute: () => AuthenticatedDispatcherRoute,
   } as any)
+const AuthenticatedDispatcherAuditLogRoute =
+  AuthenticatedDispatcherAuditLogRouteImport.update({
+    id: '/audit-log',
+    path: '/audit-log',
+    getParentRoute: () => AuthenticatedDispatcherRoute,
+  } as any)
 const AuthenticatedDispatcherCasesNewRoute =
   AuthenticatedDispatcherCasesNewRouteImport.update({
     id: '/new',
@@ -127,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/driver': typeof AuthenticatedDriverRouteWithChildren
+  '/audit-log': typeof AuthenticatedDispatcherAuditLogRoute
   '/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
   '/dashboard': typeof AuthenticatedDispatcherDashboardRoute
   '/drivers': typeof AuthenticatedDispatcherDriversRoute
@@ -143,6 +151,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/audit-log': typeof AuthenticatedDispatcherAuditLogRoute
   '/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
   '/dashboard': typeof AuthenticatedDispatcherDashboardRoute
   '/drivers': typeof AuthenticatedDispatcherDriversRoute
@@ -163,6 +172,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/_dispatcher': typeof AuthenticatedDispatcherRouteWithChildren
   '/_authenticated/driver': typeof AuthenticatedDriverRouteWithChildren
+  '/_authenticated/_dispatcher/audit-log': typeof AuthenticatedDispatcherAuditLogRoute
   '/_authenticated/_dispatcher/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
   '/_authenticated/_dispatcher/dashboard': typeof AuthenticatedDispatcherDashboardRoute
   '/_authenticated/_dispatcher/drivers': typeof AuthenticatedDispatcherDriversRoute
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/driver'
+    | '/audit-log'
     | '/cases'
     | '/dashboard'
     | '/drivers'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/reset-password'
+    | '/audit-log'
     | '/cases'
     | '/dashboard'
     | '/drivers'
@@ -217,6 +229,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/_dispatcher'
     | '/_authenticated/driver'
+    | '/_authenticated/_dispatcher/audit-log'
     | '/_authenticated/_dispatcher/cases'
     | '/_authenticated/_dispatcher/dashboard'
     | '/_authenticated/_dispatcher/drivers'
@@ -344,6 +357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDispatcherCasesRouteImport
       parentRoute: typeof AuthenticatedDispatcherRoute
     }
+    '/_authenticated/_dispatcher/audit-log': {
+      id: '/_authenticated/_dispatcher/audit-log'
+      path: '/audit-log'
+      fullPath: '/audit-log'
+      preLoaderRoute: typeof AuthenticatedDispatcherAuditLogRouteImport
+      parentRoute: typeof AuthenticatedDispatcherRoute
+    }
     '/_authenticated/_dispatcher/cases/new': {
       id: '/_authenticated/_dispatcher/cases/new'
       path: '/new'
@@ -379,6 +399,7 @@ const AuthenticatedDispatcherCasesRouteWithChildren =
   )
 
 interface AuthenticatedDispatcherRouteChildren {
+  AuthenticatedDispatcherAuditLogRoute: typeof AuthenticatedDispatcherAuditLogRoute
   AuthenticatedDispatcherCasesRoute: typeof AuthenticatedDispatcherCasesRouteWithChildren
   AuthenticatedDispatcherDashboardRoute: typeof AuthenticatedDispatcherDashboardRoute
   AuthenticatedDispatcherDriversRoute: typeof AuthenticatedDispatcherDriversRoute
@@ -390,6 +411,7 @@ interface AuthenticatedDispatcherRouteChildren {
 
 const AuthenticatedDispatcherRouteChildren: AuthenticatedDispatcherRouteChildren =
   {
+    AuthenticatedDispatcherAuditLogRoute: AuthenticatedDispatcherAuditLogRoute,
     AuthenticatedDispatcherCasesRoute:
       AuthenticatedDispatcherCasesRouteWithChildren,
     AuthenticatedDispatcherDashboardRoute:

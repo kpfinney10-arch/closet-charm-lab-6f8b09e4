@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_logs: {
+        Row: {
+          action: Database["public"]["Enums"]["admin_audit_action"]
+          actor_email: string | null
+          actor_id: string
+          created_at: string
+          details: Json
+          id: string
+          target_email: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["admin_audit_action"]
+          actor_email?: string | null
+          actor_id: string
+          created_at?: string
+          details?: Json
+          id?: string
+          target_email?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["admin_audit_action"]
+          actor_email?: string | null
+          actor_id?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          target_email?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       case_documents: {
         Row: {
           caption: string | null
@@ -457,6 +490,13 @@ export type Database = {
       }
     }
     Enums: {
+      admin_audit_action:
+        | "user_created"
+        | "user_disabled"
+        | "user_enabled"
+        | "user_deleted"
+        | "role_changed"
+        | "password_reset"
       app_role: "admin" | "dispatcher" | "driver" | "viewer"
       case_event_type:
         | "created"
@@ -619,6 +659,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      admin_audit_action: [
+        "user_created",
+        "user_disabled",
+        "user_enabled",
+        "user_deleted",
+        "role_changed",
+        "password_reset",
+      ],
       app_role: ["admin", "dispatcher", "driver", "viewer"],
       case_event_type: [
         "created",
