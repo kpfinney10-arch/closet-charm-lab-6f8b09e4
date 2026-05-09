@@ -56,7 +56,7 @@ export function DispatcherShell({ children }: { children?: ReactNode }) {
         </div>
 
         <nav className="flex-1 space-y-1 p-2">
-          {NAV.map(({ to, label, icon: Icon }) => {
+          {nav.map(({ to, label, icon: Icon }) => {
             const active = location.pathname.startsWith(to);
             return (
               <Link
