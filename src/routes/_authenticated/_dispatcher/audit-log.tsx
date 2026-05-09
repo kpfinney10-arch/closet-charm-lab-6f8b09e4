@@ -65,9 +65,33 @@ function actionVariant(a: string): "default" | "secondary" | "destructive" | "ou
   return "secondary";
 }
 
+function csvEscape(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  const s = typeof v === "string" ? v : JSON.stringify(v);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function downloadCsv(rows: Array<Record<string, unknown>>) {
+  const header = ["created_at", "action", "target_email", "target_user_id", "actor_email", "actor_id", "details"];
+  const body = rows.map((r) =>
+    header.map((h) => csvEscape((r as Record<string, unknown>)[h])).join(",")
+  );
+  const csv = [header.join(","), ...body].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function AuditLogPage() {
   const { hasRole } = useAuth();
   const [filter, setFilter] = useState<ActionFilter>("all");
+  const [search, setSearch] = useState("");
   const fetchLogs = useServerFn(listAdminAuditLogs);
 
   useEffect(() => {
@@ -83,9 +107,24 @@ function AuditLogPage() {
     enabled: hasRole("admin"),
   });
 
+  const filtered = (data ?? []).filter((row) => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return [
+      row.target_email,
+      row.target_user_id,
+      row.actor_email,
+      row.actor_id,
+      row.action,
+      row.details ? JSON.stringify(row.details) : "",
+    ]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(q));
+  });
+
   return (
     <div className="container mx-auto max-w-6xl space-y-6 p-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             <ScrollText className="h-6 w-6" /> Audit log
@@ -94,19 +133,37 @@ function AuditLogPage() {
             Record of administrative changes to user accounts.
           </p>
         </div>
-        <Select value={filter} onValueChange={(v) => setFilter(v as ActionFilter)}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All actions</SelectItem>
-            {ACTIONS.map((a) => (
-              <SelectItem key={a} value={a}>
-                {actionLabel(a)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search email, user, details…"
+              className="w-[260px] pl-8"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Select value={filter} onValueChange={(v) => setFilter(v as ActionFilter)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All actions</SelectItem>
+              {ACTIONS.map((a) => (
+                <SelectItem key={a} value={a}>
+                  {actionLabel(a)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            onClick={() => downloadCsv(filtered as unknown as Array<Record<string, unknown>>)}
+            disabled={filtered.length === 0}
+          >
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       <Card>
