@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedDriverRouteImport } from './routes/_authenticated/driver'
 import { Route as AuthenticatedDispatcherRouteImport } from './routes/_authenticated/_dispatcher'
+import { Route as AuthenticatedDriverIndexRouteImport } from './routes/_authenticated/driver/index'
 import { Route as AuthenticatedDispatcherSettingsRouteImport } from './routes/_authenticated/_dispatcher/settings'
 import { Route as AuthenticatedDispatcherReportsRouteImport } from './routes/_authenticated/_dispatcher/reports'
 import { Route as AuthenticatedDispatcherFacilitiesRouteImport } from './routes/_authenticated/_dispatcher/facilities'
@@ -36,10 +38,21 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedDriverRoute = AuthenticatedDriverRouteImport.update({
+  id: '/driver',
+  path: '/driver',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedDispatcherRoute = AuthenticatedDispatcherRouteImport.update({
   id: '/_dispatcher',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedDriverIndexRoute =
+  AuthenticatedDriverIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedDriverRoute,
+  } as any)
 const AuthenticatedDispatcherSettingsRoute =
   AuthenticatedDispatcherSettingsRouteImport.update({
     id: '/settings',
@@ -92,12 +105,14 @@ const AuthenticatedDispatcherCasesCaseIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/driver': typeof AuthenticatedDriverRouteWithChildren
   '/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
   '/dashboard': typeof AuthenticatedDispatcherDashboardRoute
   '/drivers': typeof AuthenticatedDispatcherDriversRoute
   '/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
   '/reports': typeof AuthenticatedDispatcherReportsRoute
   '/settings': typeof AuthenticatedDispatcherSettingsRoute
+  '/driver/': typeof AuthenticatedDriverIndexRoute
   '/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
 }
@@ -110,6 +125,7 @@ export interface FileRoutesByTo {
   '/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
   '/reports': typeof AuthenticatedDispatcherReportsRoute
   '/settings': typeof AuthenticatedDispatcherSettingsRoute
+  '/driver': typeof AuthenticatedDriverIndexRoute
   '/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
 }
@@ -119,12 +135,14 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/_dispatcher': typeof AuthenticatedDispatcherRouteWithChildren
+  '/_authenticated/driver': typeof AuthenticatedDriverRouteWithChildren
   '/_authenticated/_dispatcher/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
   '/_authenticated/_dispatcher/dashboard': typeof AuthenticatedDispatcherDashboardRoute
   '/_authenticated/_dispatcher/drivers': typeof AuthenticatedDispatcherDriversRoute
   '/_authenticated/_dispatcher/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
   '/_authenticated/_dispatcher/reports': typeof AuthenticatedDispatcherReportsRoute
   '/_authenticated/_dispatcher/settings': typeof AuthenticatedDispatcherSettingsRoute
+  '/_authenticated/driver/': typeof AuthenticatedDriverIndexRoute
   '/_authenticated/_dispatcher/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/_authenticated/_dispatcher/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
 }
@@ -133,12 +151,14 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/driver'
     | '/cases'
     | '/dashboard'
     | '/drivers'
     | '/facilities'
     | '/reports'
     | '/settings'
+    | '/driver/'
     | '/cases/$caseId'
     | '/cases/new'
   fileRoutesByTo: FileRoutesByTo
@@ -151,6 +171,7 @@ export interface FileRouteTypes {
     | '/facilities'
     | '/reports'
     | '/settings'
+    | '/driver'
     | '/cases/$caseId'
     | '/cases/new'
   id:
@@ -159,12 +180,14 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/_authenticated/_dispatcher'
+    | '/_authenticated/driver'
     | '/_authenticated/_dispatcher/cases'
     | '/_authenticated/_dispatcher/dashboard'
     | '/_authenticated/_dispatcher/drivers'
     | '/_authenticated/_dispatcher/facilities'
     | '/_authenticated/_dispatcher/reports'
     | '/_authenticated/_dispatcher/settings'
+    | '/_authenticated/driver/'
     | '/_authenticated/_dispatcher/cases/$caseId'
     | '/_authenticated/_dispatcher/cases/new'
   fileRoutesById: FileRoutesById
@@ -198,12 +221,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/driver': {
+      id: '/_authenticated/driver'
+      path: '/driver'
+      fullPath: '/driver'
+      preLoaderRoute: typeof AuthenticatedDriverRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/_dispatcher': {
       id: '/_authenticated/_dispatcher'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedDispatcherRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/driver/': {
+      id: '/_authenticated/driver/'
+      path: '/'
+      fullPath: '/driver/'
+      preLoaderRoute: typeof AuthenticatedDriverIndexRouteImport
+      parentRoute: typeof AuthenticatedDriverRoute
     }
     '/_authenticated/_dispatcher/settings': {
       id: '/_authenticated/_dispatcher/settings'
@@ -308,12 +345,25 @@ const AuthenticatedDispatcherRouteWithChildren =
     AuthenticatedDispatcherRouteChildren,
   )
 
+interface AuthenticatedDriverRouteChildren {
+  AuthenticatedDriverIndexRoute: typeof AuthenticatedDriverIndexRoute
+}
+
+const AuthenticatedDriverRouteChildren: AuthenticatedDriverRouteChildren = {
+  AuthenticatedDriverIndexRoute: AuthenticatedDriverIndexRoute,
+}
+
+const AuthenticatedDriverRouteWithChildren =
+  AuthenticatedDriverRoute._addFileChildren(AuthenticatedDriverRouteChildren)
+
 interface AuthenticatedRouteChildren {
   AuthenticatedDispatcherRoute: typeof AuthenticatedDispatcherRouteWithChildren
+  AuthenticatedDriverRoute: typeof AuthenticatedDriverRouteWithChildren
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDispatcherRoute: AuthenticatedDispatcherRouteWithChildren,
+  AuthenticatedDriverRoute: AuthenticatedDriverRouteWithChildren,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
