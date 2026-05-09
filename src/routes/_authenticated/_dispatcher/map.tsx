@@ -143,7 +143,9 @@ function LiveMapPage() {
                 </p>
               </div>
             ) : (
-              <DriverMap pins={pins} />
+              <Suspense fallback={<div className="h-full w-full bg-muted" />}>
+                <DriverMap pins={pins} />
+              </Suspense>
             )}
           </div>
         </CardContent>
