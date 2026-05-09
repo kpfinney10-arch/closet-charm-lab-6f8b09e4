@@ -188,6 +188,31 @@ function NewCasePage() {
     toast.success("Draft discarded");
   };
 
+  const saveDraftNow = () => {
+    if (!draftKey) {
+      toast.error("Sign in required to save drafts");
+      return;
+    }
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    try {
+      const savedAt = new Date();
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({ values: form.getValues(), savedAt: savedAt.toISOString() }),
+      );
+      setDraftSavedAt(savedAt);
+      setSaveError(null);
+      setSaveStatus("saved");
+      toast.success("Draft saved");
+    } catch (err) {
+      console.error("Failed to save draft", err);
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setSaveError(msg);
+      setSaveStatus("error");
+      toast.error("Failed to save draft", { description: msg });
+    }
+  };
+
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
     try {
@@ -293,6 +318,15 @@ function NewCasePage() {
               No draft yet
             </span>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={saveDraftNow}
+            disabled={saveStatus === "saving"}
+          >
+            Save draft now
+          </Button>
           {draftSavedAt && (
             <Button type="button" variant="ghost" size="sm" onClick={discardDraft}>
               Discard draft
