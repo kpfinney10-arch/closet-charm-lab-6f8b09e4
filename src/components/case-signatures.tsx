@@ -139,8 +139,6 @@ export function CaseSignatures({ caseId, driverDefaultName, readOnly }: Props) {
     <div className="space-y-2">
       {SIGNATURE_SLOTS.map((slot) => {
         const existing = byType.get(slot.type);
-        const isDriverSlot =
-          slot.type === "driver_received" || slot.type === "driver_delivered";
         return (
           <Card key={slot.type}>
             <CardContent className="space-y-3 p-3">
