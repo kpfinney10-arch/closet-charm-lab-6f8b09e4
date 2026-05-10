@@ -40,8 +40,10 @@ import {
   StickyNote,
   AlertTriangle,
   Printer,
+  PenLine,
 } from "lucide-react";
 import { toast } from "sonner";
+import { CaseSignatures } from "@/components/case-signatures";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/cases/$caseId")({
