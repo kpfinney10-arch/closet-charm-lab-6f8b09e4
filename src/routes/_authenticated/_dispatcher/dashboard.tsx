@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
-import { ClipboardList, MapPin, UserRound, Plus, Loader2 } from "lucide-react";
+import { ClipboardList, MapPin, UserRound, Plus, Loader2, Bell } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type CaseRow = Database["public"]["Tables"]["cases"]["Row"];
