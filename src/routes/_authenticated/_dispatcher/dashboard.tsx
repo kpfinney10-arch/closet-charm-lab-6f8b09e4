@@ -81,6 +81,16 @@ function DashboardPage() {
     },
   });
 
+  // Distinct drivers (or any users) who have at least one push subscription registered.
+  const pushEnabled = useQuery({
+    queryKey: ["push-subscriptions", "distinct-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("push_subscriptions").select("user_id");
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => r.user_id)).size;
+    },
+  });
+
   // Realtime: refetch on any case change
   useEffect(() => {
     const ch = supabase
