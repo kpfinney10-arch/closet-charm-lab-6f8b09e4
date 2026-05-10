@@ -664,6 +664,18 @@ function CaseDetail() {
             </CardContent>
           </Card>
 
+          {/* Signatures */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <PenLine className="h-4 w-4" /> Signatures
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CaseSignatures caseId={c.id} readOnly={!canEdit} />
+            </CardContent>
+          </Card>
+
           {/* Notes */}
           {canEdit && (
             <Card>
