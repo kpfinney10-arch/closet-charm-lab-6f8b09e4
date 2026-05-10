@@ -17,9 +17,17 @@ import {
   X,
   Bell,
   BellOff,
+  PenLine,
 } from "lucide-react";
 import { toast } from "sonner";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { CaseSignatures } from "@/components/case-signatures";
 import type { Database } from "@/integrations/supabase/types";
 
 type CaseRow = Database["public"]["Tables"]["cases"]["Row"];
