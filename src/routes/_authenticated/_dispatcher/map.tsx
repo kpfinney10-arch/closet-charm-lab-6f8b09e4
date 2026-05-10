@@ -281,6 +281,7 @@ function LiveMapPage() {
               (none selected — showing all drivers)
             </span>
           )}
+          </div>
         </CardContent>
       </Card>
 
