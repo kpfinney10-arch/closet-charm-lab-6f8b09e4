@@ -228,7 +228,27 @@ function LiveMapPage() {
       </div>
 
       <Card>
-        <CardContent className="flex flex-wrap items-center gap-2 p-3">
+        <CardContent className="space-y-2 p-3">
+          <div className="rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+            {filterActive ? (
+              <>
+                Showing only drivers who have at least one active case in:{" "}
+                <span className="font-medium text-foreground">
+                  {Array.from(statusFilter)
+                    .map((s) => STATUS_LABEL[s])
+                    .join(", ")}
+                </span>
+                . Drivers without a matching case are hidden from the map.
+              </>
+            ) : (
+              <>
+                No status selected — showing <span className="font-medium text-foreground">all drivers</span>{" "}
+                sharing GPS, regardless of whether they have an active case. Click one or more
+                statuses below to narrow down.
+              </>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">
             Show drivers with cases in:
           </span>
@@ -261,6 +281,7 @@ function LiveMapPage() {
               (none selected — showing all drivers)
             </span>
           )}
+          </div>
         </CardContent>
       </Card>
 
