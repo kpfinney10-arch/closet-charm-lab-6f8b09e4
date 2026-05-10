@@ -747,13 +747,26 @@ function AssignSelect({
   label,
   value,
   drivers,
+  workload,
   onChange,
 }: {
   label: string;
   value: string | null;
   drivers: { id: string; full_name: string | null; on_duty: boolean }[];
+  workload: Map<string, string[]>;
   onChange: (v: string | null) => void;
 }) {
+  // Sort: on-duty first, then by fewer active cases, then by name
+  const sorted = useMemo(() => {
+    return [...drivers].sort((a, b) => {
+      if (a.on_duty !== b.on_duty) return a.on_duty ? -1 : 1;
+      const aw = workload.get(a.id)?.length ?? 0;
+      const bw = workload.get(b.id)?.length ?? 0;
+      if (aw !== bw) return aw - bw;
+      return (a.full_name ?? "").localeCompare(b.full_name ?? "");
+    });
+  }, [drivers, workload]);
+
   return (
     <div>
       <label className="text-xs text-muted-foreground">{label}</label>
@@ -766,12 +779,21 @@ function AssignSelect({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={NONE}>Unassigned</SelectItem>
-          {drivers.map((d) => (
-            <SelectItem key={d.id} value={d.id}>
-              {d.full_name ?? "Unnamed driver"}
-              {d.on_duty ? " · on duty" : ""}
-            </SelectItem>
-          ))}
+          {sorted.map((d) => {
+            const count = workload.get(d.id)?.length ?? 0;
+            const parts = [
+              d.on_duty ? "on duty" : "off duty",
+              count === 0 ? "free" : `${count} active`,
+            ];
+            return (
+              <SelectItem key={d.id} value={d.id}>
+                {d.full_name ?? "Unnamed driver"}
+                <span className="ml-1 text-xs text-muted-foreground">
+                  · {parts.join(" · ")}
+                </span>
+              </SelectItem>
+            );
+          })}
         </SelectContent>
       </Select>
     </div>
