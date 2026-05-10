@@ -15,8 +15,11 @@ import {
   Navigation,
   Check,
   X,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { toast } from "sonner";
+import { usePushSubscription } from "@/hooks/use-push-subscription";
 import type { Database } from "@/integrations/supabase/types";
 
 type CaseRow = Database["public"]["Tables"]["cases"]["Row"];
