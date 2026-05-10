@@ -160,6 +160,29 @@ function CaseDetail() {
     },
   });
 
+  // Active workload per driver (excluding the current case) — drives sort order
+  // and the double-booking warning.
+  const driverWorkloadQ = useQuery({
+    queryKey: ["driver-workload", caseId],
+    enabled: canEdit,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cases")
+        .select("id, primary_driver_id, secondary_driver_id, case_number, status")
+        .in("status", [
+          "new",
+          "assigned",
+          "en_route_pickup",
+          "on_scene",
+          "in_custody",
+          "en_route_dropoff",
+        ])
+        .neq("id", caseId);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const vehiclesQ = useQuery({
     queryKey: ["vehicles-active"],
     enabled: canEdit,
@@ -217,9 +240,80 @@ function CaseDetail() {
       void qc.invalidateQueries({ queryKey: ["case", caseId] });
       void qc.invalidateQueries({ queryKey: ["case-events", caseId] });
       void qc.invalidateQueries({ queryKey: ["cases", "active"] });
+      void qc.invalidateQueries({ queryKey: ["driver-workload", caseId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // Build conflict map: driver_id -> array of other active case numbers
+  const conflictsByDriver = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const row of driverWorkloadQ.data ?? []) {
+      for (const id of [row.primary_driver_id, row.secondary_driver_id]) {
+        if (!id) continue;
+        const arr = m.get(id) ?? [];
+        arr.push(row.case_number);
+        m.set(id, arr);
+      }
+    }
+    return m;
+  }, [driverWorkloadQ.data]);
+
+  // Assignment-aware updater: warns on double-booking, auto-toggles status,
+  // and shows assignment toasts. The DB trigger already logs the event.
+  const assignDriver = (
+    field: "primary_driver_id" | "secondary_driver_id",
+    nextDriverId: string | null,
+  ) => {
+    const c = caseQ.data;
+    if (!c) return;
+
+    // Double-booking warning
+    if (nextDriverId) {
+      const conflicts = conflictsByDriver.get(nextDriverId) ?? [];
+      if (conflicts.length > 0) {
+        const name =
+          driversQ.data?.find((d) => d.id === nextDriverId)?.full_name ??
+          "This driver";
+        const ok = confirm(
+          `${name} is already assigned to ${conflicts.length} other active ${
+            conflicts.length === 1 ? "case" : "cases"
+          } (${conflicts.join(", ")}).\n\nAssign anyway?`,
+        );
+        if (!ok) return;
+      }
+    }
+
+    // Compute resulting driver state for auto-status
+    const otherField =
+      field === "primary_driver_id" ? "secondary_driver_id" : "primary_driver_id";
+    const otherDriver = c[otherField];
+    const willHaveDriver = !!nextDriverId || !!otherDriver;
+
+    const patch: Partial<CaseRow> = { [field]: nextDriverId };
+    if (willHaveDriver && c.status === "new") {
+      patch.status = "assigned";
+    } else if (!willHaveDriver && c.status === "assigned") {
+      patch.status = "new";
+    }
+
+    const driverName =
+      nextDriverId
+        ? driversQ.data?.find((d) => d.id === nextDriverId)?.full_name ??
+          "Driver"
+        : null;
+    const labelPrefix = field === "primary_driver_id" ? "Primary" : "Secondary";
+
+    updateCase.mutate(patch, {
+      onSuccess: () => {
+        if (driverName) {
+          toast.success(`${labelPrefix} driver assigned: ${driverName}`);
+        } else {
+          toast.success(`${labelPrefix} driver removed`);
+        }
+      },
+    });
+  };
 
   const deleteCase = useMutation({
     mutationFn: async () => {
@@ -474,13 +568,15 @@ function CaseDetail() {
                     label="Primary driver"
                     value={c.primary_driver_id}
                     drivers={driversQ.data ?? []}
-                    onChange={(v) => updateCase.mutate({ primary_driver_id: v })}
+                    workload={conflictsByDriver}
+                    onChange={(v) => assignDriver("primary_driver_id", v)}
                   />
                   <AssignSelect
                     label="Secondary driver"
                     value={c.secondary_driver_id}
                     drivers={driversQ.data ?? []}
-                    onChange={(v) => updateCase.mutate({ secondary_driver_id: v })}
+                    workload={conflictsByDriver}
+                    onChange={(v) => assignDriver("secondary_driver_id", v)}
                   />
                   <div>
                     <label className="text-xs text-muted-foreground">Vehicle</label>
@@ -651,13 +747,26 @@ function AssignSelect({
   label,
   value,
   drivers,
+  workload,
   onChange,
 }: {
   label: string;
   value: string | null;
   drivers: { id: string; full_name: string | null; on_duty: boolean }[];
+  workload: Map<string, string[]>;
   onChange: (v: string | null) => void;
 }) {
+  // Sort: on-duty first, then by fewer active cases, then by name
+  const sorted = useMemo(() => {
+    return [...drivers].sort((a, b) => {
+      if (a.on_duty !== b.on_duty) return a.on_duty ? -1 : 1;
+      const aw = workload.get(a.id)?.length ?? 0;
+      const bw = workload.get(b.id)?.length ?? 0;
+      if (aw !== bw) return aw - bw;
+      return (a.full_name ?? "").localeCompare(b.full_name ?? "");
+    });
+  }, [drivers, workload]);
+
   return (
     <div>
       <label className="text-xs text-muted-foreground">{label}</label>
@@ -670,12 +779,21 @@ function AssignSelect({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={NONE}>Unassigned</SelectItem>
-          {drivers.map((d) => (
-            <SelectItem key={d.id} value={d.id}>
-              {d.full_name ?? "Unnamed driver"}
-              {d.on_duty ? " · on duty" : ""}
-            </SelectItem>
-          ))}
+          {sorted.map((d) => {
+            const count = workload.get(d.id)?.length ?? 0;
+            const parts = [
+              d.on_duty ? "on duty" : "off duty",
+              count === 0 ? "free" : `${count} active`,
+            ];
+            return (
+              <SelectItem key={d.id} value={d.id}>
+                {d.full_name ?? "Unnamed driver"}
+                <span className="ml-1 text-xs text-muted-foreground">
+                  · {parts.join(" · ")}
+                </span>
+              </SelectItem>
+            );
+          })}
         </SelectContent>
       </Select>
     </div>
