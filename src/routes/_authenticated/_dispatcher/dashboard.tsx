@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
-import { ClipboardList, MapPin, UserRound, Plus, Loader2 } from "lucide-react";
+import { ClipboardList, MapPin, UserRound, Plus, Loader2, Bell } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type CaseRow = Database["public"]["Tables"]["cases"]["Row"];
@@ -81,6 +81,16 @@ function DashboardPage() {
     },
   });
 
+  // Distinct drivers (or any users) who have at least one push subscription registered.
+  const pushEnabled = useQuery({
+    queryKey: ["push-subscriptions", "distinct-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("push_subscriptions").select("user_id");
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => r.user_id)).size;
+    },
+  });
+
   // Realtime: refetch on any case change
   useEffect(() => {
     const ch = supabase
@@ -118,7 +128,7 @@ function DashboardPage() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatCard
           icon={ClipboardList}
           label="Active cases"
@@ -130,6 +140,12 @@ function DashboardPage() {
           label="Drivers on duty"
           value={driversOnDuty.data?.length ?? 0}
           loading={driversOnDuty.isLoading}
+        />
+        <StatCard
+          icon={Bell}
+          label="Notifications on"
+          value={pushEnabled.data ?? 0}
+          loading={pushEnabled.isLoading}
         />
         <StatCard
           icon={MapPin}
