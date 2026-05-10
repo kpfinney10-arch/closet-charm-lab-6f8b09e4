@@ -36,6 +36,7 @@ import {
   Trash2,
   History,
   StickyNote,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
@@ -783,8 +784,10 @@ function AssignSelect({
     });
   }, [drivers, workload]);
 
+  const conflicts = value ? workload.get(value) ?? [] : [];
+
   return (
-    <div>
+    <div className="space-y-1.5">
       <label className="text-xs text-muted-foreground">{label}</label>
       <Select
         value={value ?? NONE}
@@ -812,6 +815,15 @@ function AssignSelect({
           })}
         </SelectContent>
       </Select>
+      {conflicts.length > 0 && (
+        <div className="flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-900 dark:text-amber-200">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            Double-booked: also assigned to{" "}
+            <span className="font-mono font-medium">{conflicts.join(", ")}</span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }
