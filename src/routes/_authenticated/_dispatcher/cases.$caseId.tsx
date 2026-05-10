@@ -440,6 +440,12 @@ function CaseDetail() {
 
         {canEdit && (
           <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/cases/$caseId/print" params={{ caseId }} target="_blank">
+                <Printer className="h-4 w-4" />
+                Print run sheet
+              </Link>
+            </Button>
             <Select
               value={c.status}
               onValueChange={(v) => updateCase.mutate({ status: v as CaseStatus })}
