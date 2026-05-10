@@ -128,7 +128,7 @@ function DashboardPage() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatCard
           icon={ClipboardList}
           label="Active cases"
@@ -140,6 +140,12 @@ function DashboardPage() {
           label="Drivers on duty"
           value={driversOnDuty.data?.length ?? 0}
           loading={driversOnDuty.isLoading}
+        />
+        <StatCard
+          icon={Bell}
+          label="Notifications on"
+          value={pushEnabled.data ?? 0}
+          loading={pushEnabled.isLoading}
         />
         <StatCard
           icon={MapPin}
