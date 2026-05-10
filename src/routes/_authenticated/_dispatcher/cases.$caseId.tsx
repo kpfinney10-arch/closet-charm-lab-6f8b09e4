@@ -240,9 +240,80 @@ function CaseDetail() {
       void qc.invalidateQueries({ queryKey: ["case", caseId] });
       void qc.invalidateQueries({ queryKey: ["case-events", caseId] });
       void qc.invalidateQueries({ queryKey: ["cases", "active"] });
+      void qc.invalidateQueries({ queryKey: ["driver-workload", caseId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // Build conflict map: driver_id -> array of other active case numbers
+  const conflictsByDriver = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const row of driverWorkloadQ.data ?? []) {
+      for (const id of [row.primary_driver_id, row.secondary_driver_id]) {
+        if (!id) continue;
+        const arr = m.get(id) ?? [];
+        arr.push(row.case_number);
+        m.set(id, arr);
+      }
+    }
+    return m;
+  }, [driverWorkloadQ.data]);
+
+  // Assignment-aware updater: warns on double-booking, auto-toggles status,
+  // and shows assignment toasts. The DB trigger already logs the event.
+  const assignDriver = (
+    field: "primary_driver_id" | "secondary_driver_id",
+    nextDriverId: string | null,
+  ) => {
+    const c = caseQ.data;
+    if (!c) return;
+
+    // Double-booking warning
+    if (nextDriverId) {
+      const conflicts = conflictsByDriver.get(nextDriverId) ?? [];
+      if (conflicts.length > 0) {
+        const name =
+          driversQ.data?.find((d) => d.id === nextDriverId)?.full_name ??
+          "This driver";
+        const ok = confirm(
+          `${name} is already assigned to ${conflicts.length} other active ${
+            conflicts.length === 1 ? "case" : "cases"
+          } (${conflicts.join(", ")}).\n\nAssign anyway?`,
+        );
+        if (!ok) return;
+      }
+    }
+
+    // Compute resulting driver state for auto-status
+    const otherField =
+      field === "primary_driver_id" ? "secondary_driver_id" : "primary_driver_id";
+    const otherDriver = c[otherField];
+    const willHaveDriver = !!nextDriverId || !!otherDriver;
+
+    const patch: Partial<CaseRow> = { [field]: nextDriverId };
+    if (willHaveDriver && c.status === "new") {
+      patch.status = "assigned";
+    } else if (!willHaveDriver && c.status === "assigned") {
+      patch.status = "new";
+    }
+
+    const driverName =
+      nextDriverId
+        ? driversQ.data?.find((d) => d.id === nextDriverId)?.full_name ??
+          "Driver"
+        : null;
+    const labelPrefix = field === "primary_driver_id" ? "Primary" : "Secondary";
+
+    updateCase.mutate(patch, {
+      onSuccess: () => {
+        if (driverName) {
+          toast.success(`${labelPrefix} driver assigned: ${driverName}`);
+        } else {
+          toast.success(`${labelPrefix} driver removed`);
+        }
+      },
+    });
+  };
 
   const deleteCase = useMutation({
     mutationFn: async () => {
