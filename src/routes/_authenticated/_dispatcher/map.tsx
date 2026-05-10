@@ -266,21 +266,20 @@ function LiveMapPage() {
               </Button>
             );
           })}
-          {filterActive ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs"
-              onClick={() => setStatusFilter(new Set())}
-            >
-              <X className="h-3 w-3" />
-              Clear
-            </Button>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              (none selected — showing all drivers)
-            </span>
+          {filterActive && (
+            <span className="text-xs text-muted-foreground">·</span>
           )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto h-7 text-xs"
+            disabled={!filterActive}
+            onClick={() => setStatusFilter(new Set())}
+            title="Clear all status filters and show every driver sharing GPS"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Reset to defaults
+          </Button>
           </div>
         </CardContent>
       </Card>
