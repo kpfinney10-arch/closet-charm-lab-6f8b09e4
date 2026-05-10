@@ -297,6 +297,14 @@ function CaseDetail() {
       patch.status = "new";
     }
 
+    // Snapshot for undo — restores driver field AND status if we changed it
+    const prevDriver = c[field];
+    const prevStatus = c.status;
+    const undoPatch: Partial<CaseRow> = { [field]: prevDriver };
+    if (patch.status && patch.status !== prevStatus) {
+      undoPatch.status = prevStatus;
+    }
+
     const driverName =
       nextDriverId
         ? driversQ.data?.find((d) => d.id === nextDriverId)?.full_name ??
@@ -306,11 +314,19 @@ function CaseDetail() {
 
     updateCase.mutate(patch, {
       onSuccess: () => {
-        if (driverName) {
-          toast.success(`${labelPrefix} driver assigned: ${driverName}`);
-        } else {
-          toast.success(`${labelPrefix} driver removed`);
-        }
+        const msg = driverName
+          ? `${labelPrefix} driver assigned: ${driverName}`
+          : `${labelPrefix} driver removed`;
+        toast.success(msg, {
+          action: {
+            label: "Undo",
+            onClick: () => {
+              updateCase.mutate(undoPatch, {
+                onSuccess: () => toast.success("Assignment reverted"),
+              });
+            },
+          },
+        });
       },
     });
   };
