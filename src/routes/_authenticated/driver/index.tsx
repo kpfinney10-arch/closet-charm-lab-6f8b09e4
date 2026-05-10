@@ -17,9 +17,17 @@ import {
   X,
   Bell,
   BellOff,
+  PenLine,
 } from "lucide-react";
 import { toast } from "sonner";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { CaseSignatures } from "@/components/case-signatures";
 import type { Database } from "@/integrations/supabase/types";
 
 type CaseRow = Database["public"]["Tables"]["cases"]["Row"];
@@ -81,6 +89,7 @@ function DriverQueue() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [signCaseId, setSignCaseId] = useState<string | null>(null);
   const push = usePushSubscription();
 
   const profile = useQuery({
@@ -89,7 +98,7 @@ function DriverQueue() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("on_duty")
+        .select("on_duty, full_name")
         .eq("id", user!.id)
         .single();
       if (error) throw error;
@@ -344,6 +353,14 @@ function DriverQueue() {
                       )}
                       <Button
                         size="sm"
+                        variant="outline"
+                        onClick={() => setSignCaseId(c.id)}
+                      >
+                        <PenLine className="h-4 w-4" />
+                        Signatures
+                      </Button>
+                      <Button
+                        size="sm"
                         variant="ghost"
                         className="text-destructive hover:text-destructive"
                         disabled={isBusy}
@@ -362,6 +379,20 @@ function DriverQueue() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!signCaseId} onOpenChange={(o) => (o ? null : setSignCaseId(null))}>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Chain of custody signatures</DialogTitle>
+          </DialogHeader>
+          {signCaseId ? (
+            <CaseSignatures
+              caseId={signCaseId}
+              driverDefaultName={profile.data?.full_name ?? ""}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

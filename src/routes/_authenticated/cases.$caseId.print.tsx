@@ -16,6 +16,20 @@ export const Route = createFileRoute("/_authenticated/cases/$caseId/print")({
 type CaseRow = Database["public"]["Tables"]["cases"]["Row"];
 type Profile = { id: string; full_name: string | null; phone: string | null };
 type Facility = { id: string; name: string; phone: string | null };
+type SignatureRow = Database["public"]["Tables"]["case_signatures"]["Row"];
+
+const SIGNATURE_LABELS: Record<string, string> = {
+  pickup_released: "Released by (pickup)",
+  driver_received: "Received by driver",
+  driver_delivered: "Delivered by driver",
+  dropoff_received: "Received by (dropoff)",
+};
+const SIGNATURE_ORDER = [
+  "pickup_released",
+  "driver_received",
+  "driver_delivered",
+  "dropoff_received",
+] as const;
 
 const STATUS_LABEL: Record<string, string> = {
   new: "New",
@@ -94,15 +108,28 @@ function PrintRunSheet() {
     },
   });
 
+  const signaturesQ = useQuery({
+    queryKey: ["case-print-signatures", caseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("case_signatures")
+        .select("*")
+        .eq("case_id", caseId);
+      if (error) throw error;
+      return (data ?? []) as SignatureRow[];
+    },
+  });
+
   // Auto-trigger print dialog once all data is loaded
   useEffect(() => {
     if (!caseQ.data) return;
     if (driverIds.length > 0 && !driversQ.data) return;
     if (facilityIds.length > 0 && !facilitiesQ.data) return;
+    if (!signaturesQ.data) return;
     const t = setTimeout(() => window.print(), 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [caseQ.data, driversQ.data, facilitiesQ.data]);
+  }, [caseQ.data, driversQ.data, facilitiesQ.data, signaturesQ.data]);
 
   if (caseQ.isLoading) {
     return (
@@ -328,31 +355,52 @@ function PrintRunSheet() {
         )}
 
         {/* Signatures */}
-        <div className="sheet-section" style={{ pageBreakInside: "avoid" }}>
-          <h2>Chain of custody — signatures</h2>
-          <div className="sheet-grid" style={{ gap: "16px" }}>
-            <div>
-              <div className="sheet-label">Released by (pickup)</div>
-              <div className="sig-line" />
-              <div className="mt-1 text-[10px] text-zinc-500">Print name & sign · Date / time</div>
+        {(() => {
+          const byType = new Map(
+            (signaturesQ.data ?? []).map((s) => [s.signature_type, s] as const),
+          );
+          return (
+            <div className="sheet-section" style={{ pageBreakInside: "avoid" }}>
+              <h2>Chain of custody — signatures</h2>
+              <div className="sheet-grid" style={{ gap: "16px" }}>
+                {SIGNATURE_ORDER.map((t) => {
+                  const sig = byType.get(t);
+                  return (
+                    <div key={t}>
+                      <div className="sheet-label">{SIGNATURE_LABELS[t]}</div>
+                      {sig ? (
+                        <>
+                          <img
+                            src={sig.signature_data}
+                            alt="Signature"
+                            style={{
+                              maxHeight: 56,
+                              borderBottom: "1px solid #111",
+                              marginTop: 4,
+                            }}
+                          />
+                          <div className="mt-1 text-[10px] text-zinc-700">
+                            <strong>{sig.signer_name}</strong>
+                            {sig.signer_title ? `, ${sig.signer_title}` : ""}
+                            {" · "}
+                            {fmtDateTime(sig.created_at)}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="sig-line" />
+                          <div className="mt-1 text-[10px] text-zinc-500">
+                            Print name & sign · Date / time
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div>
-              <div className="sheet-label">Received by driver</div>
-              <div className="sig-line" />
-              <div className="mt-1 text-[10px] text-zinc-500">Print name & sign · Date / time</div>
-            </div>
-            <div>
-              <div className="sheet-label">Delivered by driver</div>
-              <div className="sig-line" />
-              <div className="mt-1 text-[10px] text-zinc-500">Print name & sign · Date / time</div>
-            </div>
-            <div>
-              <div className="sheet-label">Received by (dropoff)</div>
-              <div className="sig-line" />
-              <div className="mt-1 text-[10px] text-zinc-500">Print name & sign · Date / time</div>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         <div className="mt-6 text-center text-[10px] text-zinc-500">
           Case {c.case_number} · Generated by Transport Dispatch
