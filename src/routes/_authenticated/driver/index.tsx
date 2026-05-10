@@ -81,6 +81,7 @@ function DriverQueue() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const push = usePushSubscription();
 
   const profile = useQuery({
     queryKey: ["profile", user?.id],
