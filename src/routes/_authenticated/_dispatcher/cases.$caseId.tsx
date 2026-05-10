@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
+import { sendPushToUser } from "@/lib/push.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -112,6 +114,7 @@ function CaseDetail() {
   const navigate = useNavigate();
   const { hasRole, hasAnyRole } = useAuth();
   const qc = useQueryClient();
+  const sendPush = useServerFn(sendPushToUser);
   const canEdit = hasAnyRole(["admin", "dispatcher"]);
   const isAdmin = hasRole("admin");
 
@@ -328,6 +331,25 @@ function CaseDetail() {
             },
           },
         });
+
+        // Fire-and-forget push notification to the newly assigned driver.
+        if (nextDriverId) {
+          const decedent =
+            [c.decedent_first_name, c.decedent_last_name].filter(Boolean).join(" ") ||
+            "Unnamed decedent";
+          const pickup =
+            [c.pickup_address, c.pickup_city].filter(Boolean).join(", ") || "Pickup TBD";
+          void sendPush({
+            data: {
+              userId: nextDriverId,
+              title: `New run assigned — ${c.case_number}`,
+              body: `${decedent} • ${pickup}`,
+              url: "/driver",
+              tag: `case-${c.id}`,
+              requireInteraction: true,
+            },
+          }).catch((e: Error) => console.error("Push send failed:", e));
+        }
       },
     });
   };

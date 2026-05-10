@@ -15,8 +15,11 @@ import {
   Navigation,
   Check,
   X,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { toast } from "sonner";
+import { usePushSubscription } from "@/hooks/use-push-subscription";
 import type { Database } from "@/integrations/supabase/types";
 
 type CaseRow = Database["public"]["Tables"]["cases"]["Row"];
@@ -78,6 +81,7 @@ function DriverQueue() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const push = usePushSubscription();
 
   const profile = useQuery({
     queryKey: ["profile", user?.id],
@@ -218,6 +222,51 @@ function DriverQueue() {
           )}
         </CardContent>
       </Card>
+
+      {/* Push notifications */}
+      {push.status !== "unsupported" && (
+        <Card>
+          <CardContent className="flex items-center justify-between gap-3 py-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 font-semibold">
+                {push.status === "enabled" ? (
+                  <Bell className="h-4 w-4 text-primary" />
+                ) : (
+                  <BellOff className="h-4 w-4 text-muted-foreground" />
+                )}
+                Notifications
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {push.status === "enabled"
+                  ? "You'll get a push when dispatch assigns you a run."
+                  : push.status === "denied"
+                    ? "Blocked in browser settings — enable notifications for this site."
+                    : "Get alerted instantly when a new run is assigned."}
+              </div>
+            </div>
+            {push.status === "enabled" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={push.busy}
+                onClick={() => push.disable()}
+              >
+                {push.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Turn off"}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                disabled={push.busy || push.status === "denied"}
+                onClick={() =>
+                  push.enable().catch((e: Error) => toast.error(e.message))
+                }
+              >
+                {push.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enable"}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Queue */}
       <div>
