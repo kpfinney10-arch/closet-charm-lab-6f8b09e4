@@ -160,6 +160,29 @@ function CaseDetail() {
     },
   });
 
+  // Active workload per driver (excluding the current case) — drives sort order
+  // and the double-booking warning.
+  const driverWorkloadQ = useQuery({
+    queryKey: ["driver-workload", caseId],
+    enabled: canEdit,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cases")
+        .select("id, primary_driver_id, secondary_driver_id, case_number, status")
+        .in("status", [
+          "new",
+          "assigned",
+          "en_route_pickup",
+          "on_scene",
+          "in_custody",
+          "en_route_dropoff",
+        ])
+        .neq("id", caseId);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const vehiclesQ = useQuery({
     queryKey: ["vehicles-active"],
     enabled: canEdit,
