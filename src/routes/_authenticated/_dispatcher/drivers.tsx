@@ -67,7 +67,7 @@ function DriversPage() {
       const { data, error } = await supabase
         .from("cases")
         .select("id, primary_driver_id, secondary_driver_id, case_number, status")
-        .in("status", ACTIVE_STATUSES as unknown as readonly ("new" | "assigned" | "en_route_pickup" | "on_scene" | "in_custody" | "en_route_dropoff")[])
+        .in("status", [...ACTIVE_STATUSES])
         .or(
           `primary_driver_id.in.(${driverIds.join(",")}),secondary_driver_id.in.(${driverIds.join(",")})`,
         );
