@@ -139,12 +139,10 @@ export function CaseSignatures({ caseId, driverDefaultName, readOnly }: Props) {
     <div className="space-y-2">
       {SIGNATURE_SLOTS.map((slot) => {
         const existing = byType.get(slot.type);
-        const isDriverSlot =
-          slot.type === "driver_received" || slot.type === "driver_delivered";
         return (
           <Card key={slot.type}>
-            <CardContent className="flex items-start justify-between gap-3 p-3">
-              <div className="min-w-0 space-y-1">
+            <CardContent className="space-y-3 p-3">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">{slot.title}</span>
                   {existing ? (
@@ -153,30 +151,64 @@ export function CaseSignatures({ caseId, driverDefaultName, readOnly }: Props) {
                     </Badge>
                   ) : null}
                 </div>
-                {existing ? (
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <div>
-                      <span className="font-medium text-foreground">
-                        {existing.signer_name}
-                      </span>
-                      {existing.signer_title ? `, ${existing.signer_title}` : ""}
-                    </div>
-                    <div>{new Date(existing.created_at).toLocaleString()}</div>
-                    <img
-                      src={existing.signature_data}
-                      alt="Signature"
-                      className="mt-1 max-h-20 rounded border bg-white"
-                    />
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">{slot.description}</p>
-                )}
+                {!readOnly && !existing ? (
+                  <Button size="sm" variant="outline" onClick={() => setActive(slot.type)}>
+                    <PenLine className="h-4 w-4" /> Sign
+                  </Button>
+                ) : null}
               </div>
-              {!readOnly && !existing ? (
-                <Button size="sm" variant="outline" onClick={() => setActive(slot.type)}>
-                  <PenLine className="h-4 w-4" /> Sign
-                </Button>
-              ) : null}
+
+              {existing ? (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                  <img
+                    src={existing.signature_data}
+                    alt={`Signature of ${existing.signer_name}`}
+                    className="h-24 w-full max-w-[220px] rounded border bg-white object-contain"
+                  />
+                  <dl className="grid flex-1 grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                    <dt className="text-muted-foreground">Signed by</dt>
+                    <dd className="font-medium text-foreground">{existing.signer_name}</dd>
+
+                    <dt className="text-muted-foreground">Title</dt>
+                    <dd>{existing.signer_title || "—"}</dd>
+
+                    <dt className="text-muted-foreground">Date</dt>
+                    <dd>
+                      {new Date(existing.created_at).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </dd>
+
+                    <dt className="text-muted-foreground">Time</dt>
+                    <dd>
+                      {new Date(existing.created_at).toLocaleTimeString(undefined, {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </dd>
+
+                    {existing.lat != null && existing.lng != null ? (
+                      <>
+                        <dt className="text-muted-foreground">GPS</dt>
+                        <dd>
+                          <a
+                            className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+                            href={`https://www.google.com/maps?q=${existing.lat},${existing.lng}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {existing.lat.toFixed(5)}, {existing.lng.toFixed(5)}
+                          </a>
+                        </dd>
+                      </>
+                    ) : null}
+                  </dl>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">{slot.description}</p>
+              )}
             </CardContent>
           </Card>
         );
