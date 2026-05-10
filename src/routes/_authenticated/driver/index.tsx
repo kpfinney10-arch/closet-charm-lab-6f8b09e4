@@ -89,6 +89,7 @@ function DriverQueue() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [signCaseId, setSignCaseId] = useState<string | null>(null);
   const push = usePushSubscription();
 
   const profile = useQuery({
@@ -97,7 +98,7 @@ function DriverQueue() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("on_duty")
+        .select("on_duty, full_name")
         .eq("id", user!.id)
         .single();
       if (error) throw error;
