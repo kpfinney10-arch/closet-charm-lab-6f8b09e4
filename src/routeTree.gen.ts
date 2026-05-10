@@ -26,6 +26,7 @@ import { Route as AuthenticatedDispatcherDriversRouteImport } from './routes/_au
 import { Route as AuthenticatedDispatcherDashboardRouteImport } from './routes/_authenticated/_dispatcher/dashboard'
 import { Route as AuthenticatedDispatcherCasesRouteImport } from './routes/_authenticated/_dispatcher/cases'
 import { Route as AuthenticatedDispatcherAuditLogRouteImport } from './routes/_authenticated/_dispatcher/audit-log'
+import { Route as AuthenticatedCasesCaseIdPrintRouteImport } from './routes/_authenticated/cases.$caseId.print'
 import { Route as AuthenticatedDispatcherCasesNewRouteImport } from './routes/_authenticated/_dispatcher/cases.new'
 import { Route as AuthenticatedDispatcherCasesCaseIdRouteImport } from './routes/_authenticated/_dispatcher/cases.$caseId'
 
@@ -122,6 +123,12 @@ const AuthenticatedDispatcherAuditLogRoute =
     path: '/audit-log',
     getParentRoute: () => AuthenticatedDispatcherRoute,
   } as any)
+const AuthenticatedCasesCaseIdPrintRoute =
+  AuthenticatedCasesCaseIdPrintRouteImport.update({
+    id: '/cases/$caseId/print',
+    path: '/cases/$caseId/print',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedDispatcherCasesNewRoute =
   AuthenticatedDispatcherCasesNewRouteImport.update({
     id: '/new',
@@ -153,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/driver/': typeof AuthenticatedDriverIndexRoute
   '/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
+  '/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -171,6 +179,7 @@ export interface FileRoutesByTo {
   '/driver': typeof AuthenticatedDriverIndexRoute
   '/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
+  '/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -193,6 +202,7 @@ export interface FileRoutesById {
   '/_authenticated/driver/': typeof AuthenticatedDriverIndexRoute
   '/_authenticated/_dispatcher/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/_authenticated/_dispatcher/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
+  '/_authenticated/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/driver/'
     | '/cases/$caseId'
     | '/cases/new'
+    | '/cases/$caseId/print'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/driver'
     | '/cases/$caseId'
     | '/cases/new'
+    | '/cases/$caseId/print'
   id:
     | '__root__'
     | '/'
@@ -253,6 +265,7 @@ export interface FileRouteTypes {
     | '/_authenticated/driver/'
     | '/_authenticated/_dispatcher/cases/$caseId'
     | '/_authenticated/_dispatcher/cases/new'
+    | '/_authenticated/cases/$caseId/print'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -384,6 +397,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDispatcherAuditLogRouteImport
       parentRoute: typeof AuthenticatedDispatcherRoute
     }
+    '/_authenticated/cases/$caseId/print': {
+      id: '/_authenticated/cases/$caseId/print'
+      path: '/cases/$caseId/print'
+      fullPath: '/cases/$caseId/print'
+      preLoaderRoute: typeof AuthenticatedCasesCaseIdPrintRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/_dispatcher/cases/new': {
       id: '/_authenticated/_dispatcher/cases/new'
       path: '/new'
@@ -465,11 +485,13 @@ const AuthenticatedDriverRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedDispatcherRoute: typeof AuthenticatedDispatcherRouteWithChildren
   AuthenticatedDriverRoute: typeof AuthenticatedDriverRouteWithChildren
+  AuthenticatedCasesCaseIdPrintRoute: typeof AuthenticatedCasesCaseIdPrintRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDispatcherRoute: AuthenticatedDispatcherRouteWithChildren,
   AuthenticatedDriverRoute: AuthenticatedDriverRouteWithChildren,
+  AuthenticatedCasesCaseIdPrintRoute: AuthenticatedCasesCaseIdPrintRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
