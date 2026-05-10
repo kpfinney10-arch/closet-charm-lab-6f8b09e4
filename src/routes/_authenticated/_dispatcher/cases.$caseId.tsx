@@ -331,6 +331,25 @@ function CaseDetail() {
             },
           },
         });
+
+        // Fire-and-forget push notification to the newly assigned driver.
+        if (nextDriverId) {
+          const decedent =
+            [c.decedent_first_name, c.decedent_last_name].filter(Boolean).join(" ") ||
+            "Unnamed decedent";
+          const pickup =
+            [c.pickup_address, c.pickup_city].filter(Boolean).join(", ") || "Pickup TBD";
+          void sendPush({
+            data: {
+              userId: nextDriverId,
+              title: `New run assigned — ${c.case_number}`,
+              body: `${decedent} • ${pickup}`,
+              url: "/driver",
+              tag: `case-${c.id}`,
+              requireInteraction: true,
+            },
+          }).catch((e: Error) => console.error("Push send failed:", e));
+        }
       },
     });
   };
