@@ -114,6 +114,7 @@ function CaseDetail() {
   const navigate = useNavigate();
   const { hasRole, hasAnyRole } = useAuth();
   const qc = useQueryClient();
+  const sendPush = useServerFn(sendPushToUser);
   const canEdit = hasAnyRole(["admin", "dispatcher"]);
   const isAdmin = hasRole("admin");
 
