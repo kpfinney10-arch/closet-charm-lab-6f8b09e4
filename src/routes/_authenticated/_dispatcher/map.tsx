@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, MapPin, X } from "lucide-react";
+import { Loader2, MapPin, RotateCcw } from "lucide-react";
 import type { DriverPin } from "@/components/driver-map";
 import type { Database } from "@/integrations/supabase/types";
 
