@@ -39,6 +39,7 @@ import {
   History,
   StickyNote,
   AlertTriangle,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
