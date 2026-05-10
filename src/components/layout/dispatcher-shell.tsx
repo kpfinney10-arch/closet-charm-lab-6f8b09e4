@@ -34,6 +34,7 @@ const NAV = [
   { to: "/cases", label: "Cases", icon: ClipboardList, adminOnly: false },
   { to: "/drivers", label: "Drivers", icon: Users, adminOnly: false },
   { to: "/facilities", label: "Facilities", icon: Building2, adminOnly: false },
+  { to: "/vehicles", label: "Vehicles", icon: Truck, adminOnly: false },
   { to: "/reports", label: "Reports", icon: BarChart3, adminOnly: false },
   { to: "/users", label: "Users", icon: ShieldCheck, adminOnly: true },
   { to: "/audit-log", label: "Audit log", icon: ScrollText, adminOnly: true },
