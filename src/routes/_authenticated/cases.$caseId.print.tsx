@@ -108,15 +108,28 @@ function PrintRunSheet() {
     },
   });
 
+  const signaturesQ = useQuery({
+    queryKey: ["case-print-signatures", caseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("case_signatures")
+        .select("*")
+        .eq("case_id", caseId);
+      if (error) throw error;
+      return (data ?? []) as SignatureRow[];
+    },
+  });
+
   // Auto-trigger print dialog once all data is loaded
   useEffect(() => {
     if (!caseQ.data) return;
     if (driverIds.length > 0 && !driversQ.data) return;
     if (facilityIds.length > 0 && !facilitiesQ.data) return;
+    if (!signaturesQ.data) return;
     const t = setTimeout(() => window.print(), 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [caseQ.data, driversQ.data, facilitiesQ.data]);
+  }, [caseQ.data, driversQ.data, facilitiesQ.data, signaturesQ.data]);
 
   if (caseQ.isLoading) {
     return (
