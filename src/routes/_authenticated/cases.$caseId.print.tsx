@@ -16,6 +16,20 @@ export const Route = createFileRoute("/_authenticated/cases/$caseId/print")({
 type CaseRow = Database["public"]["Tables"]["cases"]["Row"];
 type Profile = { id: string; full_name: string | null; phone: string | null };
 type Facility = { id: string; name: string; phone: string | null };
+type SignatureRow = Database["public"]["Tables"]["case_signatures"]["Row"];
+
+const SIGNATURE_LABELS: Record<string, string> = {
+  pickup_released: "Released by (pickup)",
+  driver_received: "Received by driver",
+  driver_delivered: "Delivered by driver",
+  dropoff_received: "Received by (dropoff)",
+};
+const SIGNATURE_ORDER = [
+  "pickup_released",
+  "driver_received",
+  "driver_delivered",
+  "dropoff_received",
+] as const;
 
 const STATUS_LABEL: Record<string, string> = {
   new: "New",
