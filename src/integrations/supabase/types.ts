@@ -132,6 +132,53 @@ export type Database = {
           },
         ]
       }
+      case_signatures: {
+        Row: {
+          captured_by: string | null
+          case_id: string
+          created_at: string
+          id: string
+          lat: number | null
+          lng: number | null
+          signature_data: string
+          signature_type: Database["public"]["Enums"]["signature_type"]
+          signer_name: string
+          signer_title: string | null
+        }
+        Insert: {
+          captured_by?: string | null
+          case_id: string
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          signature_data: string
+          signature_type: Database["public"]["Enums"]["signature_type"]
+          signer_name: string
+          signer_title?: string | null
+        }
+        Update: {
+          captured_by?: string | null
+          case_id?: string
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          signature_data?: string
+          signature_type?: Database["public"]["Enums"]["signature_type"]
+          signer_name?: string
+          signer_title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_signatures_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cases: {
         Row: {
           authorizing_party_name: string | null
@@ -539,6 +586,7 @@ export type Database = {
         | "document_added"
         | "reassigned"
         | "cancelled"
+        | "signature_captured"
       case_status:
         | "new"
         | "assigned"
@@ -565,6 +613,11 @@ export type Database = {
         | "crematory"
         | "embalmer"
         | "other"
+      signature_type:
+        | "pickup_released"
+        | "driver_received"
+        | "driver_delivered"
+        | "dropoff_received"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -709,6 +762,7 @@ export const Constants = {
         "document_added",
         "reassigned",
         "cancelled",
+        "signature_captured",
       ],
       case_status: [
         "new",
@@ -738,6 +792,12 @@ export const Constants = {
         "crematory",
         "embalmer",
         "other",
+      ],
+      signature_type: [
+        "pickup_released",
+        "driver_received",
+        "driver_delivered",
+        "dropoff_received",
       ],
     },
   },
