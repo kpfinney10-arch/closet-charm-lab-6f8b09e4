@@ -568,13 +568,15 @@ function CaseDetail() {
                     label="Primary driver"
                     value={c.primary_driver_id}
                     drivers={driversQ.data ?? []}
-                    onChange={(v) => updateCase.mutate({ primary_driver_id: v })}
+                    workload={conflictsByDriver}
+                    onChange={(v) => assignDriver("primary_driver_id", v)}
                   />
                   <AssignSelect
                     label="Secondary driver"
                     value={c.secondary_driver_id}
                     drivers={driversQ.data ?? []}
-                    onChange={(v) => updateCase.mutate({ secondary_driver_id: v })}
+                    workload={conflictsByDriver}
+                    onChange={(v) => assignDriver("secondary_driver_id", v)}
                   />
                   <div>
                     <label className="text-xs text-muted-foreground">Vehicle</label>
