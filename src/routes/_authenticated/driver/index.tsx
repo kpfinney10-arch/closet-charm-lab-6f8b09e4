@@ -353,6 +353,14 @@ function DriverQueue() {
                       )}
                       <Button
                         size="sm"
+                        variant="outline"
+                        onClick={() => setSignCaseId(c.id)}
+                      >
+                        <PenLine className="h-4 w-4" />
+                        Signatures
+                      </Button>
+                      <Button
+                        size="sm"
                         variant="ghost"
                         className="text-destructive hover:text-destructive"
                         disabled={isBusy}
@@ -371,6 +379,20 @@ function DriverQueue() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!signCaseId} onOpenChange={(o) => (o ? null : setSignCaseId(null))}>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Chain of custody signatures</DialogTitle>
+          </DialogHeader>
+          {signCaseId ? (
+            <CaseSignatures
+              caseId={signCaseId}
+              driverDefaultName={profile.data?.full_name ?? ""}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
