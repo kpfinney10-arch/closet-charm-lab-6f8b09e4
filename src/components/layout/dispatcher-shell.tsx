@@ -26,6 +26,7 @@ import {
   Map as MapIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type { ReactNode } from "react";
 
 const NAV = [
