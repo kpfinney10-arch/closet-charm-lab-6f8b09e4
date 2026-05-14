@@ -232,9 +232,15 @@ function NewCasePage() {
     if (!draftKey || restoredRef.current) return;
     restoredRef.current = true;
     try {
-      const raw = localStorage.getItem(draftKey);
+      const raw = sessionStorage.getItem(draftKey);
       if (!raw) return;
       const parsed = JSON.parse(raw) as { values: Partial<FormValues>; savedAt: string };
+      // TTL: drop drafts older than 8 hours to limit PII residency.
+      const ageMs = Date.now() - new Date(parsed.savedAt).getTime();
+      if (!isFinite(ageMs) || ageMs > 8 * 60 * 60 * 1000) {
+        sessionStorage.removeItem(draftKey);
+        return;
+      }
       if (parsed?.values) {
         const defaults = form.getValues();
         const restored = new Set<string>();
@@ -288,7 +294,7 @@ function NewCasePage() {
       saveTimerRef.current = setTimeout(() => {
         try {
           const savedAt = new Date();
-          localStorage.setItem(
+          sessionStorage.setItem(
             draftKey,
             JSON.stringify({ values, savedAt: savedAt.toISOString() }),
           );
@@ -309,7 +315,7 @@ function NewCasePage() {
   }, [draftKey, form]);
 
   const clearDraft = () => {
-    if (draftKey) localStorage.removeItem(draftKey);
+    if (draftKey) sessionStorage.removeItem(draftKey);
     setDraftSavedAt(null);
     setSaveStatus("idle");
     setSaveError(null);
@@ -331,7 +337,7 @@ function NewCasePage() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     try {
       const savedAt = new Date();
-      localStorage.setItem(
+      sessionStorage.setItem(
         draftKey,
         JSON.stringify({ values: form.getValues(), savedAt: savedAt.toISOString() }),
       );
