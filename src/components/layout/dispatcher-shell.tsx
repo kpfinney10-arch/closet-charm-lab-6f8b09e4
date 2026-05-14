@@ -140,6 +140,7 @@ export function DispatcherShell({ children }: { children?: ReactNode }) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </header>
 
         {/* Mobile bottom nav */}
