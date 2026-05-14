@@ -68,7 +68,7 @@ export const listAdminUsers = createServerFn({ method: "GET" })
 
     const ids = list.users.map((u) => u.id);
     const [{ data: profiles }, { data: roles }] = await Promise.all([
-      admin.from("profiles").select("id, full_name, phone, on_duty").in("id", ids),
+      admin.from("profiles").select("id, full_name, phone, on_duty, approved, approved_at").in("id", ids),
       admin.from("user_roles").select("user_id, role").in("user_id", ids),
     ]);
 
