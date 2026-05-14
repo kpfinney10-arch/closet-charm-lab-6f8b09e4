@@ -125,6 +125,12 @@ export function DispatcherShell({ children }: { children?: ReactNode }) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="truncate">{user?.email}</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {hasRole("driver") ? (
+                <DropdownMenuItem onClick={() => navigate({ to: "/driver" })}>
+                  <Truck className="mr-2 h-4 w-4" />
+                  Switch to driver view
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
