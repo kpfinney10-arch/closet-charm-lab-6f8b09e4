@@ -105,6 +105,9 @@ export function DispatcherShell({ children }: { children?: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
+            <Badge variant="default" className="text-xs">
+              Acting as Dispatcher
+            </Badge>
             {roles.map((r) => (
               <Badge key={r} variant="secondary" className="text-xs capitalize">
                 {r}
