@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { listAdminAuditLogs } from "@/lib/admin-users.functions";
@@ -33,8 +33,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/audit-log")({
   beforeLoad: async () => {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) throw redirect({ to: "/login" });
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw redirect({ to: "/login" });
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userData.user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) throw redirect({ to: "/dashboard" });
   },
   component: AuditLogPage,
   head: () => ({
@@ -94,23 +101,15 @@ function downloadCsv(rows: Array<Record<string, unknown>>) {
 }
 
 function AuditLogPage() {
-  const { hasRole } = useAuth();
   const [filter, setFilter] = useState<ActionFilter>("all");
   const [search, setSearch] = useState("");
   const [range, setRange] = useState<DateRange | undefined>(undefined);
   const fetchLogs = useServerFn(listAdminAuditLogs);
 
-  useEffect(() => {
-    if (!hasRole("admin")) {
-      window.location.replace("/dashboard");
-    }
-  }, [hasRole]);
-
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-audit-logs", filter],
     queryFn: () =>
       fetchLogs({ data: { action: filter === "all" ? null : filter, limit: 200 } }),
-    enabled: hasRole("admin"),
   });
 
   const fromTs = range?.from ? new Date(range.from).setHours(0, 0, 0, 0) : null;
