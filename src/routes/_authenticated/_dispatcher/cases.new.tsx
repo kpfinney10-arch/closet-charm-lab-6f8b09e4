@@ -34,37 +34,131 @@ export const Route = createFileRoute("/_authenticated/_dispatcher/cases/new")({
 
 const NONE = "__none__";
 
-const schema = z.object({
-  decedent_first_name: z.string().trim().max(80).optional().or(z.literal("")),
-  decedent_last_name: z.string().trim().min(1, "Last name required").max(80),
-  decedent_sex: z.string().optional(),
-  decedent_dob: z.string().optional().or(z.literal("")),
-  decedent_dod: z.string().optional().or(z.literal("")),
-  decedent_weight_lbs: z.string().optional().or(z.literal("")),
-  special_handling: z.string().max(500).optional().or(z.literal("")),
-  status: z.enum(["new", "assigned"]),
-  scheduled_at: z.string().optional().or(z.literal("")),
+// US-ish formats; permissive enough for real-world entry.
+const PHONE_RE = /^[+()\-\s\d.]{10,20}$/;
+const ZIP_RE = /^\d{5}(-\d{4})?$/;
+const STATE_RE = /^[A-Za-z]{2}$/;
 
-  pickup_facility_id: z.string().optional(),
-  pickup_address: z.string().max(200).optional().or(z.literal("")),
-  pickup_city: z.string().max(80).optional().or(z.literal("")),
-  pickup_state: z.string().max(40).optional().or(z.literal("")),
-  pickup_zip: z.string().max(20).optional().or(z.literal("")),
-  pickup_contact_name: z.string().max(120).optional().or(z.literal("")),
-  pickup_contact_phone: z.string().max(40).optional().or(z.literal("")),
-  pickup_notes: z.string().max(500).optional().or(z.literal("")),
+const optStr = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
+const phone = (max = 40) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .optional()
+    .or(z.literal(""))
+    .refine((v) => !v || PHONE_RE.test(v), "Enter a valid phone number");
 
-  dropoff_facility_id: z.string().optional(),
-  dropoff_address: z.string().max(200).optional().or(z.literal("")),
-  dropoff_city: z.string().max(80).optional().or(z.literal("")),
-  dropoff_state: z.string().max(40).optional().or(z.literal("")),
-  dropoff_zip: z.string().max(20).optional().or(z.literal("")),
-  dropoff_notes: z.string().max(500).optional().or(z.literal("")),
+const schema = z
+  .object({
+    decedent_first_name: optStr(80),
+    decedent_last_name: z.string().trim().min(1, "Last name required").max(80),
+    decedent_sex: z.string().optional(),
+    decedent_dob: optStr(20),
+    decedent_dod: optStr(40),
+    decedent_weight_lbs: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .refine((v) => !v || (/^\d+$/.test(v) && Number(v) > 0 && Number(v) < 1000), "Enter weight in lbs (1–999)"),
+    special_handling: optStr(500),
+    status: z.enum(["new", "assigned"]),
+    scheduled_at: z.string().min(1, "Scheduled pickup is required"),
 
-  authorizing_party_name: z.string().max(120).optional().or(z.literal("")),
-  authorizing_party_relation: z.string().max(80).optional().or(z.literal("")),
-  authorizing_party_phone: z.string().max(40).optional().or(z.literal("")),
-});
+    pickup_facility_id: z.string().optional(),
+    pickup_address: optStr(200),
+    pickup_city: optStr(80),
+    pickup_state: optStr(40).refine((v) => !v || STATE_RE.test(v), "Use 2-letter state code"),
+    pickup_zip: optStr(20).refine((v) => !v || ZIP_RE.test(v), "Use ZIP (12345 or 12345-6789)"),
+    pickup_contact_name: optStr(120),
+    pickup_contact_phone: phone(),
+    pickup_notes: optStr(500),
+
+    dropoff_facility_id: z.string().optional(),
+    dropoff_address: optStr(200),
+    dropoff_city: optStr(80),
+    dropoff_state: optStr(40).refine((v) => !v || STATE_RE.test(v), "Use 2-letter state code"),
+    dropoff_zip: optStr(20).refine((v) => !v || ZIP_RE.test(v), "Use ZIP (12345 or 12345-6789)"),
+    dropoff_notes: optStr(500),
+
+    authorizing_party_name: z.string().trim().min(1, "Authorizing party is required").max(120),
+    authorizing_party_relation: optStr(80),
+    authorizing_party_phone: z
+      .string()
+      .trim()
+      .min(1, "Authorizing phone is required")
+      .max(40)
+      .refine((v) => PHONE_RE.test(v), "Enter a valid phone number"),
+  })
+  .superRefine((v, ctx) => {
+    const hasFacility = (id?: string) => !!id && id !== NONE;
+    const hasFullAddress = (a?: string, c?: string, s?: string, z?: string) =>
+      !!(a && c && s && z);
+
+    // Pickup: facility OR full address
+    if (!hasFacility(v.pickup_facility_id) && !hasFullAddress(v.pickup_address, v.pickup_city, v.pickup_state, v.pickup_zip)) {
+      for (const field of ["pickup_address", "pickup_city", "pickup_state", "pickup_zip"] as const) {
+        if (!v[field]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [field],
+            message: "Pick a facility or fill the full pickup address",
+          });
+        }
+      }
+    }
+
+    // Dropoff: facility OR full address
+    if (!hasFacility(v.dropoff_facility_id) && !hasFullAddress(v.dropoff_address, v.dropoff_city, v.dropoff_state, v.dropoff_zip)) {
+      for (const field of ["dropoff_address", "dropoff_city", "dropoff_state", "dropoff_zip"] as const) {
+        if (!v[field]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [field],
+            message: "Pick a facility or fill the full dropoff address",
+          });
+        }
+      }
+    }
+
+    const now = Date.now();
+
+    // DOB sanity
+    if (v.decedent_dob) {
+      const dob = new Date(v.decedent_dob).getTime();
+      if (Number.isNaN(dob)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["decedent_dob"], message: "Invalid date" });
+      } else if (dob > now) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["decedent_dob"], message: "DOB cannot be in the future" });
+      }
+    }
+
+    // DOD sanity + must be after DOB
+    if (v.decedent_dod) {
+      const dod = new Date(v.decedent_dod).getTime();
+      if (Number.isNaN(dod)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["decedent_dod"], message: "Invalid date/time" });
+      } else {
+        if (dod > now + 60_000) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["decedent_dod"], message: "Date of death cannot be in the future" });
+        }
+        if (v.decedent_dob) {
+          const dob = new Date(v.decedent_dob).getTime();
+          if (!Number.isNaN(dob) && dod < dob) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["decedent_dod"], message: "Date of death must be after DOB" });
+          }
+        }
+      }
+    }
+
+    // Scheduled pickup must parse
+    if (v.scheduled_at) {
+      const t = new Date(v.scheduled_at).getTime();
+      if (Number.isNaN(t)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["scheduled_at"], message: "Invalid date/time" });
+      }
+    }
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -86,6 +180,8 @@ function NewCasePage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: {
       decedent_first_name: "",
       decedent_last_name: "",
@@ -313,6 +409,24 @@ function NewCasePage() {
     }
   };
 
+  const onInvalid = (errors: Record<string, unknown>) => {
+    const keys = Object.keys(errors);
+    const count = keys.length;
+    toast.error(
+      count === 1
+        ? "Please fix 1 field before submitting"
+        : `Please fix ${count} fields before submitting`,
+    );
+    const first = keys[0];
+    if (first) {
+      const el = document.querySelector<HTMLElement>(`[name="${first}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => el.focus({ preventScroll: true }), 250);
+      }
+    }
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -393,7 +507,7 @@ function NewCasePage() {
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6" noValidate>
           <Card>
             <CardHeader>
               <CardTitle>Decedent</CardTitle>
@@ -697,7 +811,7 @@ function NewCasePage() {
                 name="authorizing_party_name"
                 render={({ field }) => (
                   <FormItem className={hl(field.name)}>
-                    <FormLabel>Authorizing party</FormLabel>
+                    <FormLabel>Authorizing party *</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -719,7 +833,7 @@ function NewCasePage() {
                 name="authorizing_party_phone"
                 render={({ field }) => (
                   <FormItem className={hl(field.name)}>
-                    <FormLabel>Authorizing phone</FormLabel>
+                    <FormLabel>Authorizing phone *</FormLabel>
                     <FormControl><Input type="tel" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -730,7 +844,7 @@ function NewCasePage() {
                 name="scheduled_at"
                 render={({ field }) => (
                   <FormItem className={hl(field.name)}>
-                    <FormLabel>Scheduled pickup</FormLabel>
+                    <FormLabel>Scheduled pickup *</FormLabel>
                     <FormControl><Input type="datetime-local" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -757,6 +871,15 @@ function NewCasePage() {
               />
             </CardContent>
           </Card>
+
+          {Object.keys(form.formState.errors).length > 0 && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <p className="font-medium">
+                Please fix {Object.keys(form.formState.errors).length} field
+                {Object.keys(form.formState.errors).length === 1 ? "" : "s"} before submitting.
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-3">
             <Button type="button" variant="outline" asChild>
