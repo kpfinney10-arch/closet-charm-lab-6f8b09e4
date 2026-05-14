@@ -122,6 +122,12 @@ export const createAdminUser = createServerFn({ method: "POST" })
       .insert({ user_id: created.user.id, role: data.role });
     if (rErr) throw new Response(rErr.message, { status: 500 });
 
+    // Admin-created accounts are auto-approved
+    await admin
+      .from("profiles")
+      .update({ approved: true, approved_at: new Date().toISOString(), approved_by: context.userId })
+      .eq("id", created.user.id);
+
     await writeAudit(admin, {
       action: "user_created",
       actor_id: context.userId,
