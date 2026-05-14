@@ -26,6 +26,7 @@ import {
   Map as MapIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type { ReactNode } from "react";
 
 const NAV = [
@@ -111,6 +112,8 @@ export function DispatcherShell({ children }: { children?: ReactNode }) {
             ))}
           </div>
 
+          <div className="flex items-center gap-1">
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
@@ -137,6 +140,7 @@ export function DispatcherShell({ children }: { children?: ReactNode }) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </header>
 
         {/* Mobile bottom nav */}

@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-rout
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Truck, LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/_authenticated/driver")({
   component: DriverLayout,
@@ -28,6 +29,7 @@ function DriverLayout() {
         </Link>
         <div className="flex items-center gap-2">
           <span className="hidden text-xs text-muted-foreground sm:inline">{user?.email}</span>
+          <ThemeToggle />
           <Button
             variant="ghost"
             size="icon"
