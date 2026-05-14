@@ -93,6 +93,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasRole: (role) => roles.includes(role),
       hasAnyRole: (rs) => rs.some((r) => roles.includes(r)),
       signOut: async () => {
+        // Clear any case-intake drafts (decedent PII) before ending the session.
+        try {
+          for (let i = sessionStorage.length - 1; i >= 0; i--) {
+            const k = sessionStorage.key(i);
+            if (k && k.startsWith("case-intake-draft:")) sessionStorage.removeItem(k);
+          }
+        } catch {
+          // ignore storage access errors
+        }
         await supabase.auth.signOut();
       },
       refreshRoles: async () => {

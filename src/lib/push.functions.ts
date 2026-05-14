@@ -22,7 +22,22 @@ const Input = z.object({
 export const sendPushToUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => Input.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    // Only admins and dispatchers may send push notifications to other users.
+    const { userId } = context;
+    const { data: roleRows, error: roleErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["admin", "dispatcher"]);
+    if (roleErr) {
+      console.error("Role check failed:", roleErr);
+      throw new Response("Forbidden", { status: 403 });
+    }
+    if (!roleRows || roleRows.length === 0) {
+      throw new Response("Forbidden", { status: 403 });
+    }
+
     const privateKey = process.env.VAPID_PRIVATE_KEY;
     const subject = process.env.VAPID_SUBJECT;
     if (!privateKey || !subject) {
