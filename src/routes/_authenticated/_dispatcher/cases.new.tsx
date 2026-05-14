@@ -872,6 +872,15 @@ function NewCasePage() {
             </CardContent>
           </Card>
 
+          {Object.keys(form.formState.errors).length > 0 && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <p className="font-medium">
+                Please fix {Object.keys(form.formState.errors).length} field
+                {Object.keys(form.formState.errors).length === 1 ? "" : "s"} before submitting.
+              </p>
+            </div>
+          )}
+
           <div className="flex items-center justify-end gap-3">
             <Button type="button" variant="outline" asChild>
               <Link to="/cases">Cancel</Link>
