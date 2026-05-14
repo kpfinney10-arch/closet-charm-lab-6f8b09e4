@@ -180,6 +180,8 @@ function NewCasePage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
+    mode: "onTouched",
+    reValidateMode: "onChange",
     defaultValues: {
       decedent_first_name: "",
       decedent_last_name: "",
