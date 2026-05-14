@@ -833,7 +833,7 @@ function NewCasePage() {
                 name="authorizing_party_phone"
                 render={({ field }) => (
                   <FormItem className={hl(field.name)}>
-                    <FormLabel>Authorizing phone</FormLabel>
+                    <FormLabel>Authorizing phone *</FormLabel>
                     <FormControl><Input type="tel" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
