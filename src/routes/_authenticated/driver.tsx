@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Truck, LogOut, LayoutDashboard, MoreVertical } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/driver")({
   component: DriverLayout,
@@ -35,6 +36,9 @@ function DriverLayout() {
             <Truck className="h-4 w-4" />
           </div>
           <span className="font-semibold">My runs</span>
+          <Badge variant="default" className="ml-1 text-xs">
+            Acting as Driver
+          </Badge>
         </Link>
         <div className="flex items-center gap-1">
           <span className="hidden text-xs text-muted-foreground sm:inline">{user?.email}</span>
