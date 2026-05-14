@@ -63,7 +63,7 @@ const ACTIVE_SET = new Set<CaseStatus>([
 
 type Search = { q: string; status: string };
 
-export const Route = createFileRoute("/_authenticated/_dispatcher/cases")({
+export const Route = createFileRoute("/_authenticated/_dispatcher/cases/")({
   validateSearch: (raw: Record<string, unknown>): Search => ({
     q: typeof raw.q === "string" ? raw.q : "",
     status: typeof raw.status === "string" ? raw.status : ACTIVE_FILTER,

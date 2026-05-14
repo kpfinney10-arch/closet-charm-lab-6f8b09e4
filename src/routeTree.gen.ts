@@ -26,8 +26,8 @@ import { Route as AuthenticatedDispatcherMapRouteImport } from './routes/_authen
 import { Route as AuthenticatedDispatcherFacilitiesRouteImport } from './routes/_authenticated/_dispatcher/facilities'
 import { Route as AuthenticatedDispatcherDriversRouteImport } from './routes/_authenticated/_dispatcher/drivers'
 import { Route as AuthenticatedDispatcherDashboardRouteImport } from './routes/_authenticated/_dispatcher/dashboard'
-import { Route as AuthenticatedDispatcherCasesRouteImport } from './routes/_authenticated/_dispatcher/cases'
 import { Route as AuthenticatedDispatcherAuditLogRouteImport } from './routes/_authenticated/_dispatcher/audit-log'
+import { Route as AuthenticatedDispatcherCasesIndexRouteImport } from './routes/_authenticated/_dispatcher/cases.index'
 import { Route as AuthenticatedCasesCaseIdPrintRouteImport } from './routes/_authenticated/cases.$caseId.print'
 import { Route as AuthenticatedDispatcherCasesNewRouteImport } from './routes/_authenticated/_dispatcher/cases.new'
 import { Route as AuthenticatedDispatcherCasesCaseIdRouteImport } from './routes/_authenticated/_dispatcher/cases.$caseId'
@@ -124,16 +124,16 @@ const AuthenticatedDispatcherDashboardRoute =
     path: '/dashboard',
     getParentRoute: () => AuthenticatedDispatcherRoute,
   } as any)
-const AuthenticatedDispatcherCasesRoute =
-  AuthenticatedDispatcherCasesRouteImport.update({
-    id: '/cases',
-    path: '/cases',
-    getParentRoute: () => AuthenticatedDispatcherRoute,
-  } as any)
 const AuthenticatedDispatcherAuditLogRoute =
   AuthenticatedDispatcherAuditLogRouteImport.update({
     id: '/audit-log',
     path: '/audit-log',
+    getParentRoute: () => AuthenticatedDispatcherRoute,
+  } as any)
+const AuthenticatedDispatcherCasesIndexRoute =
+  AuthenticatedDispatcherCasesIndexRouteImport.update({
+    id: '/cases/',
+    path: '/cases/',
     getParentRoute: () => AuthenticatedDispatcherRoute,
   } as any)
 const AuthenticatedCasesCaseIdPrintRoute =
@@ -144,15 +144,15 @@ const AuthenticatedCasesCaseIdPrintRoute =
   } as any)
 const AuthenticatedDispatcherCasesNewRoute =
   AuthenticatedDispatcherCasesNewRouteImport.update({
-    id: '/new',
-    path: '/new',
-    getParentRoute: () => AuthenticatedDispatcherCasesRoute,
+    id: '/cases/new',
+    path: '/cases/new',
+    getParentRoute: () => AuthenticatedDispatcherRoute,
   } as any)
 const AuthenticatedDispatcherCasesCaseIdRoute =
   AuthenticatedDispatcherCasesCaseIdRouteImport.update({
-    id: '/$caseId',
-    path: '/$caseId',
-    getParentRoute: () => AuthenticatedDispatcherCasesRoute,
+    id: '/cases/$caseId',
+    path: '/cases/$caseId',
+    getParentRoute: () => AuthenticatedDispatcherRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -163,7 +163,6 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/driver': typeof AuthenticatedDriverRouteWithChildren
   '/audit-log': typeof AuthenticatedDispatcherAuditLogRoute
-  '/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
   '/dashboard': typeof AuthenticatedDispatcherDashboardRoute
   '/drivers': typeof AuthenticatedDispatcherDriversRoute
   '/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
@@ -176,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
   '/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
+  '/cases/': typeof AuthenticatedDispatcherCasesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -184,7 +184,6 @@ export interface FileRoutesByTo {
   '/pending-approval': typeof PendingApprovalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/audit-log': typeof AuthenticatedDispatcherAuditLogRoute
-  '/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
   '/dashboard': typeof AuthenticatedDispatcherDashboardRoute
   '/drivers': typeof AuthenticatedDispatcherDriversRoute
   '/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
@@ -197,6 +196,7 @@ export interface FileRoutesByTo {
   '/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
   '/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
+  '/cases': typeof AuthenticatedDispatcherCasesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -209,7 +209,6 @@ export interface FileRoutesById {
   '/_authenticated/_dispatcher': typeof AuthenticatedDispatcherRouteWithChildren
   '/_authenticated/driver': typeof AuthenticatedDriverRouteWithChildren
   '/_authenticated/_dispatcher/audit-log': typeof AuthenticatedDispatcherAuditLogRoute
-  '/_authenticated/_dispatcher/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
   '/_authenticated/_dispatcher/dashboard': typeof AuthenticatedDispatcherDashboardRoute
   '/_authenticated/_dispatcher/drivers': typeof AuthenticatedDispatcherDriversRoute
   '/_authenticated/_dispatcher/facilities': typeof AuthenticatedDispatcherFacilitiesRoute
@@ -222,6 +221,7 @@ export interface FileRoutesById {
   '/_authenticated/_dispatcher/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/_authenticated/_dispatcher/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
   '/_authenticated/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
+  '/_authenticated/_dispatcher/cases/': typeof AuthenticatedDispatcherCasesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -233,7 +233,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/driver'
     | '/audit-log'
-    | '/cases'
     | '/dashboard'
     | '/drivers'
     | '/facilities'
@@ -246,6 +245,7 @@ export interface FileRouteTypes {
     | '/cases/$caseId'
     | '/cases/new'
     | '/cases/$caseId/print'
+    | '/cases/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -254,7 +254,6 @@ export interface FileRouteTypes {
     | '/pending-approval'
     | '/reset-password'
     | '/audit-log'
-    | '/cases'
     | '/dashboard'
     | '/drivers'
     | '/facilities'
@@ -267,6 +266,7 @@ export interface FileRouteTypes {
     | '/cases/$caseId'
     | '/cases/new'
     | '/cases/$caseId/print'
+    | '/cases'
   id:
     | '__root__'
     | '/'
@@ -278,7 +278,6 @@ export interface FileRouteTypes {
     | '/_authenticated/_dispatcher'
     | '/_authenticated/driver'
     | '/_authenticated/_dispatcher/audit-log'
-    | '/_authenticated/_dispatcher/cases'
     | '/_authenticated/_dispatcher/dashboard'
     | '/_authenticated/_dispatcher/drivers'
     | '/_authenticated/_dispatcher/facilities'
@@ -291,6 +290,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_dispatcher/cases/$caseId'
     | '/_authenticated/_dispatcher/cases/new'
     | '/_authenticated/cases/$caseId/print'
+    | '/_authenticated/_dispatcher/cases/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -423,18 +423,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDispatcherDashboardRouteImport
       parentRoute: typeof AuthenticatedDispatcherRoute
     }
-    '/_authenticated/_dispatcher/cases': {
-      id: '/_authenticated/_dispatcher/cases'
-      path: '/cases'
-      fullPath: '/cases'
-      preLoaderRoute: typeof AuthenticatedDispatcherCasesRouteImport
-      parentRoute: typeof AuthenticatedDispatcherRoute
-    }
     '/_authenticated/_dispatcher/audit-log': {
       id: '/_authenticated/_dispatcher/audit-log'
       path: '/audit-log'
       fullPath: '/audit-log'
       preLoaderRoute: typeof AuthenticatedDispatcherAuditLogRouteImport
+      parentRoute: typeof AuthenticatedDispatcherRoute
+    }
+    '/_authenticated/_dispatcher/cases/': {
+      id: '/_authenticated/_dispatcher/cases/'
+      path: '/cases'
+      fullPath: '/cases/'
+      preLoaderRoute: typeof AuthenticatedDispatcherCasesIndexRouteImport
       parentRoute: typeof AuthenticatedDispatcherRoute
     }
     '/_authenticated/cases/$caseId/print': {
@@ -446,41 +446,23 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/_dispatcher/cases/new': {
       id: '/_authenticated/_dispatcher/cases/new'
-      path: '/new'
+      path: '/cases/new'
       fullPath: '/cases/new'
       preLoaderRoute: typeof AuthenticatedDispatcherCasesNewRouteImport
-      parentRoute: typeof AuthenticatedDispatcherCasesRoute
+      parentRoute: typeof AuthenticatedDispatcherRoute
     }
     '/_authenticated/_dispatcher/cases/$caseId': {
       id: '/_authenticated/_dispatcher/cases/$caseId'
-      path: '/$caseId'
+      path: '/cases/$caseId'
       fullPath: '/cases/$caseId'
       preLoaderRoute: typeof AuthenticatedDispatcherCasesCaseIdRouteImport
-      parentRoute: typeof AuthenticatedDispatcherCasesRoute
+      parentRoute: typeof AuthenticatedDispatcherRoute
     }
   }
 }
 
-interface AuthenticatedDispatcherCasesRouteChildren {
-  AuthenticatedDispatcherCasesCaseIdRoute: typeof AuthenticatedDispatcherCasesCaseIdRoute
-  AuthenticatedDispatcherCasesNewRoute: typeof AuthenticatedDispatcherCasesNewRoute
-}
-
-const AuthenticatedDispatcherCasesRouteChildren: AuthenticatedDispatcherCasesRouteChildren =
-  {
-    AuthenticatedDispatcherCasesCaseIdRoute:
-      AuthenticatedDispatcherCasesCaseIdRoute,
-    AuthenticatedDispatcherCasesNewRoute: AuthenticatedDispatcherCasesNewRoute,
-  }
-
-const AuthenticatedDispatcherCasesRouteWithChildren =
-  AuthenticatedDispatcherCasesRoute._addFileChildren(
-    AuthenticatedDispatcherCasesRouteChildren,
-  )
-
 interface AuthenticatedDispatcherRouteChildren {
   AuthenticatedDispatcherAuditLogRoute: typeof AuthenticatedDispatcherAuditLogRoute
-  AuthenticatedDispatcherCasesRoute: typeof AuthenticatedDispatcherCasesRouteWithChildren
   AuthenticatedDispatcherDashboardRoute: typeof AuthenticatedDispatcherDashboardRoute
   AuthenticatedDispatcherDriversRoute: typeof AuthenticatedDispatcherDriversRoute
   AuthenticatedDispatcherFacilitiesRoute: typeof AuthenticatedDispatcherFacilitiesRoute
@@ -489,13 +471,14 @@ interface AuthenticatedDispatcherRouteChildren {
   AuthenticatedDispatcherSettingsRoute: typeof AuthenticatedDispatcherSettingsRoute
   AuthenticatedDispatcherUsersRoute: typeof AuthenticatedDispatcherUsersRoute
   AuthenticatedDispatcherVehiclesRoute: typeof AuthenticatedDispatcherVehiclesRoute
+  AuthenticatedDispatcherCasesCaseIdRoute: typeof AuthenticatedDispatcherCasesCaseIdRoute
+  AuthenticatedDispatcherCasesNewRoute: typeof AuthenticatedDispatcherCasesNewRoute
+  AuthenticatedDispatcherCasesIndexRoute: typeof AuthenticatedDispatcherCasesIndexRoute
 }
 
 const AuthenticatedDispatcherRouteChildren: AuthenticatedDispatcherRouteChildren =
   {
     AuthenticatedDispatcherAuditLogRoute: AuthenticatedDispatcherAuditLogRoute,
-    AuthenticatedDispatcherCasesRoute:
-      AuthenticatedDispatcherCasesRouteWithChildren,
     AuthenticatedDispatcherDashboardRoute:
       AuthenticatedDispatcherDashboardRoute,
     AuthenticatedDispatcherDriversRoute: AuthenticatedDispatcherDriversRoute,
@@ -506,6 +489,11 @@ const AuthenticatedDispatcherRouteChildren: AuthenticatedDispatcherRouteChildren
     AuthenticatedDispatcherSettingsRoute: AuthenticatedDispatcherSettingsRoute,
     AuthenticatedDispatcherUsersRoute: AuthenticatedDispatcherUsersRoute,
     AuthenticatedDispatcherVehiclesRoute: AuthenticatedDispatcherVehiclesRoute,
+    AuthenticatedDispatcherCasesCaseIdRoute:
+      AuthenticatedDispatcherCasesCaseIdRoute,
+    AuthenticatedDispatcherCasesNewRoute: AuthenticatedDispatcherCasesNewRoute,
+    AuthenticatedDispatcherCasesIndexRoute:
+      AuthenticatedDispatcherCasesIndexRoute,
   }
 
 const AuthenticatedDispatcherRouteWithChildren =
@@ -551,3 +539,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
