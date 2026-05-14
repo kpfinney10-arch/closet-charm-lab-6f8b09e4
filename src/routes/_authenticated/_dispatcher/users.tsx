@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, UserPlus, KeyRound, Ban, CheckCircle2, Trash2, ShieldAlert } from "lucide-react";
+import { Loader2, UserPlus, KeyRound, Ban, CheckCircle2, Trash2, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import {
 import {
   listAdminUsers, createAdminUser, disableAdminUser, enableAdminUser,
   resetAdminUserPassword, setAdminUserRole, deleteAdminUser,
+  approveAdminUser, unapproveAdminUser,
 } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/users")({
@@ -43,6 +44,8 @@ function UsersAdminPage() {
   const reset = useServerFn(resetAdminUserPassword);
   const setRole = useServerFn(setAdminUserRole);
   const remove = useServerFn(deleteAdminUser);
+  const approve = useServerFn(approveAdminUser);
+  const unapprove = useServerFn(unapproveAdminUser);
 
   const usersQuery = useQuery({
     queryKey: ["admin-users"],
@@ -81,6 +84,16 @@ function UsersAdminPage() {
   const removeMut = useMutation({
     mutationFn: (user_id: string) => remove({ data: { user_id } }),
     onSuccess: () => { toast.success("User deleted"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const approveMut = useMutation({
+    mutationFn: (user_id: string) => approve({ data: { user_id } }),
+    onSuccess: () => { toast.success("User approved"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const unapproveMut = useMutation({
+    mutationFn: (user_id: string) => unapprove({ data: { user_id } }),
+    onSuccess: () => { toast.success("Approval revoked"); invalidate(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -152,17 +165,42 @@ function UsersAdminPage() {
                         </Select>
                       </TableCell>
                       <TableCell>
-                        {disabled ? (
-                          <Badge variant="destructive">Disabled</Badge>
-                        ) : (
-                          <Badge variant="secondary">Active</Badge>
-                        )}
+                        <div className="flex flex-wrap gap-1">
+                          {disabled ? (
+                            <Badge variant="destructive">Disabled</Badge>
+                          ) : (
+                            <Badge variant="secondary">Active</Badge>
+                          )}
+                          {u.profile?.approved ? (
+                            <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400">Approved</Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-amber-500/60 text-amber-700 dark:text-amber-400">Pending</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
                         {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString() : "Never"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex flex-wrap justify-end gap-1">
+                          {u.profile?.approved ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => unapproveMut.mutate(u.id)}
+                              disabled={isMe}
+                              title="Revoke approval — user will lose access"
+                            >
+                              <ShieldX className="mr-1 h-3.5 w-3.5" /> Unapprove
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => approveMut.mutate(u.id)}
+                            >
+                              <ShieldCheck className="mr-1 h-3.5 w-3.5" /> Approve
+                            </Button>
+                          )}
                           <ResetPasswordButton
                             onReset={(pw) => resetMut.mutateAsync({ user_id: u.id, new_password: pw })}
                           />

@@ -8,11 +8,13 @@ type AuthContextValue = {
   session: Session | null;
   user: User | null;
   roles: AppRole[];
+  approved: boolean | null; // null while loading
   loading: boolean;
   hasRole: (role: AppRole) => boolean;
   hasAnyRole: (roles: AppRole[]) => boolean;
   signOut: () => Promise<void>;
   refreshRoles: () => Promise<void>;
+  refreshApproval: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -20,6 +22,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [approved, setApproved] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchRoles = async (userId: string) => {
@@ -35,24 +38,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoles((data ?? []).map((r) => r.role as AppRole));
   };
 
+  const fetchApproval = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("approved")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) {
+      console.error("Failed to load approval status", error);
+      setApproved(false);
+      return;
+    }
+    setApproved(((data as { approved?: boolean } | null)?.approved ?? false) === true);
+  };
+
   useEffect(() => {
-    // Set up listener FIRST, then check session
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       if (newSession?.user) {
-        // Defer the role fetch to avoid deadlocks inside the auth callback
         setTimeout(() => {
           void fetchRoles(newSession.user.id);
+          void fetchApproval(newSession.user.id);
         }, 0);
       } else {
         setRoles([]);
+        setApproved(null);
       }
     });
 
     void supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       if (data.session?.user) {
-        void fetchRoles(data.session.user.id).finally(() => setLoading(false));
+        void Promise.all([
+          fetchRoles(data.session.user.id),
+          fetchApproval(data.session.user.id),
+        ]).finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
@@ -68,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       user: session?.user ?? null,
       roles,
+      approved,
       loading,
       hasRole: (role) => roles.includes(role),
       hasAnyRole: (rs) => rs.some((r) => roles.includes(r)),
@@ -77,8 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshRoles: async () => {
         if (session?.user) await fetchRoles(session.user.id);
       },
+      refreshApproval: async () => {
+        if (session?.user) await fetchApproval(session.user.id);
+      },
     };
-  }, [session, roles, loading]);
+  }, [session, roles, approved, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

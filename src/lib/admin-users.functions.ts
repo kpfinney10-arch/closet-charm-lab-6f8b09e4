@@ -11,7 +11,9 @@ type AuditAction =
   | "user_enabled"
   | "user_deleted"
   | "role_changed"
-  | "password_reset";
+  | "password_reset"
+  | "user_approved"
+  | "user_unapproved";
 
 function getAdmin() {
   const url = process.env.SUPABASE_URL;
@@ -68,7 +70,7 @@ export const listAdminUsers = createServerFn({ method: "GET" })
 
     const ids = list.users.map((u) => u.id);
     const [{ data: profiles }, { data: roles }] = await Promise.all([
-      admin.from("profiles").select("id, full_name, phone, on_duty").in("id", ids),
+      admin.from("profiles").select("id, full_name, phone, on_duty, approved, approved_at").in("id", ids),
       admin.from("user_roles").select("user_id, role").in("user_id", ids),
     ]);
 
@@ -119,6 +121,12 @@ export const createAdminUser = createServerFn({ method: "POST" })
       .from("user_roles")
       .insert({ user_id: created.user.id, role: data.role });
     if (rErr) throw new Response(rErr.message, { status: 500 });
+
+    // Admin-created accounts are auto-approved
+    await admin
+      .from("profiles")
+      .update({ approved: true, approved_at: new Date().toISOString(), approved_by: context.userId })
+      .eq("id", created.user.id);
 
     await writeAudit(admin, {
       action: "user_created",
@@ -288,4 +296,52 @@ export const listAdminAuditLogs = createServerFn({ method: "POST" })
     const { data: rows, error } = await q;
     if (error) throw new Response(error.message, { status: 500 });
     return rows ?? [];
+  });
+
+export const approveAdminUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => idSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const admin = getAdmin();
+    await assertAdmin(admin, context.userId);
+    const { data: target } = await admin.auth.admin.getUserById(data.user_id);
+    const { error } = await admin
+      .from("profiles")
+      .update({
+        approved: true,
+        approved_at: new Date().toISOString(),
+        approved_by: context.userId,
+      })
+      .eq("id", data.user_id);
+    if (error) throw new Response(error.message, { status: 500 });
+    await writeAudit(admin, {
+      action: "user_approved",
+      actor_id: context.userId,
+      target_user_id: data.user_id,
+      target_email: target?.user?.email ?? null,
+    });
+    return { ok: true };
+  });
+
+export const unapproveAdminUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => idSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const admin = getAdmin();
+    await assertAdmin(admin, context.userId);
+    if (data.user_id === context.userId)
+      throw new Response("You cannot revoke your own approval", { status: 400 });
+    const { data: target } = await admin.auth.admin.getUserById(data.user_id);
+    const { error } = await admin
+      .from("profiles")
+      .update({ approved: false, approved_at: null, approved_by: null })
+      .eq("id", data.user_id);
+    if (error) throw new Response(error.message, { status: 500 });
+    await writeAudit(admin, {
+      action: "user_unapproved",
+      actor_id: context.userId,
+      target_user_id: data.user_id,
+      target_email: target?.user?.email ?? null,
+    });
+    return { ok: true };
   });

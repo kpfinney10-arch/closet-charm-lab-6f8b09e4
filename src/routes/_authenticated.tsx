@@ -7,7 +7,7 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
-  const { session, loading } = useAuth();
+  const { session, loading, approved } = useAuth();
 
   if (loading) {
     return (
@@ -17,6 +17,7 @@ function AuthenticatedLayout() {
     );
   }
   if (!session) return <Navigate to="/login" />;
+  if (approved === false) return <Navigate to="/pending-approval" />;
 
   return <Outlet />;
 }

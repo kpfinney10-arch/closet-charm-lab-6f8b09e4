@@ -410,6 +410,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          approved: boolean
+          approved_at: string | null
+          approved_by: string | null
           avatar_url: string | null
           created_at: string
           current_vehicle_id: string | null
@@ -420,6 +423,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approved?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           created_at?: string
           current_vehicle_id?: string | null
@@ -430,6 +436,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approved?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           created_at?: string
           current_vehicle_id?: string | null
@@ -577,6 +586,8 @@ export type Database = {
         | "user_deleted"
         | "role_changed"
         | "password_reset"
+        | "user_approved"
+        | "user_unapproved"
       app_role: "admin" | "dispatcher" | "driver" | "viewer"
       case_event_type:
         | "created"
@@ -752,6 +763,8 @@ export const Constants = {
         "user_deleted",
         "role_changed",
         "password_reset",
+        "user_approved",
+        "user_unapproved",
       ],
       app_role: ["admin", "dispatcher", "driver", "viewer"],
       case_event_type: [

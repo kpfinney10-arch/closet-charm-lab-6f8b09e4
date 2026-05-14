@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PendingApprovalRouteImport } from './routes/pending-approval'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
@@ -34,6 +35,11 @@ import { Route as AuthenticatedDispatcherCasesCaseIdRouteImport } from './routes
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PendingApprovalRoute = PendingApprovalRouteImport.update({
+  id: '/pending-approval',
+  path: '/pending-approval',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/pending-approval': typeof PendingApprovalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/driver': typeof AuthenticatedDriverRouteWithChildren
   '/audit-log': typeof AuthenticatedDispatcherAuditLogRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/pending-approval': typeof PendingApprovalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/audit-log': typeof AuthenticatedDispatcherAuditLogRoute
   '/cases': typeof AuthenticatedDispatcherCasesRouteWithChildren
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/pending-approval': typeof PendingApprovalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/_dispatcher': typeof AuthenticatedDispatcherRouteWithChildren
   '/_authenticated/driver': typeof AuthenticatedDriverRouteWithChildren
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/'
     | '/forgot-password'
     | '/login'
+    | '/pending-approval'
     | '/reset-password'
     | '/driver'
     | '/audit-log'
@@ -241,6 +251,7 @@ export interface FileRouteTypes {
     | '/'
     | '/forgot-password'
     | '/login'
+    | '/pending-approval'
     | '/reset-password'
     | '/audit-log'
     | '/cases'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/forgot-password'
     | '/login'
+    | '/pending-approval'
     | '/reset-password'
     | '/_authenticated/_dispatcher'
     | '/_authenticated/driver'
@@ -286,6 +298,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  PendingApprovalRoute: typeof PendingApprovalRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
@@ -296,6 +309,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pending-approval': {
+      id: '/pending-approval'
+      path: '/pending-approval'
+      fullPath: '/pending-approval'
+      preLoaderRoute: typeof PendingApprovalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -525,6 +545,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  PendingApprovalRoute: PendingApprovalRoute,
   ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
