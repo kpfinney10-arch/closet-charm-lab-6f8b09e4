@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Loader2, UserPlus, KeyRound, Ban, CheckCircle2, Trash2, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
