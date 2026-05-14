@@ -409,7 +409,7 @@ function NewCasePage() {
     }
   };
 
-  const onInvalid = (errors: Record<string, { message?: string } | undefined>) => {
+  const onInvalid = (errors: Record<string, unknown>) => {
     const keys = Object.keys(errors);
     const count = keys.length;
     toast.error(
