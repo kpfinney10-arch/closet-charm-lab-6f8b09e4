@@ -409,6 +409,24 @@ function NewCasePage() {
     }
   };
 
+  const onInvalid = (errors: Record<string, { message?: string } | undefined>) => {
+    const keys = Object.keys(errors);
+    const count = keys.length;
+    toast.error(
+      count === 1
+        ? "Please fix 1 field before submitting"
+        : `Please fix ${count} fields before submitting`,
+    );
+    const first = keys[0];
+    if (first) {
+      const el = document.querySelector<HTMLElement>(`[name="${first}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => el.focus({ preventScroll: true }), 250);
+      }
+    }
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center gap-3">
