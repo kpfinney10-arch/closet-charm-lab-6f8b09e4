@@ -11,7 +11,9 @@ type AuditAction =
   | "user_enabled"
   | "user_deleted"
   | "role_changed"
-  | "password_reset";
+  | "password_reset"
+  | "user_approved"
+  | "user_unapproved";
 
 function getAdmin() {
   const url = process.env.SUPABASE_URL;
