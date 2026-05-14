@@ -87,6 +87,16 @@ function UsersAdminPage() {
     onSuccess: () => { toast.success("User deleted"); invalidate(); },
     onError: (e: Error) => toast.error(e.message),
   });
+  const approveMut = useMutation({
+    mutationFn: (user_id: string) => approve({ data: { user_id } }),
+    onSuccess: () => { toast.success("User approved"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const unapproveMut = useMutation({
+    mutationFn: (user_id: string) => unapprove({ data: { user_id } }),
+    onSuccess: () => { toast.success("Approval revoked"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin" /></div>;
