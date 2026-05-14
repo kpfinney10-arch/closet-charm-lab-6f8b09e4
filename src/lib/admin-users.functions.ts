@@ -297,3 +297,51 @@ export const listAdminAuditLogs = createServerFn({ method: "POST" })
     if (error) throw new Response(error.message, { status: 500 });
     return rows ?? [];
   });
+
+export const approveAdminUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => idSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const admin = getAdmin();
+    await assertAdmin(admin, context.userId);
+    const { data: target } = await admin.auth.admin.getUserById(data.user_id);
+    const { error } = await admin
+      .from("profiles")
+      .update({
+        approved: true,
+        approved_at: new Date().toISOString(),
+        approved_by: context.userId,
+      })
+      .eq("id", data.user_id);
+    if (error) throw new Response(error.message, { status: 500 });
+    await writeAudit(admin, {
+      action: "user_approved",
+      actor_id: context.userId,
+      target_user_id: data.user_id,
+      target_email: target?.user?.email ?? null,
+    });
+    return { ok: true };
+  });
+
+export const unapproveAdminUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => idSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const admin = getAdmin();
+    await assertAdmin(admin, context.userId);
+    if (data.user_id === context.userId)
+      throw new Response("You cannot revoke your own approval", { status: 400 });
+    const { data: target } = await admin.auth.admin.getUserById(data.user_id);
+    const { error } = await admin
+      .from("profiles")
+      .update({ approved: false, approved_at: null, approved_by: null })
+      .eq("id", data.user_id);
+    if (error) throw new Response(error.message, { status: 500 });
+    await writeAudit(admin, {
+      action: "user_unapproved",
+      actor_id: context.userId,
+      target_user_id: data.user_id,
+      target_email: target?.user?.email ?? null,
+    });
+    return { ok: true };
+  });
