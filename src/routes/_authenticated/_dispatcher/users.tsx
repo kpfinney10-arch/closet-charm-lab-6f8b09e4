@@ -25,6 +25,7 @@ import {
 import {
   listAdminUsers, createAdminUser, disableAdminUser, enableAdminUser,
   resetAdminUserPassword, setAdminUserRole, deleteAdminUser,
+  approveAdminUser, unapproveAdminUser,
 } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/users")({
