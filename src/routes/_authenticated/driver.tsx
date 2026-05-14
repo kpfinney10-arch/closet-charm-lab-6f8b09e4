@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Truck, LogOut, LayoutDashboard, MoreVertical } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/driver")({
   component: DriverLayout,
