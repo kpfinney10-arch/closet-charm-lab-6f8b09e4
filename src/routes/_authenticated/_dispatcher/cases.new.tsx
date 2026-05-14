@@ -844,7 +844,7 @@ function NewCasePage() {
                 name="scheduled_at"
                 render={({ field }) => (
                   <FormItem className={hl(field.name)}>
-                    <FormLabel>Scheduled pickup</FormLabel>
+                    <FormLabel>Scheduled pickup *</FormLabel>
                     <FormControl><Input type="datetime-local" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
