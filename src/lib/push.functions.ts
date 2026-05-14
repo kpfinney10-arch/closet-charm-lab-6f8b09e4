@@ -3,6 +3,7 @@ import { z } from "zod";
 import webpush from "web-push";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertAnyRole } from "@/lib/roles.server";
 
 // VAPID public key (must match the one the browser used to subscribe).
 const VAPID_PUBLIC_KEY =
@@ -24,19 +25,8 @@ export const sendPushToUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => Input.parse(data))
   .handler(async ({ data, context }) => {
     // Only admins and dispatchers may send push notifications to other users.
-    const { userId } = context;
-    const { data: roleRows, error: roleErr } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .in("role", ["admin", "dispatcher"]);
-    if (roleErr) {
-      console.error("Role check failed:", roleErr);
-      throw new Response("Forbidden", { status: 403 });
-    }
-    if (!roleRows || roleRows.length === 0) {
-      throw new Response("Forbidden", { status: 403 });
-    }
+    // Cached role lookup avoids hitting user_roles on every call.
+    await assertAnyRole(context.userId, ["admin", "dispatcher"]);
 
     const privateKey = process.env.VAPID_PRIVATE_KEY;
     const subject = process.env.VAPID_SUBJECT;
