@@ -112,6 +112,8 @@ export function DispatcherShell({ children }: { children?: ReactNode }) {
             ))}
           </div>
 
+          <div className="flex items-center gap-1">
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
