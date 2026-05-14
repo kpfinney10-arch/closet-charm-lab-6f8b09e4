@@ -166,17 +166,42 @@ function UsersAdminPage() {
                         </Select>
                       </TableCell>
                       <TableCell>
-                        {disabled ? (
-                          <Badge variant="destructive">Disabled</Badge>
-                        ) : (
-                          <Badge variant="secondary">Active</Badge>
-                        )}
+                        <div className="flex flex-wrap gap-1">
+                          {disabled ? (
+                            <Badge variant="destructive">Disabled</Badge>
+                          ) : (
+                            <Badge variant="secondary">Active</Badge>
+                          )}
+                          {u.profile?.approved ? (
+                            <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400">Approved</Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-amber-500/60 text-amber-700 dark:text-amber-400">Pending</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
                         {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString() : "Never"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex flex-wrap justify-end gap-1">
+                          {u.profile?.approved ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => unapproveMut.mutate(u.id)}
+                              disabled={isMe}
+                              title="Revoke approval — user will lose access"
+                            >
+                              <ShieldX className="mr-1 h-3.5 w-3.5" /> Unapprove
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => approveMut.mutate(u.id)}
+                            >
+                              <ShieldCheck className="mr-1 h-3.5 w-3.5" /> Approve
+                            </Button>
+                          )}
                           <ResetPasswordButton
                             onReset={(pw) => resetMut.mutateAsync({ user_id: u.id, new_password: pw })}
                           />
