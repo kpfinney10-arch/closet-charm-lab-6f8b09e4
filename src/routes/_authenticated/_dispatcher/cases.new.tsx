@@ -811,7 +811,7 @@ function NewCasePage() {
                 name="authorizing_party_name"
                 render={({ field }) => (
                   <FormItem className={hl(field.name)}>
-                    <FormLabel>Authorizing party</FormLabel>
+                    <FormLabel>Authorizing party *</FormLabel>
                     <FormControl><Input {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
