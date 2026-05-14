@@ -507,7 +507,7 @@ function NewCasePage() {
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6" noValidate>
           <Card>
             <CardHeader>
               <CardTitle>Decedent</CardTitle>
