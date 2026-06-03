@@ -190,3 +190,18 @@ Recommended path:
 5. Reassess maintainability after those changes.
 
 If the data model or workflow assumptions prove wrong, then rebuild from this clarified model. If they hold, this codebase can likely become the dispatch module of the larger funeral home operating platform.
+
+## Follow-up Pass — 2026-06-03
+
+### Applied
+
+- Database migration `20260603163000_harden_profile_and_driver_status_updates.sql` deployed to live DB (profile-field protection trigger + driver status state-machine).
+- Push notification payload no longer includes decedent name or pickup street address. Now sends `case_number` + pickup city/state only, with a CTA to open the driver app. Aligns with project memory "minimum-necessary" rule for decedent data.
+
+### Deferred (require dedicated work streams or product decisions)
+
+- **P1** Server-function extraction for case assignment, status advancement, cancellation, document registration, and signature capture. Large refactor; revisit as a focused pass.
+- **P1** Storage path helper — no upload code currently writes to `case-documents`; add the helper when upload UI is built.
+- **P2** Admin direct-password-set policy — product/operations decision pending.
+- **P2** Automated tests (RLS, role gates, status transitions, signatures) — needs test runner + Supabase test harness setup.
+- **P2** Realtime load testing — environment + scenario definition needed.
