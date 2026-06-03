@@ -1,0 +1,12 @@
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: ["tests/**/*.test.ts"],
+    testTimeout: 30_000,
+    hookTimeout: 60_000,
+    // RLS tests hit a real Supabase project; run serially to keep fixture state predictable.
+    fileParallelism: false,
+    setupFiles: ["tests/setup.ts"],
+  },
+});
