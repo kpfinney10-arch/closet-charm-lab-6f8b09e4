@@ -41,12 +41,18 @@ tears the fixtures down.
 - `profiles` trigger: non-admin cannot self-approve or edit other profiles.
 - `user_roles`: driver cannot self-grant admin.
 
-## What's still TODO
+## What's covered
 
-These follow the same pattern — add as time allows:
+`tests/rls/cases.test.ts`
+- `cases`: anon blocked; driver sees only assigned; dispatcher sees all.
+- `restrict_driver_case_updates` trigger: backward/skipped transitions rejected; forward allowed; protected field edits rejected.
+- `restrict_profile_updates` trigger: non-admin cannot self-approve or edit other profiles.
+- `user_roles`: driver cannot self-grant admin.
 
-- `case_events`, `case_signatures`, `case_documents` visibility per role.
-- `driver_locations` insert/select scoping.
-- `push_subscriptions` per-user isolation.
-- `admin_audit_logs` admin-only read.
-- Signed URL access for the `case-documents` bucket per case authorization.
+`tests/rls/case-children.test.ts`
+- `case_events`, `case_signatures`, `case_documents`: visibility scoped to assigned driver / staff; viewer read-only; unassigned drivers + viewers cannot insert; only admin can delete.
+- `driver_locations`: own-row read/write; dispatcher can read all; cannot insert for another user.
+- `push_subscriptions`: per-user isolation; dispatcher can read all; cannot subscribe on someone else's behalf.
+- `admin_audit_logs`: admin-only read; non-admin insert rejected.
+- `case-documents` storage bucket: anon cannot download; signed URL flow works for service-role.
+
