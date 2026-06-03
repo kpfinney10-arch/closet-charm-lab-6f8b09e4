@@ -92,6 +92,7 @@ function DriverQueue() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [signCaseId, setSignCaseId] = useState<string | null>(null);
   const push = usePushSubscription();
+  const advanceFn = useServerFn(driverAdvanceCase);
 
   const profile = useQuery({
     queryKey: ["profile", user?.id],
