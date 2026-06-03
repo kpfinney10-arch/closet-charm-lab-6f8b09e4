@@ -7,10 +7,18 @@ project — never production.
 
 ## One-time setup
 
-1. Create a separate Supabase project for staging (or use an existing
-   non-production one). Apply the same migrations as production.
-2. Create `tests/.env` (already gitignored via the project's `.env*` rules —
-   do not commit it):
+1. Create a separate Supabase project for staging at https://supabase.com/dashboard.
+2. Apply this project's migrations to it:
+   ```bash
+   npx supabase link --project-ref <staging-ref>
+   npx supabase db push
+   ```
+3. Seed shared lookup data (facilities, vehicles):
+   ```bash
+   psql "$STAGING_DB_URL" -f supabase/seed-staging.sql
+   ```
+   (or paste the file into the staging SQL editor). Re-runnable.
+4. Create `tests/.env` (gitignored via `.env*`):
 
    ```bash
    STAGING_SUPABASE_URL=https://YOUR-STAGING-REF.supabase.co
@@ -21,7 +29,8 @@ project — never production.
    The setup file refuses to run if `STAGING_SUPABASE_URL` points at the live
    project ref.
 
-3. Install deps if you haven't: `bun install`.
+5. Install deps if you haven't: `bun install`.
+
 
 ## Run
 
