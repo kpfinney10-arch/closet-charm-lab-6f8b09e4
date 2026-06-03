@@ -27,6 +27,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CaseSignatures } from "@/components/case-signatures";
+import { driverAdvanceCase } from "@/lib/case-actions.functions";
+import { useServerFn } from "@tanstack/react-start";
 import type { Database } from "@/integrations/supabase/types";
 
 type CaseRow = Database["public"]["Tables"]["cases"]["Row"];
