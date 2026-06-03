@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
 import { Check, PenLine, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { SignaturePad, type SignatureCapture } from "@/components/signature-pad";
+import { captureCaseSignature } from "@/lib/case-actions.functions";
 import type { Database } from "@/integrations/supabase/types";
 
 type SignatureType = Database["public"]["Enums"]["signature_type"];
