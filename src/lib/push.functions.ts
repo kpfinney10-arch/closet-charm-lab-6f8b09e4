@@ -1,13 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import webpush from "web-push";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAnyRole } from "@/lib/roles.server";
-
-// VAPID public key (must match the one the browser used to subscribe).
-const VAPID_PUBLIC_KEY =
-  "BBYPr16VnvR7y7qyadXXwFEQSrqwgopcqxjFRiBi7jlVMv4CGSbz5aasiJFEUMk1weNuKY30e4g3yE2akqMPwVg";
+import { sendPushToUserInternal } from "@/lib/push.server";
 
 const Input = z.object({
   userId: z.string().uuid(),
@@ -19,75 +14,12 @@ const Input = z.object({
 });
 
 // Send a Web Push notification to every subscription a user has.
-// Cleans up any subscription that the push service has expired (404/410).
+// Admins/dispatchers only. Expired subscriptions are cleaned up.
 export const sendPushToUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => Input.parse(data))
   .handler(async ({ data, context }) => {
-    // Only admins and dispatchers may send push notifications to other users.
-    // Cached role lookup avoids hitting user_roles on every call.
     await assertAnyRole(context.userId, ["admin", "dispatcher"]);
-
-    const privateKey = process.env.VAPID_PRIVATE_KEY;
-    const subject = process.env.VAPID_SUBJECT;
-    if (!privateKey || !subject) {
-      console.error("VAPID env vars missing");
-      return { sent: 0, removed: 0, error: "Push not configured" };
-    }
-    webpush.setVapidDetails(subject, VAPID_PUBLIC_KEY, privateKey);
-
-    const { data: subs, error } = await supabaseAdmin
-      .from("push_subscriptions")
-      .select("id, endpoint, p256dh, auth")
-      .eq("user_id", data.userId);
-
-    if (error) {
-      console.error("Failed to load subscriptions:", error);
-      return { sent: 0, removed: 0, error: error.message };
-    }
-    if (!subs || subs.length === 0) {
-      return { sent: 0, removed: 0 };
-    }
-
-    const payload = JSON.stringify({
-      title: data.title,
-      body: data.body,
-      url: data.url,
-      tag: data.tag,
-      requireInteraction: data.requireInteraction,
-    });
-
-    let sent = 0;
-    let removed = 0;
-    const expiredIds: string[] = [];
-
-    await Promise.all(
-      subs.map(async (s) => {
-        try {
-          await webpush.sendNotification(
-            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-            payload,
-          );
-          sent++;
-        } catch (e: unknown) {
-          const status = (e as { statusCode?: number })?.statusCode;
-          if (status === 404 || status === 410) {
-            expiredIds.push(s.id);
-          } else {
-            console.error("Push send failed:", e);
-          }
-        }
-      }),
-    );
-
-    if (expiredIds.length > 0) {
-      const { error: delErr } = await supabaseAdmin
-        .from("push_subscriptions")
-        .delete()
-        .in("id", expiredIds);
-      if (delErr) console.error("Failed to clean expired subs:", delErr);
-      else removed = expiredIds.length;
-    }
-
-    return { sent, removed };
+    const { userId, ...payload } = data;
+    return sendPushToUserInternal(userId, payload);
   });

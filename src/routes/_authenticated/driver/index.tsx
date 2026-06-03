@@ -27,6 +27,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CaseSignatures } from "@/components/case-signatures";
+import { driverAdvanceCase } from "@/lib/case-actions.functions";
+import { useServerFn } from "@tanstack/react-start";
 import type { Database } from "@/integrations/supabase/types";
 
 type CaseRow = Database["public"]["Tables"]["cases"]["Row"];
@@ -90,6 +92,7 @@ function DriverQueue() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [signCaseId, setSignCaseId] = useState<string | null>(null);
   const push = usePushSubscription();
+  const advanceFn = useServerFn(driverAdvanceCase);
 
   const profile = useQuery({
     queryKey: ["profile", user?.id],
@@ -151,18 +154,14 @@ function DriverQueue() {
   const advance = useMutation({
     mutationFn: async ({ id, next }: { id: string; next: CaseStatus }) => {
       const pos = await getCurrentPosition();
-      const { error } = await supabase.from("cases").update({ status: next }).eq("id", id);
-      if (error) throw error;
-      // Add a stamped event with GPS (status change itself is logged by trigger)
-      if (pos) {
-        await supabase.from("case_events").insert({
-          case_id: id,
-          event_type: "note_added",
-          notes: `Driver location at ${STATUS_LABEL[next]}`,
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
-      }
+      await advanceFn({
+        data: {
+          caseId: id,
+          next,
+          lat: pos?.coords.latitude ?? null,
+          lng: pos?.coords.longitude ?? null,
+        },
+      });
     },
     onMutate: ({ id }) => setBusyId(id),
     onSettled: () => setBusyId(null),

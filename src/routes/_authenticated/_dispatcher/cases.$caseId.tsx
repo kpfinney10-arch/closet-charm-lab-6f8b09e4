@@ -4,7 +4,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
-import { sendPushToUser } from "@/lib/push.functions";
+import {
+  assignCaseDriver,
+  setCaseVehicle,
+  setCaseStatus,
+  deleteCase as deleteCaseFn,
+  addCaseNote,
+} from "@/lib/case-actions.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -117,7 +123,11 @@ function CaseDetail() {
   const navigate = useNavigate();
   const { hasRole, hasAnyRole } = useAuth();
   const qc = useQueryClient();
-  const sendPush = useServerFn(sendPushToUser);
+  const assignDriverFn = useServerFn(assignCaseDriver);
+  const setVehicleFn = useServerFn(setCaseVehicle);
+  const setStatusFn = useServerFn(setCaseStatus);
+  const deleteCaseSrv = useServerFn(deleteCaseFn);
+  const addNoteFn = useServerFn(addCaseNote);
   const canEdit = hasAnyRole(["admin", "dispatcher"]);
   const isAdmin = hasRole("admin");
 
@@ -238,17 +248,30 @@ function CaseDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
 
-  const updateCase = useMutation({
-    mutationFn: async (patch: Partial<CaseRow>) => {
-      const { error } = await supabase.from("cases").update(patch).eq("id", caseId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["case", caseId] });
-      void qc.invalidateQueries({ queryKey: ["case-events", caseId] });
-      void qc.invalidateQueries({ queryKey: ["cases", "active"] });
-      void qc.invalidateQueries({ queryKey: ["driver-workload", caseId] });
-    },
+  const invalidateCase = () => {
+    void qc.invalidateQueries({ queryKey: ["case", caseId] });
+    void qc.invalidateQueries({ queryKey: ["case-events", caseId] });
+    void qc.invalidateQueries({ queryKey: ["cases", "active"] });
+    void qc.invalidateQueries({ queryKey: ["driver-workload", caseId] });
+  };
+
+  const statusMutation = useMutation({
+    mutationFn: (status: CaseStatus) => setStatusFn({ data: { caseId, status } }),
+    onSuccess: invalidateCase,
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const vehicleMutation = useMutation({
+    mutationFn: (vehicleId: string | null) =>
+      setVehicleFn({ data: { caseId, vehicleId } }),
+    onSuccess: invalidateCase,
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: (vars: { slot: "primary" | "secondary"; driverId: string | null }) =>
+      assignDriverFn({ data: { caseId, slot: vars.slot, driverId: vars.driverId } }),
+    onSuccess: invalidateCase,
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -266,8 +289,8 @@ function CaseDetail() {
     return m;
   }, [driverWorkloadQ.data]);
 
-  // Assignment-aware updater: warns on double-booking, auto-toggles status,
-  // and shows assignment toasts. The DB trigger already logs the event.
+  // Assignment-aware UI: warns on double-booking and offers undo.
+  // Server fn handles the auto-toggle of new <-> assigned and the push send.
   const assignDriver = (
     field: "primary_driver_id" | "secondary_driver_id",
     nextDriverId: string | null,
@@ -275,7 +298,6 @@ function CaseDetail() {
     const c = caseQ.data;
     if (!c) return;
 
-    // Double-booking warning
     if (nextDriverId) {
       const conflicts = conflictsByDriver.get(nextDriverId) ?? [];
       if (conflicts.length > 0) {
@@ -291,78 +313,41 @@ function CaseDetail() {
       }
     }
 
-    // Compute resulting driver state for auto-status
-    const otherField =
-      field === "primary_driver_id" ? "secondary_driver_id" : "primary_driver_id";
-    const otherDriver = c[otherField];
-    const willHaveDriver = !!nextDriverId || !!otherDriver;
-
-    const patch: Partial<CaseRow> = { [field]: nextDriverId };
-    if (willHaveDriver && c.status === "new") {
-      patch.status = "assigned";
-    } else if (!willHaveDriver && c.status === "assigned") {
-      patch.status = "new";
-    }
-
-    // Snapshot for undo — restores driver field AND status if we changed it
+    const slot: "primary" | "secondary" =
+      field === "primary_driver_id" ? "primary" : "secondary";
     const prevDriver = c[field];
-    const prevStatus = c.status;
-    const undoPatch: Partial<CaseRow> = { [field]: prevDriver };
-    if (patch.status && patch.status !== prevStatus) {
-      undoPatch.status = prevStatus;
-    }
-
-    const driverName =
-      nextDriverId
-        ? driversQ.data?.find((d) => d.id === nextDriverId)?.full_name ??
-          "Driver"
-        : null;
+    const driverName = nextDriverId
+      ? driversQ.data?.find((d) => d.id === nextDriverId)?.full_name ?? "Driver"
+      : null;
     const labelPrefix = field === "primary_driver_id" ? "Primary" : "Secondary";
 
-    updateCase.mutate(patch, {
-      onSuccess: () => {
-        const msg = driverName
-          ? `${labelPrefix} driver assigned: ${driverName}`
-          : `${labelPrefix} driver removed`;
-        toast.success(msg, {
-          action: {
-            label: "Undo",
-            onClick: () => {
-              updateCase.mutate(undoPatch, {
-                onSuccess: () => toast.success("Assignment reverted"),
-              });
+    assignMutation.mutate(
+      { slot, driverId: nextDriverId },
+      {
+        onSuccess: () => {
+          toast.success(
+            driverName
+              ? `${labelPrefix} driver assigned: ${driverName}`
+              : `${labelPrefix} driver removed`,
+            {
+              action: {
+                label: "Undo",
+                onClick: () => {
+                  assignMutation.mutate(
+                    { slot, driverId: prevDriver },
+                    { onSuccess: () => toast.success("Assignment reverted") },
+                  );
+                },
+              },
             },
-          },
-        });
-
-        // Fire-and-forget push notification to the newly assigned driver.
-        // PII minimization: do NOT include decedent name or street address in
-        // the push payload — it lands on lock screens and notification history.
-        // City/state only is enough operational context; full details live
-        // behind auth in the driver app.
-        if (nextDriverId) {
-          const region =
-            [c.pickup_city, c.pickup_state].filter(Boolean).join(", ") || "Pickup TBD";
-          void sendPush({
-            data: {
-              userId: nextDriverId,
-              title: `New run assigned — ${c.case_number}`,
-              body: `Pickup: ${region}. Open the driver app for details.`,
-              url: "/driver",
-              tag: `case-${c.id}`,
-              requireInteraction: true,
-            },
-          }).catch((e: Error) => console.error("Push send failed:", e));
-        }
+          );
+        },
       },
-    });
+    );
   };
 
-  const deleteCase = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("cases").delete().eq("id", caseId);
-      if (error) throw error;
-    },
+  const deleteCaseMut = useMutation({
+    mutationFn: () => deleteCaseSrv({ data: { caseId } }),
     onSuccess: () => {
       toast.success("Case deleted");
       navigate({ to: "/dashboard" });
@@ -372,14 +357,7 @@ function CaseDetail() {
 
   const [note, setNote] = useState("");
   const addNote = useMutation({
-    mutationFn: async (text: string) => {
-      const { error } = await supabase.from("case_events").insert({
-        case_id: caseId,
-        event_type: "note_added",
-        notes: text,
-      });
-      if (error) throw error;
-    },
+    mutationFn: (text: string) => addNoteFn({ data: { caseId, text } }),
     onSuccess: () => {
       setNote("");
       toast.success("Note added");
@@ -387,6 +365,7 @@ function CaseDetail() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const driverNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -451,7 +430,7 @@ function CaseDetail() {
             </Button>
             <Select
               value={c.status}
-              onValueChange={(v) => updateCase.mutate({ status: v as CaseStatus })}
+              onValueChange={(v) => statusMutation.mutate(v as CaseStatus)}
             >
               <SelectTrigger className="w-[200px]">
                 <SelectValue />
@@ -481,7 +460,7 @@ function CaseDetail() {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => deleteCase.mutate()}
+                      onClick={() => deleteCaseMut.mutate()}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       Delete
@@ -632,7 +611,7 @@ function CaseDetail() {
                     <Select
                       value={c.vehicle_id ?? NONE}
                       onValueChange={(v) =>
-                        updateCase.mutate({ vehicle_id: v === NONE ? null : v })
+                        vehicleMutation.mutate(v === NONE ? null : v)
                       }
                     >
                       <SelectTrigger>
