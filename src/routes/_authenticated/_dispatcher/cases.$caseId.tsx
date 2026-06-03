@@ -611,7 +611,7 @@ function CaseDetail() {
                     <Select
                       value={c.vehicle_id ?? NONE}
                       onValueChange={(v) =>
-                        updateCase.mutate({ vehicle_id: v === NONE ? null : v })
+                        vehicleMutation.mutate(v === NONE ? null : v)
                       }
                     >
                       <SelectTrigger>
