@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
+import { invalidateUserRoles } from "@/lib/roles.server";
 
 type AppRole = "admin" | "dispatcher" | "driver" | "viewer";
 type AuditAction =
@@ -243,6 +244,7 @@ export const setAdminUserRole = createServerFn({ method: "POST" })
         to: data.role,
       },
     });
+    invalidateUserRoles(data.user_id);
     return { ok: true };
   });
 
@@ -276,6 +278,8 @@ const auditQuerySchema = z.object({
       "user_deleted",
       "role_changed",
       "password_reset",
+      "user_approved",
+      "user_unapproved",
     ])
     .optional()
     .nullable(),

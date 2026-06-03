@@ -14,7 +14,6 @@ import {
   Inbox,
   Navigation,
   Check,
-  X,
   Bell,
   BellOff,
   PenLine,
@@ -169,20 +168,6 @@ function DriverQueue() {
     onSettled: () => setBusyId(null),
     onSuccess: () => {
       toast.success("Status updated");
-      void cases.refetch();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const cancel = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("cases").update({ status: "cancelled" }).eq("id", id);
-      if (error) throw error;
-    },
-    onMutate: (id) => setBusyId(id),
-    onSettled: () => setBusyId(null),
-    onSuccess: () => {
-      toast.success("Run cancelled");
       void cases.refetch();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -358,18 +343,6 @@ function DriverQueue() {
                       >
                         <PenLine className="h-4 w-4" />
                         Signatures
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        disabled={isBusy}
-                        onClick={() => {
-                          if (confirm("Cancel this run?")) cancel.mutate(c.id);
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                        Cancel
                       </Button>
                     </div>
                   </CardContent>
