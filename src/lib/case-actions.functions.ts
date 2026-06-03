@@ -94,7 +94,9 @@ export const assignCaseDriver = createServerFn({ method: "POST" })
     const otherDriver = current[otherField];
     const willHaveDriver = !!data.driverId || !!otherDriver;
 
-    const patch: Record<string, unknown> = { [field]: data.driverId };
+    const patch: Database["public"]["Tables"]["cases"]["Update"] = {
+      [field]: data.driverId,
+    };
     if (willHaveDriver && current.status === "new") {
       patch.status = "assigned";
     } else if (!willHaveDriver && current.status === "assigned") {
