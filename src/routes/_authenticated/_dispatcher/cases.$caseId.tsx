@@ -430,7 +430,7 @@ function CaseDetail() {
             </Button>
             <Select
               value={c.status}
-              onValueChange={(v) => updateCase.mutate({ status: v as CaseStatus })}
+              onValueChange={(v) => statusMutation.mutate(v as CaseStatus)}
             >
               <SelectTrigger className="w-[200px]">
                 <SelectValue />
