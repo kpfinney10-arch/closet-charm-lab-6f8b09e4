@@ -88,10 +88,10 @@ type Props = {
 };
 
 export function CaseSignatures({ caseId, driverDefaultName, readOnly }: Props) {
-  const { user } = useAuth();
   const qc = useQueryClient();
   const sigs = useCaseSignatures(caseId);
   const [active, setActive] = useState<SignatureType | null>(null);
+  const captureSignature = useServerFn(captureCaseSignature);
 
   const byType = new Map<SignatureType, SignatureRow>();
   for (const s of sigs.data ?? []) byType.set(s.signature_type, s);
@@ -99,24 +99,16 @@ export function CaseSignatures({ caseId, driverDefaultName, readOnly }: Props) {
   const save = useMutation({
     mutationFn: async (args: { type: SignatureType; capture: SignatureCapture }) => {
       const pos = await getCurrentPosition();
-      const { error } = await supabase.from("case_signatures").insert({
-        case_id: caseId,
-        signature_type: args.type,
-        signer_name: args.capture.signer_name,
-        signer_title: args.capture.signer_title,
-        signature_data: args.capture.signature_data,
-        captured_by: user?.id ?? null,
-        lat: pos?.coords.latitude ?? null,
-        lng: pos?.coords.longitude ?? null,
-      });
-      if (error) throw error;
-      // Best-effort event log (RLS allows assigned drivers/staff to insert)
-      await supabase.from("case_events").insert({
-        case_id: caseId,
-        event_type: "signature_captured",
-        notes: `Signature captured: ${args.capture.signer_name}`,
-        lat: pos?.coords.latitude ?? null,
-        lng: pos?.coords.longitude ?? null,
+      await captureSignature({
+        data: {
+          caseId,
+          signature_type: args.type,
+          signer_name: args.capture.signer_name,
+          signer_title: args.capture.signer_title,
+          signature_data: args.capture.signature_data,
+          lat: pos?.coords.latitude ?? null,
+          lng: pos?.coords.longitude ?? null,
+        },
       });
     },
     onSuccess: () => {
@@ -127,6 +119,7 @@ export function CaseSignatures({ caseId, driverDefaultName, readOnly }: Props) {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   if (sigs.isLoading) {
     return (
