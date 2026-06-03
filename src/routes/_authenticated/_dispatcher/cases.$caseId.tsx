@@ -336,17 +336,18 @@ function CaseDetail() {
         });
 
         // Fire-and-forget push notification to the newly assigned driver.
+        // PII minimization: do NOT include decedent name or street address in
+        // the push payload — it lands on lock screens and notification history.
+        // City/state only is enough operational context; full details live
+        // behind auth in the driver app.
         if (nextDriverId) {
-          const decedent =
-            [c.decedent_first_name, c.decedent_last_name].filter(Boolean).join(" ") ||
-            "Unnamed decedent";
-          const pickup =
-            [c.pickup_address, c.pickup_city].filter(Boolean).join(", ") || "Pickup TBD";
+          const region =
+            [c.pickup_city, c.pickup_state].filter(Boolean).join(", ") || "Pickup TBD";
           void sendPush({
             data: {
               userId: nextDriverId,
               title: `New run assigned — ${c.case_number}`,
-              body: `${decedent} • ${pickup}`,
+              body: `Pickup: ${region}. Open the driver app for details.`,
               url: "/driver",
               tag: `case-${c.id}`,
               requireInteraction: true,
