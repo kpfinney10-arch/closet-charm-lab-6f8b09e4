@@ -123,7 +123,11 @@ function CaseDetail() {
   const navigate = useNavigate();
   const { hasRole, hasAnyRole } = useAuth();
   const qc = useQueryClient();
-  const sendPush = useServerFn(sendPushToUser);
+  const assignDriverFn = useServerFn(assignCaseDriver);
+  const setVehicleFn = useServerFn(setCaseVehicle);
+  const setStatusFn = useServerFn(setCaseStatus);
+  const deleteCaseSrv = useServerFn(deleteCaseFn);
+  const addNoteFn = useServerFn(addCaseNote);
   const canEdit = hasAnyRole(["admin", "dispatcher"]);
   const isAdmin = hasRole("admin");
 
