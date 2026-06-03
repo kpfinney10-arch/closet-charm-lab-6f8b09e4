@@ -460,7 +460,7 @@ function CaseDetail() {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => deleteCase.mutate()}
+                      onClick={() => deleteCaseMut.mutate()}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       Delete
