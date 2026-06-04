@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   ScrollText,
   Map as MapIcon,
+  Flame,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -132,6 +133,12 @@ export function DispatcherShell({ children }: { children?: ReactNode }) {
                 <DropdownMenuItem onClick={() => navigate({ to: "/driver" })}>
                   <Truck className="mr-2 h-4 w-4" />
                   Switch to driver view
+                </DropdownMenuItem>
+              ) : null}
+              {hasRole("admin") ? (
+                <DropdownMenuItem onClick={() => navigate({ to: "/crm/dashboard" })}>
+                  <Flame className="mr-2 h-4 w-4" />
+                  Switch to CRM
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
