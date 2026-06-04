@@ -1,0 +1,13 @@
+{
+  "name": "CareOne Mortuary Suite",
+  "short_name": "CareOne",
+  "description": "Funeral home dispatch and CRM",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#0f172a",
+  "background_color": "#ffffff",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }
+  ]
+}
