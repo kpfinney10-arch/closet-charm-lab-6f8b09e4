@@ -75,7 +75,7 @@ export const sendCaseToCrm = createServerFn({ method: "POST" })
         date_of_death: c.decedent_dod ? c.decedent_dod.slice(0, 10) : null,
         sex: c.decedent_sex,
         weight_lbs: c.decedent_weight_lbs,
-        status: "intake",
+        status: "checked_in",
         dispatch_case_id: data.caseId,
         notes: notesParts.join("\n"),
       })
