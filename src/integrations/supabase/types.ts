@@ -324,6 +324,138 @@ export type Database = {
           },
         ]
       }
+      cremation_logs: {
+        Row: {
+          comment: string | null
+          container_type: string | null
+          created_at: string
+          decedent_id: string
+          end_time: string | null
+          id: string
+          operator_id: string | null
+          organization_id: string
+          start_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          container_type?: string | null
+          created_at?: string
+          decedent_id: string
+          end_time?: string | null
+          id?: string
+          operator_id?: string | null
+          organization_id: string
+          start_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          container_type?: string | null
+          created_at?: string
+          decedent_id?: string
+          end_time?: string | null
+          id?: string
+          operator_id?: string | null
+          organization_id?: string
+          start_time?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cremation_logs_decedent_id_fkey"
+            columns: ["decedent_id"]
+            isOneToOne: false
+            referencedRelation: "decedents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cremation_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decedents: {
+        Row: {
+          check_in_at: string | null
+          check_out_at: string | null
+          created_at: string
+          date_of_birth: string | null
+          date_of_death: string | null
+          dispatch_case_id: string | null
+          first_name: string
+          funeral_home_id: string | null
+          id: string
+          last_name: string
+          location: string | null
+          notes: string | null
+          organization_id: string
+          rack: string | null
+          sex: string | null
+          status: Database["public"]["Enums"]["decedent_status"]
+          updated_at: string
+          weight_lbs: number | null
+        }
+        Insert: {
+          check_in_at?: string | null
+          check_out_at?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          date_of_death?: string | null
+          dispatch_case_id?: string | null
+          first_name: string
+          funeral_home_id?: string | null
+          id?: string
+          last_name: string
+          location?: string | null
+          notes?: string | null
+          organization_id: string
+          rack?: string | null
+          sex?: string | null
+          status?: Database["public"]["Enums"]["decedent_status"]
+          updated_at?: string
+          weight_lbs?: number | null
+        }
+        Update: {
+          check_in_at?: string | null
+          check_out_at?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          date_of_death?: string | null
+          dispatch_case_id?: string | null
+          first_name?: string
+          funeral_home_id?: string | null
+          id?: string
+          last_name?: string
+          location?: string | null
+          notes?: string | null
+          organization_id?: string
+          rack?: string | null
+          sex?: string | null
+          status?: Database["public"]["Enums"]["decedent_status"]
+          updated_at?: string
+          weight_lbs?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decedents_funeral_home_id_fkey"
+            columns: ["funeral_home_id"]
+            isOneToOne: false
+            referencedRelation: "funeral_homes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decedents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_locations: {
         Row: {
           accuracy: number | null
@@ -405,6 +537,118 @@ export type Database = {
           type?: Database["public"]["Enums"]["facility_type"]
           updated_at?: string
           zip?: string | null
+        }
+        Relationships: []
+      }
+      funeral_homes: {
+        Row: {
+          active: boolean
+          address: string | null
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funeral_homes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_members: {
+        Row: {
+          approved: boolean
+          created_at: string
+          crm_role: Database["public"]["Enums"]["crm_role"]
+          id: string
+          organization_id: string
+          user_id: string
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          crm_role?: Database["public"]["Enums"]["crm_role"]
+          id?: string
+          organization_id: string
+          user_id: string
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          crm_role?: Database["public"]["Enums"]["crm_role"]
+          id?: string
+          organization_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+          timezone?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -566,6 +810,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_crm_role: {
+        Args: {
+          _org_id: string
+          _role: Database["public"]["Enums"]["crm_role"]
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -577,6 +828,7 @@ export type Database = {
         Args: { _case_id: string; _user_id: string }
         Returns: boolean
       }
+      is_org_member: { Args: { _org_id: string }; Returns: boolean }
     }
     Enums: {
       admin_audit_action:
@@ -608,6 +860,13 @@ export type Database = {
         | "delivered"
         | "closed"
         | "cancelled"
+      crm_role: "crm_admin" | "crm_user" | "crm_viewer"
+      decedent_status:
+        | "checked_in"
+        | "prepped"
+        | "cremated"
+        | "released"
+        | "checked_out"
       document_type:
         | "release_form"
         | "body_tag"
@@ -787,6 +1046,14 @@ export const Constants = {
         "delivered",
         "closed",
         "cancelled",
+      ],
+      crm_role: ["crm_admin", "crm_user", "crm_viewer"],
+      decedent_status: [
+        "checked_in",
+        "prepped",
+        "cremated",
+        "released",
+        "checked_out",
       ],
       document_type: [
         "release_form",
