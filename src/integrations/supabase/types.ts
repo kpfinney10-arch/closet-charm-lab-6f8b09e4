@@ -378,6 +378,57 @@ export type Database = {
           },
         ]
       }
+      decedent_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          decedent_id: string
+          event_type: Database["public"]["Enums"]["decedent_event_type"]
+          from_status: Database["public"]["Enums"]["decedent_status"] | null
+          id: string
+          message: string | null
+          organization_id: string
+          to_status: Database["public"]["Enums"]["decedent_status"] | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          decedent_id: string
+          event_type: Database["public"]["Enums"]["decedent_event_type"]
+          from_status?: Database["public"]["Enums"]["decedent_status"] | null
+          id?: string
+          message?: string | null
+          organization_id: string
+          to_status?: Database["public"]["Enums"]["decedent_status"] | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          decedent_id?: string
+          event_type?: Database["public"]["Enums"]["decedent_event_type"]
+          from_status?: Database["public"]["Enums"]["decedent_status"] | null
+          id?: string
+          message?: string | null
+          organization_id?: string
+          to_status?: Database["public"]["Enums"]["decedent_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decedent_events_decedent_id_fkey"
+            columns: ["decedent_id"]
+            isOneToOne: false
+            referencedRelation: "decedents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decedent_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decedents: {
         Row: {
           check_in_at: string | null
@@ -861,6 +912,12 @@ export type Database = {
         | "closed"
         | "cancelled"
       crm_role: "crm_admin" | "crm_user" | "crm_viewer"
+      decedent_event_type:
+        | "created"
+        | "status_changed"
+        | "note"
+        | "document"
+        | "workflow"
       decedent_status:
         | "checked_in"
         | "prepped"
@@ -1048,6 +1105,13 @@ export const Constants = {
         "cancelled",
       ],
       crm_role: ["crm_admin", "crm_user", "crm_viewer"],
+      decedent_event_type: [
+        "created",
+        "status_changed",
+        "note",
+        "document",
+        "workflow",
+      ],
       decedent_status: [
         "checked_in",
         "prepped",
