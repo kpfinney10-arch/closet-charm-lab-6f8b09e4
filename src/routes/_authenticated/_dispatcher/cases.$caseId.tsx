@@ -131,8 +131,48 @@ function CaseDetail() {
   const setStatusFn = useServerFn(setCaseStatus);
   const deleteCaseSrv = useServerFn(deleteCaseFn);
   const addNoteFn = useServerFn(addCaseNote);
+  const sendToCrmFn = useServerFn(sendCaseToCrm);
+  const fetchCrmMemberships = useServerFn(getMyCrmMemberships);
   const canEdit = hasAnyRole(["admin", "dispatcher"]);
   const isAdmin = hasRole("admin");
+
+  const crmMembershipsQ = useQuery({
+    queryKey: ["crm", "memberships"],
+    enabled: isAdmin,
+    queryFn: () => fetchCrmMemberships({}),
+    staleTime: 60_000,
+  });
+  const writableOrgs = (crmMembershipsQ.data ?? []).filter(
+    (m) => m.approved && (m.crm_role === "crm_admin" || m.crm_role === "crm_user"),
+  );
+  const [crmDialogOpen, setCrmDialogOpen] = useState(false);
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+
+  const sendToCrmMut = useMutation({
+    mutationFn: (organizationId: string) =>
+      sendToCrmFn({ data: { caseId, organizationId } }),
+    onSuccess: (res) => {
+      setCrmDialogOpen(false);
+      toast.success(
+        res.created ? "Sent to CRM as a new decedent record" : "Already in CRM — opened existing record",
+      );
+      void navigate({ to: "/crm/decedents" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const onSendToCrmClick = () => {
+    if (writableOrgs.length === 0) {
+      toast.error("You don't have CRM write access to any organization");
+      return;
+    }
+    if (writableOrgs.length === 1) {
+      sendToCrmMut.mutate(writableOrgs[0].organization_id);
+      return;
+    }
+    setSelectedOrgId(writableOrgs[0].organization_id);
+    setCrmDialogOpen(true);
+  };
 
   const caseQ = useQuery({
     queryKey: ["case", caseId],
