@@ -11,6 +11,8 @@ import {
   deleteCase as deleteCaseFn,
   addCaseNote,
 } from "@/lib/case-actions.functions";
+import { sendCaseToCrm } from "@/lib/crm-handoff.functions";
+import { getMyCrmMemberships } from "@/lib/crm-context.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +49,7 @@ import {
   AlertTriangle,
   Printer,
   PenLine,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CaseSignatures } from "@/components/case-signatures";
