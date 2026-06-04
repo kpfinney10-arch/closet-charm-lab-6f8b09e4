@@ -17,6 +17,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDriverRouteImport } from './routes/_authenticated/driver'
 import { Route as AuthenticatedDispatcherRouteImport } from './routes/_authenticated/_dispatcher'
+import { Route as AuthenticatedCrmRouteImport } from './routes/_authenticated/_crm'
 import { Route as AuthenticatedDriverIndexRouteImport } from './routes/_authenticated/driver/index'
 import { Route as AuthenticatedDispatcherVehiclesRouteImport } from './routes/_authenticated/_dispatcher/vehicles'
 import { Route as AuthenticatedDispatcherUsersRouteImport } from './routes/_authenticated/_dispatcher/users'
@@ -28,9 +29,17 @@ import { Route as AuthenticatedDispatcherDriversRouteImport } from './routes/_au
 import { Route as AuthenticatedDispatcherDashboardRouteImport } from './routes/_authenticated/_dispatcher/dashboard'
 import { Route as AuthenticatedDispatcherAuditLogRouteImport } from './routes/_authenticated/_dispatcher/audit-log'
 import { Route as AuthenticatedDispatcherCasesIndexRouteImport } from './routes/_authenticated/_dispatcher/cases.index'
+import { Route as AuthenticatedCrmCrmIndexRouteImport } from './routes/_authenticated/_crm/crm.index'
 import { Route as AuthenticatedCasesCaseIdPrintRouteImport } from './routes/_authenticated/cases.$caseId.print'
 import { Route as AuthenticatedDispatcherCasesNewRouteImport } from './routes/_authenticated/_dispatcher/cases.new'
 import { Route as AuthenticatedDispatcherCasesCaseIdRouteImport } from './routes/_authenticated/_dispatcher/cases.$caseId'
+import { Route as AuthenticatedCrmCrmUsersRouteImport } from './routes/_authenticated/_crm/crm.users'
+import { Route as AuthenticatedCrmCrmUpdatesRouteImport } from './routes/_authenticated/_crm/crm.updates'
+import { Route as AuthenticatedCrmCrmReportsRouteImport } from './routes/_authenticated/_crm/crm.reports'
+import { Route as AuthenticatedCrmCrmFuneralHomesRouteImport } from './routes/_authenticated/_crm/crm.funeral-homes'
+import { Route as AuthenticatedCrmCrmDecedentsRouteImport } from './routes/_authenticated/_crm/crm.decedents'
+import { Route as AuthenticatedCrmCrmDashboardRouteImport } from './routes/_authenticated/_crm/crm.dashboard'
+import { Route as AuthenticatedCrmCrmCremationLogsRouteImport } from './routes/_authenticated/_crm/crm.cremation-logs'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -68,6 +77,10 @@ const AuthenticatedDriverRoute = AuthenticatedDriverRouteImport.update({
 } as any)
 const AuthenticatedDispatcherRoute = AuthenticatedDispatcherRouteImport.update({
   id: '/_dispatcher',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCrmRoute = AuthenticatedCrmRouteImport.update({
+  id: '/_crm',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedDriverIndexRoute =
@@ -136,6 +149,12 @@ const AuthenticatedDispatcherCasesIndexRoute =
     path: '/cases/',
     getParentRoute: () => AuthenticatedDispatcherRoute,
   } as any)
+const AuthenticatedCrmCrmIndexRoute =
+  AuthenticatedCrmCrmIndexRouteImport.update({
+    id: '/crm/',
+    path: '/crm/',
+    getParentRoute: () => AuthenticatedCrmRoute,
+  } as any)
 const AuthenticatedCasesCaseIdPrintRoute =
   AuthenticatedCasesCaseIdPrintRouteImport.update({
     id: '/cases/$caseId/print',
@@ -153,6 +172,48 @@ const AuthenticatedDispatcherCasesCaseIdRoute =
     id: '/cases/$caseId',
     path: '/cases/$caseId',
     getParentRoute: () => AuthenticatedDispatcherRoute,
+  } as any)
+const AuthenticatedCrmCrmUsersRoute =
+  AuthenticatedCrmCrmUsersRouteImport.update({
+    id: '/crm/users',
+    path: '/crm/users',
+    getParentRoute: () => AuthenticatedCrmRoute,
+  } as any)
+const AuthenticatedCrmCrmUpdatesRoute =
+  AuthenticatedCrmCrmUpdatesRouteImport.update({
+    id: '/crm/updates',
+    path: '/crm/updates',
+    getParentRoute: () => AuthenticatedCrmRoute,
+  } as any)
+const AuthenticatedCrmCrmReportsRoute =
+  AuthenticatedCrmCrmReportsRouteImport.update({
+    id: '/crm/reports',
+    path: '/crm/reports',
+    getParentRoute: () => AuthenticatedCrmRoute,
+  } as any)
+const AuthenticatedCrmCrmFuneralHomesRoute =
+  AuthenticatedCrmCrmFuneralHomesRouteImport.update({
+    id: '/crm/funeral-homes',
+    path: '/crm/funeral-homes',
+    getParentRoute: () => AuthenticatedCrmRoute,
+  } as any)
+const AuthenticatedCrmCrmDecedentsRoute =
+  AuthenticatedCrmCrmDecedentsRouteImport.update({
+    id: '/crm/decedents',
+    path: '/crm/decedents',
+    getParentRoute: () => AuthenticatedCrmRoute,
+  } as any)
+const AuthenticatedCrmCrmDashboardRoute =
+  AuthenticatedCrmCrmDashboardRouteImport.update({
+    id: '/crm/dashboard',
+    path: '/crm/dashboard',
+    getParentRoute: () => AuthenticatedCrmRoute,
+  } as any)
+const AuthenticatedCrmCrmCremationLogsRoute =
+  AuthenticatedCrmCrmCremationLogsRouteImport.update({
+    id: '/crm/cremation-logs',
+    path: '/crm/cremation-logs',
+    getParentRoute: () => AuthenticatedCrmRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -172,9 +233,17 @@ export interface FileRoutesByFullPath {
   '/users': typeof AuthenticatedDispatcherUsersRoute
   '/vehicles': typeof AuthenticatedDispatcherVehiclesRoute
   '/driver/': typeof AuthenticatedDriverIndexRoute
+  '/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRoute
+  '/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
+  '/crm/decedents': typeof AuthenticatedCrmCrmDecedentsRoute
+  '/crm/funeral-homes': typeof AuthenticatedCrmCrmFuneralHomesRoute
+  '/crm/reports': typeof AuthenticatedCrmCrmReportsRoute
+  '/crm/updates': typeof AuthenticatedCrmCrmUpdatesRoute
+  '/crm/users': typeof AuthenticatedCrmCrmUsersRoute
   '/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
   '/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
+  '/crm/': typeof AuthenticatedCrmCrmIndexRoute
   '/cases/': typeof AuthenticatedDispatcherCasesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -193,9 +262,17 @@ export interface FileRoutesByTo {
   '/users': typeof AuthenticatedDispatcherUsersRoute
   '/vehicles': typeof AuthenticatedDispatcherVehiclesRoute
   '/driver': typeof AuthenticatedDriverIndexRoute
+  '/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRoute
+  '/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
+  '/crm/decedents': typeof AuthenticatedCrmCrmDecedentsRoute
+  '/crm/funeral-homes': typeof AuthenticatedCrmCrmFuneralHomesRoute
+  '/crm/reports': typeof AuthenticatedCrmCrmReportsRoute
+  '/crm/updates': typeof AuthenticatedCrmCrmUpdatesRoute
+  '/crm/users': typeof AuthenticatedCrmCrmUsersRoute
   '/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
   '/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
+  '/crm': typeof AuthenticatedCrmCrmIndexRoute
   '/cases': typeof AuthenticatedDispatcherCasesIndexRoute
 }
 export interface FileRoutesById {
@@ -206,6 +283,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/pending-approval': typeof PendingApprovalRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/_crm': typeof AuthenticatedCrmRouteWithChildren
   '/_authenticated/_dispatcher': typeof AuthenticatedDispatcherRouteWithChildren
   '/_authenticated/driver': typeof AuthenticatedDriverRouteWithChildren
   '/_authenticated/_dispatcher/audit-log': typeof AuthenticatedDispatcherAuditLogRoute
@@ -218,9 +296,17 @@ export interface FileRoutesById {
   '/_authenticated/_dispatcher/users': typeof AuthenticatedDispatcherUsersRoute
   '/_authenticated/_dispatcher/vehicles': typeof AuthenticatedDispatcherVehiclesRoute
   '/_authenticated/driver/': typeof AuthenticatedDriverIndexRoute
+  '/_authenticated/_crm/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRoute
+  '/_authenticated/_crm/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
+  '/_authenticated/_crm/crm/decedents': typeof AuthenticatedCrmCrmDecedentsRoute
+  '/_authenticated/_crm/crm/funeral-homes': typeof AuthenticatedCrmCrmFuneralHomesRoute
+  '/_authenticated/_crm/crm/reports': typeof AuthenticatedCrmCrmReportsRoute
+  '/_authenticated/_crm/crm/updates': typeof AuthenticatedCrmCrmUpdatesRoute
+  '/_authenticated/_crm/crm/users': typeof AuthenticatedCrmCrmUsersRoute
   '/_authenticated/_dispatcher/cases/$caseId': typeof AuthenticatedDispatcherCasesCaseIdRoute
   '/_authenticated/_dispatcher/cases/new': typeof AuthenticatedDispatcherCasesNewRoute
   '/_authenticated/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
+  '/_authenticated/_crm/crm/': typeof AuthenticatedCrmCrmIndexRoute
   '/_authenticated/_dispatcher/cases/': typeof AuthenticatedDispatcherCasesIndexRoute
 }
 export interface FileRouteTypes {
@@ -242,9 +328,17 @@ export interface FileRouteTypes {
     | '/users'
     | '/vehicles'
     | '/driver/'
+    | '/crm/cremation-logs'
+    | '/crm/dashboard'
+    | '/crm/decedents'
+    | '/crm/funeral-homes'
+    | '/crm/reports'
+    | '/crm/updates'
+    | '/crm/users'
     | '/cases/$caseId'
     | '/cases/new'
     | '/cases/$caseId/print'
+    | '/crm/'
     | '/cases/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -263,9 +357,17 @@ export interface FileRouteTypes {
     | '/users'
     | '/vehicles'
     | '/driver'
+    | '/crm/cremation-logs'
+    | '/crm/dashboard'
+    | '/crm/decedents'
+    | '/crm/funeral-homes'
+    | '/crm/reports'
+    | '/crm/updates'
+    | '/crm/users'
     | '/cases/$caseId'
     | '/cases/new'
     | '/cases/$caseId/print'
+    | '/crm'
     | '/cases'
   id:
     | '__root__'
@@ -275,6 +377,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/pending-approval'
     | '/reset-password'
+    | '/_authenticated/_crm'
     | '/_authenticated/_dispatcher'
     | '/_authenticated/driver'
     | '/_authenticated/_dispatcher/audit-log'
@@ -287,9 +390,17 @@ export interface FileRouteTypes {
     | '/_authenticated/_dispatcher/users'
     | '/_authenticated/_dispatcher/vehicles'
     | '/_authenticated/driver/'
+    | '/_authenticated/_crm/crm/cremation-logs'
+    | '/_authenticated/_crm/crm/dashboard'
+    | '/_authenticated/_crm/crm/decedents'
+    | '/_authenticated/_crm/crm/funeral-homes'
+    | '/_authenticated/_crm/crm/reports'
+    | '/_authenticated/_crm/crm/updates'
+    | '/_authenticated/_crm/crm/users'
     | '/_authenticated/_dispatcher/cases/$caseId'
     | '/_authenticated/_dispatcher/cases/new'
     | '/_authenticated/cases/$caseId/print'
+    | '/_authenticated/_crm/crm/'
     | '/_authenticated/_dispatcher/cases/'
   fileRoutesById: FileRoutesById
 }
@@ -358,6 +469,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedDispatcherRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/_crm': {
+      id: '/_authenticated/_crm'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedCrmRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/driver/': {
@@ -437,6 +555,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDispatcherCasesIndexRouteImport
       parentRoute: typeof AuthenticatedDispatcherRoute
     }
+    '/_authenticated/_crm/crm/': {
+      id: '/_authenticated/_crm/crm/'
+      path: '/crm'
+      fullPath: '/crm/'
+      preLoaderRoute: typeof AuthenticatedCrmCrmIndexRouteImport
+      parentRoute: typeof AuthenticatedCrmRoute
+    }
     '/_authenticated/cases/$caseId/print': {
       id: '/_authenticated/cases/$caseId/print'
       path: '/cases/$caseId/print'
@@ -458,8 +583,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDispatcherCasesCaseIdRouteImport
       parentRoute: typeof AuthenticatedDispatcherRoute
     }
+    '/_authenticated/_crm/crm/users': {
+      id: '/_authenticated/_crm/crm/users'
+      path: '/crm/users'
+      fullPath: '/crm/users'
+      preLoaderRoute: typeof AuthenticatedCrmCrmUsersRouteImport
+      parentRoute: typeof AuthenticatedCrmRoute
+    }
+    '/_authenticated/_crm/crm/updates': {
+      id: '/_authenticated/_crm/crm/updates'
+      path: '/crm/updates'
+      fullPath: '/crm/updates'
+      preLoaderRoute: typeof AuthenticatedCrmCrmUpdatesRouteImport
+      parentRoute: typeof AuthenticatedCrmRoute
+    }
+    '/_authenticated/_crm/crm/reports': {
+      id: '/_authenticated/_crm/crm/reports'
+      path: '/crm/reports'
+      fullPath: '/crm/reports'
+      preLoaderRoute: typeof AuthenticatedCrmCrmReportsRouteImport
+      parentRoute: typeof AuthenticatedCrmRoute
+    }
+    '/_authenticated/_crm/crm/funeral-homes': {
+      id: '/_authenticated/_crm/crm/funeral-homes'
+      path: '/crm/funeral-homes'
+      fullPath: '/crm/funeral-homes'
+      preLoaderRoute: typeof AuthenticatedCrmCrmFuneralHomesRouteImport
+      parentRoute: typeof AuthenticatedCrmRoute
+    }
+    '/_authenticated/_crm/crm/decedents': {
+      id: '/_authenticated/_crm/crm/decedents'
+      path: '/crm/decedents'
+      fullPath: '/crm/decedents'
+      preLoaderRoute: typeof AuthenticatedCrmCrmDecedentsRouteImport
+      parentRoute: typeof AuthenticatedCrmRoute
+    }
+    '/_authenticated/_crm/crm/dashboard': {
+      id: '/_authenticated/_crm/crm/dashboard'
+      path: '/crm/dashboard'
+      fullPath: '/crm/dashboard'
+      preLoaderRoute: typeof AuthenticatedCrmCrmDashboardRouteImport
+      parentRoute: typeof AuthenticatedCrmRoute
+    }
+    '/_authenticated/_crm/crm/cremation-logs': {
+      id: '/_authenticated/_crm/crm/cremation-logs'
+      path: '/crm/cremation-logs'
+      fullPath: '/crm/cremation-logs'
+      preLoaderRoute: typeof AuthenticatedCrmCrmCremationLogsRouteImport
+      parentRoute: typeof AuthenticatedCrmRoute
+    }
   }
 }
+
+interface AuthenticatedCrmRouteChildren {
+  AuthenticatedCrmCrmCremationLogsRoute: typeof AuthenticatedCrmCrmCremationLogsRoute
+  AuthenticatedCrmCrmDashboardRoute: typeof AuthenticatedCrmCrmDashboardRoute
+  AuthenticatedCrmCrmDecedentsRoute: typeof AuthenticatedCrmCrmDecedentsRoute
+  AuthenticatedCrmCrmFuneralHomesRoute: typeof AuthenticatedCrmCrmFuneralHomesRoute
+  AuthenticatedCrmCrmReportsRoute: typeof AuthenticatedCrmCrmReportsRoute
+  AuthenticatedCrmCrmUpdatesRoute: typeof AuthenticatedCrmCrmUpdatesRoute
+  AuthenticatedCrmCrmUsersRoute: typeof AuthenticatedCrmCrmUsersRoute
+  AuthenticatedCrmCrmIndexRoute: typeof AuthenticatedCrmCrmIndexRoute
+}
+
+const AuthenticatedCrmRouteChildren: AuthenticatedCrmRouteChildren = {
+  AuthenticatedCrmCrmCremationLogsRoute: AuthenticatedCrmCrmCremationLogsRoute,
+  AuthenticatedCrmCrmDashboardRoute: AuthenticatedCrmCrmDashboardRoute,
+  AuthenticatedCrmCrmDecedentsRoute: AuthenticatedCrmCrmDecedentsRoute,
+  AuthenticatedCrmCrmFuneralHomesRoute: AuthenticatedCrmCrmFuneralHomesRoute,
+  AuthenticatedCrmCrmReportsRoute: AuthenticatedCrmCrmReportsRoute,
+  AuthenticatedCrmCrmUpdatesRoute: AuthenticatedCrmCrmUpdatesRoute,
+  AuthenticatedCrmCrmUsersRoute: AuthenticatedCrmCrmUsersRoute,
+  AuthenticatedCrmCrmIndexRoute: AuthenticatedCrmCrmIndexRoute,
+}
+
+const AuthenticatedCrmRouteWithChildren =
+  AuthenticatedCrmRoute._addFileChildren(AuthenticatedCrmRouteChildren)
 
 interface AuthenticatedDispatcherRouteChildren {
   AuthenticatedDispatcherAuditLogRoute: typeof AuthenticatedDispatcherAuditLogRoute
@@ -513,12 +712,14 @@ const AuthenticatedDriverRouteWithChildren =
   AuthenticatedDriverRoute._addFileChildren(AuthenticatedDriverRouteChildren)
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedCrmRoute: typeof AuthenticatedCrmRouteWithChildren
   AuthenticatedDispatcherRoute: typeof AuthenticatedDispatcherRouteWithChildren
   AuthenticatedDriverRoute: typeof AuthenticatedDriverRouteWithChildren
   AuthenticatedCasesCaseIdPrintRoute: typeof AuthenticatedCasesCaseIdPrintRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedCrmRoute: AuthenticatedCrmRouteWithChildren,
   AuthenticatedDispatcherRoute: AuthenticatedDispatcherRouteWithChildren,
   AuthenticatedDriverRoute: AuthenticatedDriverRouteWithChildren,
   AuthenticatedCasesCaseIdPrintRoute: AuthenticatedCasesCaseIdPrintRoute,
