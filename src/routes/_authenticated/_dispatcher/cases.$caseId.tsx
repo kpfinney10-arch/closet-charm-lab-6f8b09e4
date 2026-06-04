@@ -776,6 +776,46 @@ function CaseDetail() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={crmDialogOpen} onOpenChange={setCrmDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send to CRM</DialogTitle>
+            <DialogDescription>
+              Pick which organization should receive this case as a new decedent record.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Select
+              value={selectedOrgId ?? undefined}
+              onValueChange={(v) => setSelectedOrgId(v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choose an organization" />
+              </SelectTrigger>
+              <SelectContent>
+                {writableOrgs.map((m) => (
+                  <SelectItem key={m.organization_id} value={m.organization_id}>
+                    {m.organization_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setCrmDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => selectedOrgId && sendToCrmMut.mutate(selectedOrgId)}
+                disabled={!selectedOrgId || sendToCrmMut.isPending}
+              >
+                {sendToCrmMut.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Send
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
