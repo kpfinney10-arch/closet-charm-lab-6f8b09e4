@@ -486,6 +486,21 @@ function CaseDetail() {
                 ))}
               </SelectContent>
             </Select>
+            {isAdmin && writableOrgs.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onSendToCrmClick}
+                disabled={sendToCrmMut.isPending}
+              >
+                {sendToCrmMut.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Send to CRM
+              </Button>
+            )}
             {isAdmin && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
