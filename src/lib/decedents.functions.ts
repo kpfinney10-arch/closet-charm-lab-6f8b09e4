@@ -130,7 +130,7 @@ export const updateDecedent = createServerFn({ method: "POST" })
 
     const { data: row, error } = await supabase
       .from("decedents")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.id)
       .select()
       .single();
@@ -173,7 +173,7 @@ export const setDecedentStatus = createServerFn({ method: "POST" })
     }
     const { data: row, error } = await supabase
       .from("decedents")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.id)
       .select()
       .single();
