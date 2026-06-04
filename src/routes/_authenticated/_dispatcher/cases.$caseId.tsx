@@ -11,6 +11,8 @@ import {
   deleteCase as deleteCaseFn,
   addCaseNote,
 } from "@/lib/case-actions.functions";
+import { sendCaseToCrm } from "@/lib/crm-handoff.functions";
+import { getMyCrmMemberships } from "@/lib/crm-context.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +36,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   Loader2,
   MapPin,
@@ -47,6 +56,7 @@ import {
   AlertTriangle,
   Printer,
   PenLine,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CaseSignatures } from "@/components/case-signatures";
@@ -128,8 +138,48 @@ function CaseDetail() {
   const setStatusFn = useServerFn(setCaseStatus);
   const deleteCaseSrv = useServerFn(deleteCaseFn);
   const addNoteFn = useServerFn(addCaseNote);
+  const sendToCrmFn = useServerFn(sendCaseToCrm);
+  const fetchCrmMemberships = useServerFn(getMyCrmMemberships);
   const canEdit = hasAnyRole(["admin", "dispatcher"]);
   const isAdmin = hasRole("admin");
+
+  const crmMembershipsQ = useQuery({
+    queryKey: ["crm", "memberships"],
+    enabled: isAdmin,
+    queryFn: () => fetchCrmMemberships({}),
+    staleTime: 60_000,
+  });
+  const writableOrgs = (crmMembershipsQ.data ?? []).filter(
+    (m) => m.approved && (m.crm_role === "crm_admin" || m.crm_role === "crm_user"),
+  );
+  const [crmDialogOpen, setCrmDialogOpen] = useState(false);
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+
+  const sendToCrmMut = useMutation({
+    mutationFn: (organizationId: string) =>
+      sendToCrmFn({ data: { caseId, organizationId } }),
+    onSuccess: (res) => {
+      setCrmDialogOpen(false);
+      toast.success(
+        res.created ? "Sent to CRM as a new decedent record" : "Already in CRM — opened existing record",
+      );
+      void navigate({ to: "/crm/decedents" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const onSendToCrmClick = () => {
+    if (writableOrgs.length === 0) {
+      toast.error("You don't have CRM write access to any organization");
+      return;
+    }
+    if (writableOrgs.length === 1) {
+      sendToCrmMut.mutate(writableOrgs[0].organization_id);
+      return;
+    }
+    setSelectedOrgId(writableOrgs[0].organization_id);
+    setCrmDialogOpen(true);
+  };
 
   const caseQ = useQuery({
     queryKey: ["case", caseId],
@@ -443,6 +493,21 @@ function CaseDetail() {
                 ))}
               </SelectContent>
             </Select>
+            {isAdmin && writableOrgs.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onSendToCrmClick}
+                disabled={sendToCrmMut.isPending}
+              >
+                {sendToCrmMut.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Send to CRM
+              </Button>
+            )}
             {isAdmin && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -718,6 +783,46 @@ function CaseDetail() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={crmDialogOpen} onOpenChange={setCrmDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send to CRM</DialogTitle>
+            <DialogDescription>
+              Pick which organization should receive this case as a new decedent record.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Select
+              value={selectedOrgId ?? undefined}
+              onValueChange={(v) => setSelectedOrgId(v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choose an organization" />
+              </SelectTrigger>
+              <SelectContent>
+                {writableOrgs.map((m) => (
+                  <SelectItem key={m.organization_id} value={m.organization_id}>
+                    {m.organization_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setCrmDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => selectedOrgId && sendToCrmMut.mutate(selectedOrgId)}
+                disabled={!selectedOrgId || sendToCrmMut.isPending}
+              >
+                {sendToCrmMut.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Send
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
