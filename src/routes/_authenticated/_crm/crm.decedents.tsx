@@ -78,17 +78,43 @@ function DecedentsPage() {
 
   const [includeOut, setIncludeOut] = useState(false);
   const [view, setView] = useState<"board" | "list">("board");
+  const [search, setSearch] = useState("");
+  const [funeralHomeFilter, setFuneralHomeFilter] = useState<string>("all");
 
-  const { data: rows, isLoading } = useQuery({
+  const { data: allRows, isLoading } = useQuery({
     queryKey: ["crm", "decedents", orgId, includeOut],
     queryFn: () =>
       fetchList({ data: { organizationId: orgId, includeCheckedOut: includeOut } }),
   });
 
+  const rows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (allRows ?? []).filter((r: any) => {
+      if (funeralHomeFilter !== "all") {
+        if (funeralHomeFilter === "none") {
+          if (r.funeral_home_id) return false;
+        } else if (r.funeral_home_id !== funeralHomeFilter) return false;
+      }
+      if (!q) return true;
+      const hay = [
+        r.first_name,
+        r.last_name,
+        r.location,
+        r.rack,
+        r.funeral_homes?.name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [allRows, search, funeralHomeFilter]);
+
   const { data: homes } = useQuery({
     queryKey: ["crm", "funeral-homes", orgId],
     queryFn: () => fetchHomes({ data: { organizationId: orgId } }),
   });
+
 
   const [open, setOpen] = useState(false);
   const emptyForm = {
