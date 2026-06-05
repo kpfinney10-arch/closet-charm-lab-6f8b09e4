@@ -326,6 +326,7 @@ export type Database = {
       }
       cremation_logs: {
         Row: {
+          ash_weight_lbs: number | null
           comment: string | null
           container_type: string | null
           created_at: string
@@ -334,10 +335,13 @@ export type Database = {
           id: string
           operator_id: string | null
           organization_id: string
+          retort: string | null
           start_time: string | null
           updated_at: string
+          weight_lbs: number | null
         }
         Insert: {
+          ash_weight_lbs?: number | null
           comment?: string | null
           container_type?: string | null
           created_at?: string
@@ -346,10 +350,13 @@ export type Database = {
           id?: string
           operator_id?: string | null
           organization_id: string
+          retort?: string | null
           start_time?: string | null
           updated_at?: string
+          weight_lbs?: number | null
         }
         Update: {
+          ash_weight_lbs?: number | null
           comment?: string | null
           container_type?: string | null
           created_at?: string
@@ -358,8 +365,10 @@ export type Database = {
           id?: string
           operator_id?: string | null
           organization_id?: string
+          retort?: string | null
           start_time?: string | null
           updated_at?: string
+          weight_lbs?: number | null
         }
         Relationships: [
           {
