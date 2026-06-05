@@ -92,6 +92,7 @@ export const assignCaseDriver = createServerFn({ method: "POST" })
     const otherField =
       data.slot === "primary" ? "secondary_driver_id" : "primary_driver_id";
     const otherDriver = current[otherField];
+    const previousDriver = current[field] as string | null;
     const willHaveDriver = !!data.driverId || !!otherDriver;
 
     const patch: Database["public"]["Tables"]["cases"]["Update"] = {
@@ -106,12 +107,25 @@ export const assignCaseDriver = createServerFn({ method: "POST" })
     const { error } = await supabase.from("cases").update(patch).eq("id", data.caseId);
     if (error) bad(error.message, 400);
 
+    const region =
+      [current.pickup_city, current.pickup_state].filter(Boolean).join(", ") ||
+      "Pickup TBD";
+
+    // Notify the previously-assigned driver that they were removed/replaced.
     // PII minimization: push payload omits decedent name and street address.
-    if (data.driverId) {
-      const region =
-        [current.pickup_city, current.pickup_state].filter(Boolean).join(", ") ||
-        "Pickup TBD";
-      // Fire and forget; do not let a push failure roll back the assignment.
+    if (previousDriver && previousDriver !== data.driverId) {
+      void sendPushToUserInternalSafe(previousDriver, {
+        title: `Run ${current.case_number} reassigned`,
+        body: data.driverId
+          ? "This run was reassigned to another driver."
+          : "You were unassigned from this run.",
+        url: "/driver",
+        tag: `case-${data.caseId}`,
+      });
+    }
+
+    // Notify the newly-assigned driver.
+    if (data.driverId && data.driverId !== previousDriver) {
       void sendPushToUserInternalSafe(data.driverId, {
         title: `New run assigned — ${current.case_number}`,
         body: `Pickup: ${region}. Open the driver app for details.`,
