@@ -443,9 +443,13 @@ function EmptyState() {
 function DecedentCard({
   d,
   onStatus,
+  onRelease,
+  onCheckout,
 }: {
   d: any;
   onStatus: (s: DecedentStatus) => void;
+  onRelease: () => void;
+  onCheckout: () => void;
 }) {
   return (
     <Card className="hover:shadow-sm transition-shadow">
@@ -461,7 +465,12 @@ function DecedentCard({
               </div>
             ) : null}
           </div>
-          <StatusMenu current={d.status} onSelect={onStatus} />
+          <StatusMenu
+            current={d.status}
+            onSelect={onStatus}
+            onRelease={onRelease}
+            onCheckout={onCheckout}
+          />
         </div>
         {(d.location || d.rack) ? (
           <div className="text-xs text-muted-foreground">
