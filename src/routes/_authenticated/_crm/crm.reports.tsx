@@ -124,7 +124,10 @@ function ReportsPage() {
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <ReportsBody data={data} />
+        <>
+          <ReportsBody data={data} />
+          <ExportAuditCard organizationId={currentOrg.organization_id} />
+        </>
       )}
     </div>
   );
