@@ -156,15 +156,15 @@ function UpdatesPage() {
     (search.actor ? 1 : 0) +
     (search.range !== "all" ? 1 : 0);
 
-  const setSearch = (patch: Partial<typeof search>) =>
-    navigate({ search: (prev) => ({ ...prev, ...patch }) });
+  const setSearch = (patch: Partial<z.infer<typeof searchSchema>>) =>
+    navigate({ search: (prev: z.infer<typeof searchSchema>) => ({ ...prev, ...patch }) });
 
   const clearAll = () =>
     navigate({ search: () => ({ types: [], decedent: "", actor: "", range: "all" as const }) });
 
   const toggleType = (t: DecedentEventType) => {
     const next = search.types.includes(t)
-      ? search.types.filter((x) => x !== t)
+      ? search.types.filter((x: DecedentEventType) => x !== t)
       : [...search.types, t];
     setSearch({ types: next });
   };
