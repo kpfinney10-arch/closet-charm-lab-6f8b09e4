@@ -321,6 +321,9 @@ function CremationLogsPage() {
 const PAGE_SIZE_ACTIVE = 12;
 const PAGE_SIZE_COMPLETED = 25;
 
+type SortKey = "name" | "retort" | "operator" | "start" | "end" | "duration";
+type SortDir = "asc" | "desc";
+
 function matchesQuery(l: any, q: string) {
   if (!q) return true;
   const needle = q.toLowerCase();
@@ -328,6 +331,63 @@ function matchesQuery(l: any, q: string) {
   const retort = (l.retort ?? "").toLowerCase();
   const operator = (l.operator_name ?? "").toLowerCase();
   return name.includes(needle) || retort.includes(needle) || operator.includes(needle);
+}
+
+function sortValue(l: any, key: SortKey): string | number {
+  switch (key) {
+    case "name": return decedentName(l).toLowerCase();
+    case "retort": return (l.retort ?? "").toLowerCase();
+    case "operator": return (l.operator_name ?? "").toLowerCase();
+    case "start": return l.start_time ? new Date(l.start_time).getTime() : 0;
+    case "end": return l.end_time ? new Date(l.end_time).getTime() : 0;
+    case "duration": {
+      if (!l.start_time || !l.end_time) return -1;
+      return new Date(l.end_time).getTime() - new Date(l.start_time).getTime();
+    }
+  }
+}
+
+function sortLogs(rows: any[], key: SortKey, dir: SortDir) {
+  const copy = [...rows];
+  copy.sort((a, b) => {
+    const av = sortValue(a, key);
+    const bv = sortValue(b, key);
+    if (av < bv) return dir === "asc" ? -1 : 1;
+    if (av > bv) return dir === "asc" ? 1 : -1;
+    return 0;
+  });
+  return copy;
+}
+
+function SortHead({
+  label,
+  sortKey,
+  active,
+  dir,
+  onSort,
+  className,
+}: {
+  label: string;
+  sortKey: SortKey;
+  active: SortKey;
+  dir: SortDir;
+  onSort: (k: SortKey) => void;
+  className?: string;
+}) {
+  const isActive = active === sortKey;
+  const Icon = isActive ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="inline-flex items-center gap-1 font-medium hover:text-foreground"
+      >
+        {label}
+        <Icon className={`h-3.5 w-3.5 ${isActive ? "text-foreground" : "text-muted-foreground/60"}`} />
+      </button>
+    </TableHead>
+  );
 }
 
 function ActiveView({
