@@ -10,7 +10,9 @@ export const listReleases = createServerFn({ method: "GET" })
       .object({
         organizationId: z.string().uuid(),
         decedentId: z.string().uuid().optional(),
-        limit: z.number().int().min(1).max(200).optional().default(100),
+        from: z.string().datetime().optional(),
+        to: z.string().datetime().optional(),
+        limit: z.number().int().min(1).max(2000).optional().default(100),
       })
       .parse(d),
   )
@@ -25,6 +27,8 @@ export const listReleases = createServerFn({ method: "GET" })
       .order("released_at", { ascending: false })
       .limit(data.limit);
     if (data.decedentId) q = q.eq("decedent_id", data.decedentId);
+    if (data.from) q = q.gte("released_at", data.from);
+    if (data.to) q = q.lte("released_at", data.to);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return rows ?? [];

@@ -24,6 +24,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Loader2, Activity, Flame, PackageCheck, Clock, Download } from "lucide-react";
 import { toast } from "sonner";
 
@@ -288,12 +291,30 @@ function ExportButtons({ organizationId }: { organizationId: string }) {
   const fetchReleases = useServerFn(listReleases);
   const fetchLogs = useServerFn(listCremationLogs);
   const [busy, setBusy] = useState<"releases" | "cremations" | null>(null);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const stamp = () => new Date().toISOString().slice(0, 10);
+
+  const rangeIso = () => {
+    const fromIso = from ? new Date(`${from}T00:00:00`).toISOString() : undefined;
+    const toIso = to ? new Date(`${to}T23:59:59.999`).toISOString() : undefined;
+    return { fromIso, toIso };
+  };
+
+  const rangeSuffix = () => {
+    if (from && to) return `${from}_to_${to}`;
+    if (from) return `from-${from}`;
+    if (to) return `to-${to}`;
+    return stamp();
+  };
 
   const exportReleases = async () => {
     setBusy("releases");
     try {
-      const rows = await fetchReleases({ data: { organizationId, limit: 200 } });
+      const { fromIso, toIso } = rangeIso();
+      const rows = await fetchReleases({
+        data: { organizationId, limit: 2000, from: fromIso, to: toIso },
+      });
       const mapped = (rows as any[]).map((r) => ({
         released_at: r.released_at,
         decedent_last_name: r.decedents?.last_name ?? "",
@@ -311,7 +332,7 @@ function ExportButtons({ organizationId }: { organizationId: string }) {
         toast.info("No releases to export");
         return;
       }
-      downloadCsv(`releases-${stamp()}.csv`, toCsv(mapped));
+      downloadCsv(`releases-${rangeSuffix()}.csv`, toCsv(mapped));
     } catch (e: any) {
       toast.error(e?.message ?? "Export failed");
     } finally {
@@ -322,7 +343,10 @@ function ExportButtons({ organizationId }: { organizationId: string }) {
   const exportCremations = async () => {
     setBusy("cremations");
     try {
-      const rows = await fetchLogs({ data: { organizationId, scope: "all", limit: 500 } });
+      const { fromIso, toIso } = rangeIso();
+      const rows = await fetchLogs({
+        data: { organizationId, scope: "all", limit: 2000, from: fromIso, to: toIso },
+      });
       const mapped = (rows as any[]).map((r) => ({
         start_time: r.start_time ?? "",
         end_time: r.end_time ?? "",
@@ -339,7 +363,7 @@ function ExportButtons({ organizationId }: { organizationId: string }) {
         toast.info("No cremation logs to export");
         return;
       }
-      downloadCsv(`cremations-${stamp()}.csv`, toCsv(mapped));
+      downloadCsv(`cremations-${rangeSuffix()}.csv`, toCsv(mapped));
     } catch (e: any) {
       toast.error(e?.message ?? "Export failed");
     } finally {
@@ -347,24 +371,96 @@ function ExportButtons({ organizationId }: { organizationId: string }) {
     }
   };
 
+  const rangeLabel =
+    from && to
+      ? `${from} → ${to}`
+      : from
+        ? `from ${from}`
+        : to
+          ? `until ${to}`
+          : "All time";
+
   return (
-    <>
-      <Button variant="outline" size="sm" onClick={exportReleases} disabled={busy !== null}>
-        {busy === "releases" ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm">
           <Download className="h-4 w-4" />
+          Export CSV
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 space-y-3">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Export range</p>
+          <p className="text-xs text-muted-foreground">{rangeLabel}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label htmlFor="export-from" className="text-xs">
+              From
+            </Label>
+            <Input
+              id="export-from"
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="export-to" className="text-xs">
+              To
+            </Label>
+            <Input
+              id="export-to"
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </div>
+        </div>
+        {(from || to) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => {
+              setFrom("");
+              setTo("");
+            }}
+          >
+            Clear dates
+          </Button>
         )}
-        Releases CSV
-      </Button>
-      <Button variant="outline" size="sm" onClick={exportCremations} disabled={busy !== null}>
-        {busy === "cremations" ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Download className="h-4 w-4" />
-        )}
-        Cremations CSV
-      </Button>
-    </>
+        <div className="flex flex-col gap-2 border-t pt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportReleases}
+            disabled={busy !== null}
+          >
+            {busy === "releases" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Releases CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportCremations}
+            disabled={busy !== null}
+          >
+            {busy === "cremations" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Cremations CSV
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
