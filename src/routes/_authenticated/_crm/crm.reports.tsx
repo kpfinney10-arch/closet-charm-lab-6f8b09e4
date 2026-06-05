@@ -291,6 +291,7 @@ function fmtMonth(ym: string) {
 function ExportButtons({ organizationId }: { organizationId: string }) {
   const fetchReleases = useServerFn(listReleases);
   const fetchLogs = useServerFn(listCremationLogs);
+  const logExport = useServerFn(logCrmExport);
   const [busy, setBusy] = useState<"releases" | "cremations" | null>(null);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
