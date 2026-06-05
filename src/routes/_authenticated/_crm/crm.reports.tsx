@@ -392,6 +392,16 @@ function ExportButtons({ organizationId }: { organizationId: string }) {
       }
       const filename = `cremations-${rangeSuffix()}.csv`;
       downloadCsv(filename, toCsv(mapped));
+      await logExport({
+        data: {
+          organizationId,
+          exportType: "cremations",
+          from: fromIso ?? null,
+          to: toIso ?? null,
+          rowCount: mapped.length,
+          filename,
+        },
+      }).catch(() => {});
       toast.success(`Downloaded ${mapped.length} log${mapped.length === 1 ? "" : "s"}`, {
         id: toastId,
         description: filename,
