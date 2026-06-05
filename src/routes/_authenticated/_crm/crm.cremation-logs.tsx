@@ -52,7 +52,24 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/_crm/crm/cremation-logs")({
   component: CremationLogsPage,
+const sortKeySchema = z.enum(["name", "retort", "operator", "start", "end", "duration"]);
+const sortDirSchema = z.enum(["asc", "desc"]);
+
+const searchSchema = z.object({
+  tab: fallback(z.enum(["active", "completed"]), "active").default("active"),
+  sort: fallback(sortKeySchema, "start").default("start"),
+  dir: fallback(sortDirSchema, "desc").default("desc"),
+  page: fallback(z.number().int().min(1), 1).default(1),
+  q: fallback(z.string(), "").default(""),
+  retort: fallback(z.string(), "all").default("all"),
+  from: fallback(z.string(), "").default(""),
+  to: fallback(z.string(), "").default(""),
+});
+
+export const Route = createFileRoute("/_authenticated/_crm/crm/cremation-logs")({
+  component: CremationLogsPage,
   head: () => ({ meta: [{ title: "Cremation — CareOne CRM" }] }),
+  validateSearch: zodValidator(searchSchema),
 });
 
 function CremationLogsPage() {
