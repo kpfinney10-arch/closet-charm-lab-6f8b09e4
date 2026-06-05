@@ -178,7 +178,12 @@ function CremationLogsPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="active">
+      <Tabs
+        value={tab}
+        onValueChange={(v) =>
+          navigate({ search: (prev) => ({ ...prev, tab: v as "active" | "completed", page: 1 }), replace: true })
+        }
+      >
         <TabsList>
           <TabsTrigger value="active">
             Active {activeCount ? <Badge className="ml-2">{activeCount}</Badge> : null}
