@@ -63,9 +63,10 @@ function CremationLogsPage() {
   const startFn = useServerFn(startCremationLog);
   const stopFn = useServerFn(stopCremationLog);
 
-  const { data: logs, isLoading } = useQuery({
-    queryKey: ["crm", "cremation-logs", orgId],
-    queryFn: () => fetchLogs({ data: { organizationId: orgId, scope: "all" } }),
+  // Lightweight query just to compute the eligible-decedent set (excludes those with an active log).
+  const { data: activeAll } = useQuery({
+    queryKey: ["crm", "cremation-logs", orgId, "active-ids"],
+    queryFn: () => fetchLogs({ data: { organizationId: orgId, scope: "active", limit: 500 } }),
   });
 
   const { data: decedents } = useQuery({
@@ -73,8 +74,7 @@ function CremationLogsPage() {
     queryFn: () => fetchDecedents({ data: { organizationId: orgId } }),
   });
 
-  const active = useMemo(() => (logs ?? []).filter((l: any) => !l.end_time), [logs]);
-  const completed = useMemo(() => (logs ?? []).filter((l: any) => l.end_time), [logs]);
+  const activeCount = (activeAll ?? []).length;
 
   const eligible = useMemo(
     () =>
@@ -82,9 +82,9 @@ function CremationLogsPage() {
         (d: any) =>
           d.status !== "released" &&
           d.status !== "checked_out" &&
-          !active.some((l: any) => l.decedent_id === d.id),
+          !(activeAll ?? []).some((l: any) => l.decedent_id === d.id),
       ),
-    [decedents, active],
+    [decedents, activeAll],
   );
 
   const [startOpen, setStartOpen] = useState(false);
@@ -164,15 +164,14 @@ function CremationLogsPage() {
       <Tabs defaultValue="active">
         <TabsList>
           <TabsTrigger value="active">
-            Active {active.length ? <Badge className="ml-2">{active.length}</Badge> : null}
+            Active {activeCount ? <Badge className="ml-2">{activeCount}</Badge> : null}
           </TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="mt-4">
           <ActiveView
-            active={active}
-            isLoading={isLoading}
+            orgId={orgId}
             onStop={(l) => {
               setStopLog(l);
               setAshWeight("");
@@ -182,12 +181,10 @@ function CremationLogsPage() {
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">
-          <CompletedView
-            completed={completed}
-            isLoading={isLoading}
-          />
+          <CompletedView orgId={orgId} />
         </TabsContent>
       </Tabs>
+
 
       {/* Start dialog */}
       <Dialog open={startOpen} onOpenChange={setStartOpen}>
