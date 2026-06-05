@@ -357,6 +357,8 @@ function DecedentsPage() {
                         key={d.id}
                         d={d}
                         onStatus={(s) => statusMut.mutate({ id: d.id, status: s })}
+                        onRelease={() => setReleaseFor(d)}
+                        onCheckout={() => checkoutMut.mutate(d.id)}
                       />
                     ))}
                     {grouped[status].length === 0 ? (
