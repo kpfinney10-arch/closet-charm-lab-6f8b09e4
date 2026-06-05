@@ -676,6 +676,15 @@ function CompletedView({ orgId }: { orgId: string }) {
               Clear
             </Button>
           )}
+          {(sortKey !== "start" || sortDir !== "desc" || page !== 1) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => updateSearch({ sort: "start", dir: "desc", page: 1 })}
+            >
+              Reset sort
+            </Button>
+          )}
           <div className="ml-auto text-xs text-muted-foreground">{total} total</div>
         </CardContent>
       </Card>
