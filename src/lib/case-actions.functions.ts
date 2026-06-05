@@ -206,6 +206,13 @@ export const cancelCase = createServerFn({ method: "POST" })
     await assertAnyRole(context.userId, ["admin", "dispatcher"]);
     const { supabase, userId } = context;
 
+    // Read drivers + case number BEFORE cancelling so we can notify them.
+    const { data: current } = await supabase
+      .from("cases")
+      .select("case_number, primary_driver_id, secondary_driver_id")
+      .eq("id", data.caseId)
+      .maybeSingle();
+
     const { error } = await supabase
       .from("cases")
       .update({ status: "cancelled" })
@@ -221,6 +228,23 @@ export const cancelCase = createServerFn({ method: "POST" })
         notes: data.reason,
       });
       if (nErr) console.error("Failed to log cancel reason:", nErr);
+    }
+
+    // Notify assigned drivers (de-duped) that the run was cancelled.
+    const driverIds = Array.from(
+      new Set(
+        [current?.primary_driver_id, current?.secondary_driver_id].filter(
+          (v): v is string => !!v,
+        ),
+      ),
+    );
+    for (const driverId of driverIds) {
+      void sendPushToUserInternalSafe(driverId, {
+        title: `Run ${current?.case_number ?? ""} cancelled`.trim(),
+        body: data.reason ? `Reason: ${data.reason}` : "Dispatcher cancelled this run.",
+        url: "/driver",
+        tag: `case-${data.caseId}`,
+      });
     }
 
     return { ok: true as const };
