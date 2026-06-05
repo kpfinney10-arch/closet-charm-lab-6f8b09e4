@@ -283,3 +283,88 @@ function fmtMonth(ym: string) {
     year: "numeric",
   });
 }
+
+function ExportButtons({ organizationId }: { organizationId: string }) {
+  const fetchReleases = useServerFn(listReleases);
+  const fetchLogs = useServerFn(listCremationLogs);
+  const [busy, setBusy] = useState<"releases" | "cremations" | null>(null);
+  const stamp = () => new Date().toISOString().slice(0, 10);
+
+  const exportReleases = async () => {
+    setBusy("releases");
+    try {
+      const rows = await fetchReleases({ data: { organizationId, limit: 200 } });
+      const mapped = (rows as any[]).map((r) => ({
+        released_at: r.released_at,
+        decedent_last_name: r.decedents?.last_name ?? "",
+        decedent_first_name: r.decedents?.first_name ?? "",
+        item_type: r.item_type,
+        released_to_name: r.released_to_name,
+        released_to_relation: r.released_to_relation ?? "",
+        released_to_phone: r.released_to_phone ?? "",
+        id_type: r.id_type ?? "",
+        id_number: r.id_number ?? "",
+        witnessed_by: r.witnessed_by ?? "",
+        notes: r.notes ?? "",
+      }));
+      if (!mapped.length) {
+        toast.info("No releases to export");
+        return;
+      }
+      downloadCsv(`releases-${stamp()}.csv`, toCsv(mapped));
+    } catch (e: any) {
+      toast.error(e?.message ?? "Export failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const exportCremations = async () => {
+    setBusy("cremations");
+    try {
+      const rows = await fetchLogs({ data: { organizationId, scope: "all", limit: 500 } });
+      const mapped = (rows as any[]).map((r) => ({
+        start_time: r.start_time ?? "",
+        end_time: r.end_time ?? "",
+        decedent_last_name: r.decedents?.last_name ?? "",
+        decedent_first_name: r.decedents?.first_name ?? "",
+        operator: r.operator_name ?? "",
+        retort: r.retort ?? "",
+        container_type: r.container_type ?? "",
+        weight_lbs: r.weight_lbs ?? "",
+        ash_weight_lbs: r.ash_weight_lbs ?? "",
+        comment: r.comment ?? "",
+      }));
+      if (!mapped.length) {
+        toast.info("No cremation logs to export");
+        return;
+      }
+      downloadCsv(`cremations-${stamp()}.csv`, toCsv(mapped));
+    } catch (e: any) {
+      toast.error(e?.message ?? "Export failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={exportReleases} disabled={busy !== null}>
+        {busy === "releases" ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Download className="h-4 w-4" />
+        )}
+        Releases CSV
+      </Button>
+      <Button variant="outline" size="sm" onClick={exportCremations} disabled={busy !== null}>
+        {busy === "cremations" ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Download className="h-4 w-4" />
+        )}
+        Cremations CSV
+      </Button>
+    </>
+  );
+}
