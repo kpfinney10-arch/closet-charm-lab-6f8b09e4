@@ -479,7 +479,16 @@ function ActiveView({
               <SelectItem value="start:asc">Started (oldest)</SelectItem>
             </SelectContent>
           </Select>
-          <div className="text-xs text-muted-foreground">{total} total</div>
+          {(sortKey !== "start" || sortDir !== "desc" || page !== 1) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSort("start", "desc")}
+            >
+              Reset sort
+            </Button>
+          )}
+          <div className="ml-auto text-xs text-muted-foreground">{total} total</div>
         </CardContent>
       </Card>
 
