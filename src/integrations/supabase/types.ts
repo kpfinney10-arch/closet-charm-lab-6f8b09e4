@@ -1001,6 +1001,40 @@ export type Database = {
         Returns: boolean
       }
       is_org_member: { Args: { _org_id: string }; Returns: boolean }
+      list_cremation_logs: {
+        Args: {
+          p_dir?: string
+          p_from?: string
+          p_limit?: number
+          p_offset?: number
+          p_organization_id: string
+          p_retort?: string
+          p_scope?: string
+          p_search?: string
+          p_sort?: string
+          p_to?: string
+        }
+        Returns: {
+          ash_weight_lbs: number
+          comment: string
+          container_type: string
+          created_at: string
+          decedent_first_name: string
+          decedent_id: string
+          decedent_last_name: string
+          decedent_status: string
+          end_time: string
+          id: string
+          operator_id: string
+          operator_name: string
+          organization_id: string
+          retort: string
+          start_time: string
+          total_count: number
+          updated_at: string
+          weight_lbs: number
+        }[]
+      }
     }
     Enums: {
       admin_audit_action:
