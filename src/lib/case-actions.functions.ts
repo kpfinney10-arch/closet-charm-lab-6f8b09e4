@@ -92,6 +92,7 @@ export const assignCaseDriver = createServerFn({ method: "POST" })
     const otherField =
       data.slot === "primary" ? "secondary_driver_id" : "primary_driver_id";
     const otherDriver = current[otherField];
+    const previousDriver = current[field] as string | null;
     const willHaveDriver = !!data.driverId || !!otherDriver;
 
     const patch: Database["public"]["Tables"]["cases"]["Update"] = {
@@ -106,12 +107,25 @@ export const assignCaseDriver = createServerFn({ method: "POST" })
     const { error } = await supabase.from("cases").update(patch).eq("id", data.caseId);
     if (error) bad(error.message, 400);
 
+    const region =
+      [current.pickup_city, current.pickup_state].filter(Boolean).join(", ") ||
+      "Pickup TBD";
+
+    // Notify the previously-assigned driver that they were removed/replaced.
     // PII minimization: push payload omits decedent name and street address.
-    if (data.driverId) {
-      const region =
-        [current.pickup_city, current.pickup_state].filter(Boolean).join(", ") ||
-        "Pickup TBD";
-      // Fire and forget; do not let a push failure roll back the assignment.
+    if (previousDriver && previousDriver !== data.driverId) {
+      void sendPushToUserInternalSafe(previousDriver, {
+        title: `Run ${current.case_number} reassigned`,
+        body: data.driverId
+          ? "This run was reassigned to another driver."
+          : "You were unassigned from this run.",
+        url: "/driver",
+        tag: `case-${data.caseId}`,
+      });
+    }
+
+    // Notify the newly-assigned driver.
+    if (data.driverId && data.driverId !== previousDriver) {
       void sendPushToUserInternalSafe(data.driverId, {
         title: `New run assigned — ${current.case_number}`,
         body: `Pickup: ${region}. Open the driver app for details.`,
@@ -192,6 +206,13 @@ export const cancelCase = createServerFn({ method: "POST" })
     await assertAnyRole(context.userId, ["admin", "dispatcher"]);
     const { supabase, userId } = context;
 
+    // Read drivers + case number BEFORE cancelling so we can notify them.
+    const { data: current } = await supabase
+      .from("cases")
+      .select("case_number, primary_driver_id, secondary_driver_id")
+      .eq("id", data.caseId)
+      .maybeSingle();
+
     const { error } = await supabase
       .from("cases")
       .update({ status: "cancelled" })
@@ -207,6 +228,23 @@ export const cancelCase = createServerFn({ method: "POST" })
         notes: data.reason,
       });
       if (nErr) console.error("Failed to log cancel reason:", nErr);
+    }
+
+    // Notify assigned drivers (de-duped) that the run was cancelled.
+    const driverIds = Array.from(
+      new Set(
+        [current?.primary_driver_id, current?.secondary_driver_id].filter(
+          (v): v is string => !!v,
+        ),
+      ),
+    );
+    for (const driverId of driverIds) {
+      void sendPushToUserInternalSafe(driverId, {
+        title: `Run ${current?.case_number ?? ""} cancelled`.trim(),
+        body: data.reason ? `Reason: ${data.reason}` : "Dispatcher cancelled this run.",
+        url: "/driver",
+        tag: `case-${data.caseId}`,
+      });
     }
 
     return { ok: true as const };
