@@ -408,6 +408,8 @@ function DecedentsPage() {
                         <StatusMenu
                           current={d.status}
                           onSelect={(s) => statusMut.mutate({ id: d.id, status: s })}
+                          onRelease={() => setReleaseFor(d)}
+                          onCheckout={() => checkoutMut.mutate(d.id)}
                         />
                       </div>
                     </div>
