@@ -126,7 +126,7 @@ function ReportsPage() {
       ) : (
         <>
           <ReportsBody data={data} />
-          <ExportAuditCard organizationId={currentOrg.organization_id} />
+          {isAdmin && <ExportAuditCard organizationId={currentOrg.organization_id} />}
         </>
       )}
     </div>
