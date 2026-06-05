@@ -55,6 +55,69 @@ export const listCremationLogs = createServerFn({ method: "GET" })
     }));
   });
 
+export const listCremationLogsPaged = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        organizationId: z.string().uuid(),
+        scope: z.enum(["all", "active", "completed"]).optional().default("all"),
+        search: z.string().max(200).optional().nullable(),
+        retort: z.string().max(50).optional().nullable(),
+        from: z.string().datetime().optional().nullable(),
+        to: z.string().datetime().optional().nullable(),
+        sort: z
+          .enum(["name", "retort", "operator", "start", "end", "duration"])
+          .optional()
+          .default("start"),
+        dir: z.enum(["asc", "desc"]).optional().default("desc"),
+        page: z.number().int().min(1).optional().default(1),
+        pageSize: z.number().int().min(1).max(200).optional().default(25),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const offset = (data.page - 1) * data.pageSize;
+    const { data: rows, error } = await supabase.rpc("list_cremation_logs", {
+      p_organization_id: data.organizationId,
+      p_scope: data.scope,
+      p_search: data.search ?? null,
+      p_retort: data.retort ?? null,
+      p_from: data.from ?? null,
+      p_to: data.to ?? null,
+      p_sort: data.sort,
+      p_dir: data.dir,
+      p_limit: data.pageSize,
+      p_offset: offset,
+    });
+    if (error) throw new Error(error.message);
+    const list = (rows ?? []) as any[];
+    const total = list.length ? Number(list[0].total_count) : 0;
+    const mapped = list.map((r) => ({
+      id: r.id,
+      organization_id: r.organization_id,
+      decedent_id: r.decedent_id,
+      operator_id: r.operator_id,
+      retort: r.retort,
+      container_type: r.container_type,
+      weight_lbs: r.weight_lbs,
+      ash_weight_lbs: r.ash_weight_lbs,
+      start_time: r.start_time,
+      end_time: r.end_time,
+      comment: r.comment,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      operator_name: r.operator_name ?? null,
+      decedents: {
+        first_name: r.decedent_first_name,
+        last_name: r.decedent_last_name,
+        status: r.decedent_status,
+      },
+    }));
+    return { rows: mapped, total, page: data.page, pageSize: data.pageSize };
+  });
+
 export const getCremationLog = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
