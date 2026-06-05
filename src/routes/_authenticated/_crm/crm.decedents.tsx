@@ -137,8 +137,19 @@ function DecedentsPage() {
     onSuccess: (_d, v) => {
       toast.success(`Marked ${STATUS_META[v.status].label.toLowerCase()}`);
       qc.invalidateQueries({ queryKey: ["crm", "decedents", orgId] });
+      qc.invalidateQueries({ queryKey: ["crm", "updates", orgId] });
     },
     onError: (e: any) => toast.error(e.message ?? "Update failed"),
+  });
+
+  const checkoutMut = useMutation({
+    mutationFn: (id: string) => checkoutFn({ data: { decedentId: id } }),
+    onSuccess: () => {
+      toast.success("Checked out");
+      qc.invalidateQueries({ queryKey: ["crm", "decedents", orgId] });
+      qc.invalidateQueries({ queryKey: ["crm", "updates", orgId] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Checkout failed"),
   });
 
   const grouped = useMemo(() => {
