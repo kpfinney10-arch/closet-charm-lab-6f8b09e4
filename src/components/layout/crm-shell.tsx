@@ -23,6 +23,7 @@ import {
   Activity,
   Truck,
   ShieldCheck,
+  FileClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -35,8 +36,10 @@ const NAV = [
   { to: "/crm/cremation-logs", label: "Cremation", icon: Flame },
   { to: "/crm/funeral-homes", label: "Funeral homes", icon: Building2 },
   { to: "/crm/reports", label: "Reports", icon: BarChart3 },
+  { to: "/crm/export-audit", label: "Export audit", icon: FileClock, adminOnly: true },
   { to: "/crm/users", label: "Users", icon: ShieldCheck, adminOnly: true },
 ] as const;
+
 
 export function CrmShell({ children, isAdmin }: { children?: ReactNode; isAdmin: boolean }) {
   const { user, signOut, hasAnyRole } = useAuth();

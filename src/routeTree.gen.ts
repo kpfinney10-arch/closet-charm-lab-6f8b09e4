@@ -37,6 +37,7 @@ import { Route as AuthenticatedCrmCrmUsersRouteImport } from './routes/_authenti
 import { Route as AuthenticatedCrmCrmUpdatesRouteImport } from './routes/_authenticated/_crm/crm.updates'
 import { Route as AuthenticatedCrmCrmReportsRouteImport } from './routes/_authenticated/_crm/crm.reports'
 import { Route as AuthenticatedCrmCrmFuneralHomesRouteImport } from './routes/_authenticated/_crm/crm.funeral-homes'
+import { Route as AuthenticatedCrmCrmExportAuditRouteImport } from './routes/_authenticated/_crm/crm.export-audit'
 import { Route as AuthenticatedCrmCrmDecedentsRouteImport } from './routes/_authenticated/_crm/crm.decedents'
 import { Route as AuthenticatedCrmCrmDashboardRouteImport } from './routes/_authenticated/_crm/crm.dashboard'
 import { Route as AuthenticatedCrmCrmCremationLogsRouteImport } from './routes/_authenticated/_crm/crm.cremation-logs'
@@ -198,6 +199,12 @@ const AuthenticatedCrmCrmFuneralHomesRoute =
     path: '/crm/funeral-homes',
     getParentRoute: () => AuthenticatedCrmRoute,
   } as any)
+const AuthenticatedCrmCrmExportAuditRoute =
+  AuthenticatedCrmCrmExportAuditRouteImport.update({
+    id: '/crm/export-audit',
+    path: '/crm/export-audit',
+    getParentRoute: () => AuthenticatedCrmRoute,
+  } as any)
 const AuthenticatedCrmCrmDecedentsRoute =
   AuthenticatedCrmCrmDecedentsRouteImport.update({
     id: '/crm/decedents',
@@ -243,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRouteWithChildren
   '/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
   '/crm/decedents': typeof AuthenticatedCrmCrmDecedentsRoute
+  '/crm/export-audit': typeof AuthenticatedCrmCrmExportAuditRoute
   '/crm/funeral-homes': typeof AuthenticatedCrmCrmFuneralHomesRoute
   '/crm/reports': typeof AuthenticatedCrmCrmReportsRoute
   '/crm/updates': typeof AuthenticatedCrmCrmUpdatesRoute
@@ -273,6 +281,7 @@ export interface FileRoutesByTo {
   '/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRouteWithChildren
   '/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
   '/crm/decedents': typeof AuthenticatedCrmCrmDecedentsRoute
+  '/crm/export-audit': typeof AuthenticatedCrmCrmExportAuditRoute
   '/crm/funeral-homes': typeof AuthenticatedCrmCrmFuneralHomesRoute
   '/crm/reports': typeof AuthenticatedCrmCrmReportsRoute
   '/crm/updates': typeof AuthenticatedCrmCrmUpdatesRoute
@@ -308,6 +317,7 @@ export interface FileRoutesById {
   '/_authenticated/_crm/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRouteWithChildren
   '/_authenticated/_crm/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
   '/_authenticated/_crm/crm/decedents': typeof AuthenticatedCrmCrmDecedentsRoute
+  '/_authenticated/_crm/crm/export-audit': typeof AuthenticatedCrmCrmExportAuditRoute
   '/_authenticated/_crm/crm/funeral-homes': typeof AuthenticatedCrmCrmFuneralHomesRoute
   '/_authenticated/_crm/crm/reports': typeof AuthenticatedCrmCrmReportsRoute
   '/_authenticated/_crm/crm/updates': typeof AuthenticatedCrmCrmUpdatesRoute
@@ -341,6 +351,7 @@ export interface FileRouteTypes {
     | '/crm/cremation-logs'
     | '/crm/dashboard'
     | '/crm/decedents'
+    | '/crm/export-audit'
     | '/crm/funeral-homes'
     | '/crm/reports'
     | '/crm/updates'
@@ -371,6 +382,7 @@ export interface FileRouteTypes {
     | '/crm/cremation-logs'
     | '/crm/dashboard'
     | '/crm/decedents'
+    | '/crm/export-audit'
     | '/crm/funeral-homes'
     | '/crm/reports'
     | '/crm/updates'
@@ -405,6 +417,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_crm/crm/cremation-logs'
     | '/_authenticated/_crm/crm/dashboard'
     | '/_authenticated/_crm/crm/decedents'
+    | '/_authenticated/_crm/crm/export-audit'
     | '/_authenticated/_crm/crm/funeral-homes'
     | '/_authenticated/_crm/crm/reports'
     | '/_authenticated/_crm/crm/updates'
@@ -624,6 +637,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCrmCrmFuneralHomesRouteImport
       parentRoute: typeof AuthenticatedCrmRoute
     }
+    '/_authenticated/_crm/crm/export-audit': {
+      id: '/_authenticated/_crm/crm/export-audit'
+      path: '/crm/export-audit'
+      fullPath: '/crm/export-audit'
+      preLoaderRoute: typeof AuthenticatedCrmCrmExportAuditRouteImport
+      parentRoute: typeof AuthenticatedCrmRoute
+    }
     '/_authenticated/_crm/crm/decedents': {
       id: '/_authenticated/_crm/crm/decedents'
       path: '/crm/decedents'
@@ -674,6 +694,7 @@ interface AuthenticatedCrmRouteChildren {
   AuthenticatedCrmCrmCremationLogsRoute: typeof AuthenticatedCrmCrmCremationLogsRouteWithChildren
   AuthenticatedCrmCrmDashboardRoute: typeof AuthenticatedCrmCrmDashboardRoute
   AuthenticatedCrmCrmDecedentsRoute: typeof AuthenticatedCrmCrmDecedentsRoute
+  AuthenticatedCrmCrmExportAuditRoute: typeof AuthenticatedCrmCrmExportAuditRoute
   AuthenticatedCrmCrmFuneralHomesRoute: typeof AuthenticatedCrmCrmFuneralHomesRoute
   AuthenticatedCrmCrmReportsRoute: typeof AuthenticatedCrmCrmReportsRoute
   AuthenticatedCrmCrmUpdatesRoute: typeof AuthenticatedCrmCrmUpdatesRoute
@@ -686,6 +707,7 @@ const AuthenticatedCrmRouteChildren: AuthenticatedCrmRouteChildren = {
     AuthenticatedCrmCrmCremationLogsRouteWithChildren,
   AuthenticatedCrmCrmDashboardRoute: AuthenticatedCrmCrmDashboardRoute,
   AuthenticatedCrmCrmDecedentsRoute: AuthenticatedCrmCrmDecedentsRoute,
+  AuthenticatedCrmCrmExportAuditRoute: AuthenticatedCrmCrmExportAuditRoute,
   AuthenticatedCrmCrmFuneralHomesRoute: AuthenticatedCrmCrmFuneralHomesRoute,
   AuthenticatedCrmCrmReportsRoute: AuthenticatedCrmCrmReportsRoute,
   AuthenticatedCrmCrmUpdatesRoute: AuthenticatedCrmCrmUpdatesRoute,
@@ -776,13 +798,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

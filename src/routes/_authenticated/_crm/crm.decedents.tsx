@@ -78,17 +78,43 @@ function DecedentsPage() {
 
   const [includeOut, setIncludeOut] = useState(false);
   const [view, setView] = useState<"board" | "list">("board");
+  const [search, setSearch] = useState("");
+  const [funeralHomeFilter, setFuneralHomeFilter] = useState<string>("all");
 
-  const { data: rows, isLoading } = useQuery({
+  const { data: allRows, isLoading } = useQuery({
     queryKey: ["crm", "decedents", orgId, includeOut],
     queryFn: () =>
       fetchList({ data: { organizationId: orgId, includeCheckedOut: includeOut } }),
   });
 
+  const rows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (allRows ?? []).filter((r: any) => {
+      if (funeralHomeFilter !== "all") {
+        if (funeralHomeFilter === "none") {
+          if (r.funeral_home_id) return false;
+        } else if (r.funeral_home_id !== funeralHomeFilter) return false;
+      }
+      if (!q) return true;
+      const hay = [
+        r.first_name,
+        r.last_name,
+        r.location,
+        r.rack,
+        r.funeral_homes?.name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [allRows, search, funeralHomeFilter]);
+
   const { data: homes } = useQuery({
     queryKey: ["crm", "funeral-homes", orgId],
     queryFn: () => fetchHomes({ data: { organizationId: orgId } }),
   });
+
 
   const [open, setOpen] = useState(false);
   const emptyForm = {
@@ -194,6 +220,7 @@ function DecedentsPage() {
                   Add a new decedent to the in-house board.
                 </DialogDescription>
               </DialogHeader>
+
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -328,7 +355,46 @@ function DecedentsPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, location, or funeral home…"
+          className="h-9 max-w-sm"
+        />
+        <Select value={funeralHomeFilter} onValueChange={setFuneralHomeFilter}>
+          <SelectTrigger className="h-9 w-56">
+            <SelectValue placeholder="All funeral homes" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All funeral homes</SelectItem>
+            <SelectItem value="none">No funeral home</SelectItem>
+            {(homes ?? []).map((h: any) => (
+              <SelectItem key={h.id} value={h.id}>
+                {h.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(search || funeralHomeFilter !== "all") && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch("");
+              setFuneralHomeFilter("all");
+            }}
+          >
+            Clear
+          </Button>
+        )}
+        <span className="ml-auto text-xs text-muted-foreground">
+          {rows.length} of {(allRows ?? []).length}
+        </span>
+      </div>
+
       <Tabs value={view} onValueChange={(v) => setView(v as "board" | "list")}>
+
         <TabsList>
           <TabsTrigger value="board">Board</TabsTrigger>
           <TabsTrigger value="list">List</TabsTrigger>
