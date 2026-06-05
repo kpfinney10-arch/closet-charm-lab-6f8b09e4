@@ -183,7 +183,7 @@ function CremationLogsPage() {
       <Tabs
         value={tab}
         onValueChange={(v) =>
-          navigate({ search: (prev) => ({ ...prev, tab: v as "active" | "completed", page: 1 }), replace: true })
+          navigate({ search: (prev: any) => ({ ...prev, tab: v as "active" | "completed", page: 1 }), replace: true })
         }
       >
         <TabsList>
