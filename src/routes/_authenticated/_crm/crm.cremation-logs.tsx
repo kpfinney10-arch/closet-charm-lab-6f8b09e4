@@ -619,12 +619,12 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Decedent</TableHead>
-                  <TableHead>Retort</TableHead>
-                  <TableHead>Operator</TableHead>
-                  <TableHead>Start</TableHead>
-                  <TableHead>End</TableHead>
-                  <TableHead>Duration</TableHead>
+                  <SortHead label="Decedent" sortKey="name" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="Retort" sortKey="retort" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="Operator" sortKey="operator" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="Start" sortKey="start" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="End" sortKey="end" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="Duration" sortKey="duration" active={sortKey} dir={sortDir} onSort={handleSort} />
                   <TableHead className="text-right">Record</TableHead>
                 </TableRow>
               </TableHeader>
