@@ -387,6 +387,50 @@ export type Database = {
           },
         ]
       }
+      crm_export_audit: {
+        Row: {
+          created_at: string
+          export_type: string
+          filename: string
+          id: string
+          organization_id: string
+          range_from: string | null
+          range_to: string | null
+          row_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          export_type: string
+          filename: string
+          id?: string
+          organization_id: string
+          range_from?: string | null
+          range_to?: string | null
+          row_count?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          export_type?: string
+          filename?: string
+          id?: string
+          organization_id?: string
+          range_from?: string | null
+          range_to?: string | null
+          row_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_export_audit_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decedent_events: {
         Row: {
           actor_id: string | null
