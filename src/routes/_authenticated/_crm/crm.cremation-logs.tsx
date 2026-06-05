@@ -388,34 +388,58 @@ function SortHead({
   );
 }
 
+function useDebounced<T>(value: T, delay = 300): T {
+  const [v, setV] = useState(value);
+  useMemo(() => {
+    const t = setTimeout(() => setV(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return v;
+}
+
 function ActiveView({
-  active,
-  isLoading,
+  orgId,
   onStop,
 }: {
-  active: any[];
-  isLoading: boolean;
+  orgId: string;
   onStop: (l: any) => void;
 }) {
+  const fetchPaged = useServerFn(listCremationLogsPaged);
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounced(query, 300);
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey>("start");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const filtered = useMemo(
-    () => sortLogs(active.filter((l) => matchesQuery(l, query)), sortKey, sortDir),
-    [active, query, sortKey, sortDir],
-  );
+  const { data, isLoading } = useQuery({
+    queryKey: [
+      "crm",
+      "cremation-logs",
+      orgId,
+      "paged",
+      "active",
+      { q: debouncedQuery, sort: sortKey, dir: sortDir, page },
+    ],
+    queryFn: () =>
+      fetchPaged({
+        data: {
+          organizationId: orgId,
+          scope: "active",
+          search: debouncedQuery || null,
+          sort: sortKey,
+          dir: sortDir,
+          page,
+          pageSize: PAGE_SIZE_ACTIVE,
+        },
+      }),
+  });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE_ACTIVE));
+  const rows = data?.rows ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE_ACTIVE));
   const safePage = Math.min(page, totalPages);
-  const paged = filtered.slice(
-    (safePage - 1) * PAGE_SIZE_ACTIVE,
-    safePage * PAGE_SIZE_ACTIVE,
-  );
 
-  if (isLoading) return <Loading />;
-  if (active.length === 0) return <EmptyState text="No active cremations." />;
+  if (isLoading && !data) return <Loading />;
 
   return (
     <div className="space-y-3">
@@ -439,6 +463,7 @@ function ActiveView({
               const [k, d] = v.split(":") as [SortKey, SortDir];
               setSortKey(k);
               setSortDir(d);
+              setPage(1);
             }}
           >
             <SelectTrigger className="w-[200px]">
@@ -449,21 +474,21 @@ function ActiveView({
               <SelectItem value="name:desc">Name (Z–A)</SelectItem>
               <SelectItem value="retort:asc">Retort (A–Z)</SelectItem>
               <SelectItem value="retort:desc">Retort (Z–A)</SelectItem>
+              <SelectItem value="operator:asc">Operator (A–Z)</SelectItem>
+              <SelectItem value="operator:desc">Operator (Z–A)</SelectItem>
               <SelectItem value="start:desc">Started (newest)</SelectItem>
               <SelectItem value="start:asc">Started (oldest)</SelectItem>
             </SelectContent>
           </Select>
-          <div className="text-xs text-muted-foreground">
-            {filtered.length} of {active.length}
-          </div>
+          <div className="text-xs text-muted-foreground">{total} total</div>
         </CardContent>
       </Card>
 
-      {paged.length === 0 ? (
-        <EmptyState text="No active cremations match your search." />
+      {rows.length === 0 ? (
+        <EmptyState text={debouncedQuery ? "No active cremations match your search." : "No active cremations."} />
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {paged.map((l: any) => (
+          {rows.map((l: any) => (
             <ActiveCard key={l.id} log={l} onStop={() => onStop(l)} />
           ))}
         </div>
@@ -472,7 +497,7 @@ function ActiveView({
       <Pagination
         page={safePage}
         totalPages={totalPages}
-        total={filtered.length}
+        total={total}
         pageSize={PAGE_SIZE_ACTIVE}
         onChange={setPage}
       />
@@ -480,11 +505,13 @@ function ActiveView({
   );
 }
 
-function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: boolean }) {
+function CompletedView({ orgId }: { orgId: string }) {
+  const fetchPaged = useServerFn(listCremationLogsPaged);
   const [retortFilter, setRetortFilter] = useState<string>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounced(query, 300);
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey>("start");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -499,31 +526,70 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
     setPage(1);
   };
 
+  const fromIso = from ? new Date(`${from}T00:00:00`).toISOString() : null;
+  const toIso = to ? new Date(`${to}T23:59:59`).toISOString() : null;
+
+  const { data, isLoading } = useQuery({
+    queryKey: [
+      "crm",
+      "cremation-logs",
+      orgId,
+      "paged",
+      "completed",
+      {
+        q: debouncedQuery,
+        retort: retortFilter,
+        from: fromIso,
+        to: toIso,
+        sort: sortKey,
+        dir: sortDir,
+        page,
+      },
+    ],
+    queryFn: () =>
+      fetchPaged({
+        data: {
+          organizationId: orgId,
+          scope: "completed",
+          search: debouncedQuery || null,
+          retort: retortFilter === "all" ? null : retortFilter,
+          from: fromIso,
+          to: toIso,
+          sort: sortKey,
+          dir: sortDir,
+          page,
+          pageSize: PAGE_SIZE_COMPLETED,
+        },
+      }),
+  });
+
+  const rows = data?.rows ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE_COMPLETED));
+  const safePage = Math.min(page, totalPages);
+
+  // Distinct retort options come from a lightweight unfiltered query.
+  const { data: retortSource } = useQuery({
+    queryKey: ["crm", "cremation-logs", orgId, "retorts"],
+    queryFn: () =>
+      fetchPaged({
+        data: {
+          organizationId: orgId,
+          scope: "completed",
+          page: 1,
+          pageSize: 200,
+          sort: "start",
+          dir: "desc",
+        },
+      }),
+  });
   const retorts = useMemo(() => {
     const s = new Set<string>();
-    completed.forEach((l) => l.retort && s.add(l.retort));
+    (retortSource?.rows ?? []).forEach((l: any) => l.retort && s.add(l.retort));
     return Array.from(s).sort();
-  }, [completed]);
+  }, [retortSource]);
 
-  const filtered = useMemo(() => {
-    const rows = completed.filter((l) => {
-      if (retortFilter !== "all" && (l.retort ?? "") !== retortFilter) return false;
-      if (from && l.start_time && new Date(l.start_time) < new Date(from)) return false;
-      if (to && l.start_time && new Date(l.start_time) > new Date(`${to}T23:59:59`)) return false;
-      if (!matchesQuery(l, query)) return false;
-      return true;
-    });
-    return sortLogs(rows, sortKey, sortDir);
-  }, [completed, retortFilter, from, to, query, sortKey, sortDir]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE_COMPLETED));
-  const safePage = Math.min(page, totalPages);
-  const paged = filtered.slice(
-    (safePage - 1) * PAGE_SIZE_COMPLETED,
-    safePage * PAGE_SIZE_COMPLETED,
-  );
-
-  if (isLoading) return <Loading />;
+  if (isLoading && !data) return <Loading />;
 
   return (
     <div className="space-y-3">
@@ -603,13 +669,11 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
               Clear
             </Button>
           )}
-          <div className="ml-auto text-xs text-muted-foreground">
-            {filtered.length} of {completed.length}
-          </div>
+          <div className="ml-auto text-xs text-muted-foreground">{total} total</div>
         </CardContent>
       </Card>
 
-      {paged.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState text="No completed runs match the filters." />
       ) : (
         <Card>
@@ -627,7 +691,7 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paged.map((l: any) => (
+                {rows.map((l: any) => (
                   <TableRow key={l.id}>
                     <TableCell className="font-medium">{decedentName(l)}</TableCell>
                     <TableCell>{l.retort ?? "—"}</TableCell>
@@ -657,7 +721,7 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
       <Pagination
         page={safePage}
         totalPages={totalPages}
-        total={filtered.length}
+        total={total}
         pageSize={PAGE_SIZE_COMPLETED}
         onChange={setPage}
       />
