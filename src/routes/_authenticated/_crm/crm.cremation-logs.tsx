@@ -318,10 +318,94 @@ function CremationLogsPage() {
   );
 }
 
+const PAGE_SIZE_ACTIVE = 12;
+const PAGE_SIZE_COMPLETED = 25;
+
+function matchesQuery(l: any, q: string) {
+  if (!q) return true;
+  const needle = q.toLowerCase();
+  const name = decedentName(l).toLowerCase();
+  const retort = (l.retort ?? "").toLowerCase();
+  const operator = (l.operator_name ?? "").toLowerCase();
+  return name.includes(needle) || retort.includes(needle) || operator.includes(needle);
+}
+
+function ActiveView({
+  active,
+  isLoading,
+  onStop,
+}: {
+  active: any[];
+  isLoading: boolean;
+  onStop: (l: any) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+
+  const filtered = useMemo(
+    () => active.filter((l) => matchesQuery(l, query)),
+    [active, query],
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE_ACTIVE));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice(
+    (safePage - 1) * PAGE_SIZE_ACTIVE,
+    safePage * PAGE_SIZE_ACTIVE,
+  );
+
+  if (isLoading) return <Loading />;
+  if (active.length === 0) return <EmptyState text="No active cremations." />;
+
+  return (
+    <div className="space-y-3">
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-3 p-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search name, retort, or operator…"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+              }}
+              className="pl-8"
+            />
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {filtered.length} of {active.length}
+          </div>
+        </CardContent>
+      </Card>
+
+      {paged.length === 0 ? (
+        <EmptyState text="No active cremations match your search." />
+      ) : (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {paged.map((l: any) => (
+            <ActiveCard key={l.id} log={l} onStop={() => onStop(l)} />
+          ))}
+        </div>
+      )}
+
+      <Pagination
+        page={safePage}
+        totalPages={totalPages}
+        total={filtered.length}
+        pageSize={PAGE_SIZE_ACTIVE}
+        onChange={setPage}
+      />
+    </div>
+  );
+}
+
 function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: boolean }) {
   const [retortFilter, setRetortFilter] = useState<string>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const retorts = useMemo(() => {
     const s = new Set<string>();
@@ -334,9 +418,17 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
       if (retortFilter !== "all" && (l.retort ?? "") !== retortFilter) return false;
       if (from && l.start_time && new Date(l.start_time) < new Date(from)) return false;
       if (to && l.start_time && new Date(l.start_time) > new Date(`${to}T23:59:59`)) return false;
+      if (!matchesQuery(l, query)) return false;
       return true;
     });
-  }, [completed, retortFilter, from, to]);
+  }, [completed, retortFilter, from, to, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE_COMPLETED));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice(
+    (safePage - 1) * PAGE_SIZE_COMPLETED,
+    safePage * PAGE_SIZE_COMPLETED,
+  );
 
   if (isLoading) return <Loading />;
 
@@ -344,9 +436,30 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
     <div className="space-y-3">
       <Card>
         <CardContent className="flex flex-wrap items-end gap-3 p-3">
+          <div className="relative min-w-[220px] flex-1 space-y-1.5">
+            <Label className="text-xs">Search</Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Name, retort, operator…"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
+                className="pl-8"
+              />
+            </div>
+          </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Retort</Label>
-            <Select value={retortFilter} onValueChange={setRetortFilter}>
+            <Select
+              value={retortFilter}
+              onValueChange={(v) => {
+                setRetortFilter(v);
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-[160px]">
                 <SelectValue />
               </SelectTrigger>
@@ -360,13 +473,29 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">From</Label>
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-[160px]" />
+            <Input
+              type="date"
+              value={from}
+              onChange={(e) => {
+                setFrom(e.target.value);
+                setPage(1);
+              }}
+              className="w-[160px]"
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">To</Label>
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-[160px]" />
+            <Input
+              type="date"
+              value={to}
+              onChange={(e) => {
+                setTo(e.target.value);
+                setPage(1);
+              }}
+              className="w-[160px]"
+            />
           </div>
-          {(retortFilter !== "all" || from || to) && (
+          {(retortFilter !== "all" || from || to || query) && (
             <Button
               variant="ghost"
               size="sm"
@@ -374,6 +503,8 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
                 setRetortFilter("all");
                 setFrom("");
                 setTo("");
+                setQuery("");
+                setPage(1);
               }}
             >
               Clear
@@ -385,7 +516,7 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
         </CardContent>
       </Card>
 
-      {filtered.length === 0 ? (
+      {paged.length === 0 ? (
         <EmptyState text="No completed runs match the filters." />
       ) : (
         <Card>
@@ -403,7 +534,7 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((l: any) => (
+                {paged.map((l: any) => (
                   <TableRow key={l.id}>
                     <TableCell className="font-medium">{decedentName(l)}</TableCell>
                     <TableCell>{l.retort ?? "—"}</TableCell>
@@ -429,6 +560,60 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
           </CardContent>
         </Card>
       )}
+
+      <Pagination
+        page={safePage}
+        totalPages={totalPages}
+        total={filtered.length}
+        pageSize={PAGE_SIZE_COMPLETED}
+        onChange={setPage}
+      />
+    </div>
+  );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  total,
+  pageSize,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  pageSize: number;
+  onChange: (p: number) => void;
+}) {
+  if (total === 0 || totalPages <= 1) return null;
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, total);
+  return (
+    <div className="flex items-center justify-between gap-3 px-1 text-sm text-muted-foreground">
+      <div>
+        Showing {start}–{end} of {total}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => onChange(Math.max(1, page - 1))}
+          disabled={page <= 1}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="tabular-nums">
+          Page {page} of {totalPages}
+        </span>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => onChange(Math.min(totalPages, page + 1))}
+          disabled={page >= totalPages}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }
