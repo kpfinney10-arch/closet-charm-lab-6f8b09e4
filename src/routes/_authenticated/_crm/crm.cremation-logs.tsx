@@ -191,52 +191,10 @@ function CremationLogsPage() {
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">
-          {isLoading ? (
-            <Loading />
-          ) : completed.length === 0 ? (
-            <EmptyState text="No completed runs yet." />
-          ) : (
-            <Card>
-              <CardContent className="p-0 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Decedent</TableHead>
-                      <TableHead>Retort</TableHead>
-                      <TableHead>Operator</TableHead>
-                      <TableHead>Start</TableHead>
-                      <TableHead>End</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead className="text-right">Record</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {completed.map((l: any) => (
-                      <TableRow key={l.id}>
-                        <TableCell className="font-medium">{decedentName(l)}</TableCell>
-                        <TableCell>{l.retort ?? "—"}</TableCell>
-                        <TableCell>{l.operator_name ?? "—"}</TableCell>
-                        <TableCell>{fmtDateTime(l.start_time)}</TableCell>
-                        <TableCell>{fmtDateTime(l.end_time)}</TableCell>
-                        <TableCell>{duration(l.start_time, l.end_time)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild size="sm" variant="outline">
-                            <Link
-                              to="/crm/cremation-logs/$logId/print"
-                              params={{ logId: l.id }}
-                              target="_blank"
-                            >
-                              <Printer className="mr-2 h-3.5 w-3.5" /> Print
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
+          <CompletedView
+            completed={completed}
+            isLoading={isLoading}
+          />
         </TabsContent>
       </Tabs>
 
