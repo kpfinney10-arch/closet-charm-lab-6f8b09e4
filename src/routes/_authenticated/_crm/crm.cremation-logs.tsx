@@ -50,9 +50,8 @@ import {
 import { Flame, Loader2, Play, Square, Printer, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/_crm/crm/cremation-logs")({
-  component: CremationLogsPage,
 const sortKeySchema = z.enum(["name", "retort", "operator", "start", "end", "duration"]);
+const sortDirSchema = z.enum(["asc", "desc"]);
 const sortDirSchema = z.enum(["asc", "desc"]);
 
 const searchSchema = z.object({
