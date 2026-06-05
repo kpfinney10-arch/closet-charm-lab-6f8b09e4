@@ -355,7 +355,46 @@ function DecedentsPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, location, or funeral home…"
+          className="h-9 max-w-sm"
+        />
+        <Select value={funeralHomeFilter} onValueChange={setFuneralHomeFilter}>
+          <SelectTrigger className="h-9 w-56">
+            <SelectValue placeholder="All funeral homes" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All funeral homes</SelectItem>
+            <SelectItem value="none">No funeral home</SelectItem>
+            {(homes ?? []).map((h: any) => (
+              <SelectItem key={h.id} value={h.id}>
+                {h.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(search || funeralHomeFilter !== "all") && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch("");
+              setFuneralHomeFilter("all");
+            }}
+          >
+            Clear
+          </Button>
+        )}
+        <span className="ml-auto text-xs text-muted-foreground">
+          {rows.length} of {(allRows ?? []).length}
+        </span>
+      </div>
+
       <Tabs value={view} onValueChange={(v) => setView(v as "board" | "list")}>
+
         <TabsList>
           <TabsTrigger value="board">Board</TabsTrigger>
           <TabsTrigger value="list">List</TabsTrigger>
