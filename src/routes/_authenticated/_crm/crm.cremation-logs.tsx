@@ -506,23 +506,37 @@ function ActiveView({
 
 function CompletedView({ orgId }: { orgId: string }) {
   const fetchPaged = useServerFn(listCremationLogsPaged);
-  const [retortFilter, setRetortFilter] = useState<string>("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [query, setQuery] = useState("");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const retortFilter = search.retort;
+  const from = search.from;
+  const to = search.to;
+  const sortKey = search.sort;
+  const sortDir = search.dir;
+  const page = search.page;
+  const [query, setQuery] = useState(search.q);
   const debouncedQuery = useDebounced(query, 300);
-  const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState<SortKey>("start");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  useEffect(() => {
+    if (debouncedQuery === search.q) return;
+    navigate({ search: (prev: any) => ({ ...prev, q: debouncedQuery, page: 1 }), replace: true });
+  }, [debouncedQuery]);
+
+  const updateSearch = (patch: Record<string, any>) =>
+    navigate({ search: (prev: any) => ({ ...prev, ...patch }), replace: true });
+
+  const setPage = (p: number) => updateSearch({ page: p });
 
   const handleSort = (k: SortKey) => {
     if (sortKey === k) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      updateSearch({ dir: sortDir === "asc" ? "desc" : "asc", page: 1 });
     } else {
-      setSortKey(k);
-      setSortDir(k === "start" || k === "end" || k === "duration" ? "desc" : "asc");
+      updateSearch({
+        sort: k,
+        dir: k === "start" || k === "end" || k === "duration" ? "desc" : "asc",
+        page: 1,
+      });
     }
-    setPage(1);
   };
 
   const fromIso = from ? new Date(`${from}T00:00:00`).toISOString() : null;
