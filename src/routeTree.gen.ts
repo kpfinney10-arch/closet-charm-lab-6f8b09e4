@@ -40,6 +40,7 @@ import { Route as AuthenticatedCrmCrmFuneralHomesRouteImport } from './routes/_a
 import { Route as AuthenticatedCrmCrmDecedentsRouteImport } from './routes/_authenticated/_crm/crm.decedents'
 import { Route as AuthenticatedCrmCrmDashboardRouteImport } from './routes/_authenticated/_crm/crm.dashboard'
 import { Route as AuthenticatedCrmCrmCremationLogsRouteImport } from './routes/_authenticated/_crm/crm.cremation-logs'
+import { Route as AuthenticatedCrmCrmCremationLogsLogIdPrintRouteImport } from './routes/_authenticated/_crm/crm.cremation-logs.$logId.print'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -215,6 +216,12 @@ const AuthenticatedCrmCrmCremationLogsRoute =
     path: '/crm/cremation-logs',
     getParentRoute: () => AuthenticatedCrmRoute,
   } as any)
+const AuthenticatedCrmCrmCremationLogsLogIdPrintRoute =
+  AuthenticatedCrmCrmCremationLogsLogIdPrintRouteImport.update({
+    id: '/$logId/print',
+    path: '/$logId/print',
+    getParentRoute: () => AuthenticatedCrmCrmCremationLogsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -233,7 +240,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof AuthenticatedDispatcherUsersRoute
   '/vehicles': typeof AuthenticatedDispatcherVehiclesRoute
   '/driver/': typeof AuthenticatedDriverIndexRoute
-  '/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRoute
+  '/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRouteWithChildren
   '/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
   '/crm/decedents': typeof AuthenticatedCrmCrmDecedentsRoute
   '/crm/funeral-homes': typeof AuthenticatedCrmCrmFuneralHomesRoute
@@ -245,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
   '/crm/': typeof AuthenticatedCrmCrmIndexRoute
   '/cases/': typeof AuthenticatedDispatcherCasesIndexRoute
+  '/crm/cremation-logs/$logId/print': typeof AuthenticatedCrmCrmCremationLogsLogIdPrintRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -262,7 +270,7 @@ export interface FileRoutesByTo {
   '/users': typeof AuthenticatedDispatcherUsersRoute
   '/vehicles': typeof AuthenticatedDispatcherVehiclesRoute
   '/driver': typeof AuthenticatedDriverIndexRoute
-  '/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRoute
+  '/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRouteWithChildren
   '/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
   '/crm/decedents': typeof AuthenticatedCrmCrmDecedentsRoute
   '/crm/funeral-homes': typeof AuthenticatedCrmCrmFuneralHomesRoute
@@ -274,6 +282,7 @@ export interface FileRoutesByTo {
   '/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
   '/crm': typeof AuthenticatedCrmCrmIndexRoute
   '/cases': typeof AuthenticatedDispatcherCasesIndexRoute
+  '/crm/cremation-logs/$logId/print': typeof AuthenticatedCrmCrmCremationLogsLogIdPrintRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -296,7 +305,7 @@ export interface FileRoutesById {
   '/_authenticated/_dispatcher/users': typeof AuthenticatedDispatcherUsersRoute
   '/_authenticated/_dispatcher/vehicles': typeof AuthenticatedDispatcherVehiclesRoute
   '/_authenticated/driver/': typeof AuthenticatedDriverIndexRoute
-  '/_authenticated/_crm/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRoute
+  '/_authenticated/_crm/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRouteWithChildren
   '/_authenticated/_crm/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
   '/_authenticated/_crm/crm/decedents': typeof AuthenticatedCrmCrmDecedentsRoute
   '/_authenticated/_crm/crm/funeral-homes': typeof AuthenticatedCrmCrmFuneralHomesRoute
@@ -308,6 +317,7 @@ export interface FileRoutesById {
   '/_authenticated/cases/$caseId/print': typeof AuthenticatedCasesCaseIdPrintRoute
   '/_authenticated/_crm/crm/': typeof AuthenticatedCrmCrmIndexRoute
   '/_authenticated/_dispatcher/cases/': typeof AuthenticatedDispatcherCasesIndexRoute
+  '/_authenticated/_crm/crm/cremation-logs/$logId/print': typeof AuthenticatedCrmCrmCremationLogsLogIdPrintRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -340,6 +350,7 @@ export interface FileRouteTypes {
     | '/cases/$caseId/print'
     | '/crm/'
     | '/cases/'
+    | '/crm/cremation-logs/$logId/print'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -369,6 +380,7 @@ export interface FileRouteTypes {
     | '/cases/$caseId/print'
     | '/crm'
     | '/cases'
+    | '/crm/cremation-logs/$logId/print'
   id:
     | '__root__'
     | '/'
@@ -402,6 +414,7 @@ export interface FileRouteTypes {
     | '/_authenticated/cases/$caseId/print'
     | '/_authenticated/_crm/crm/'
     | '/_authenticated/_dispatcher/cases/'
+    | '/_authenticated/_crm/crm/cremation-logs/$logId/print'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -632,11 +645,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCrmCrmCremationLogsRouteImport
       parentRoute: typeof AuthenticatedCrmRoute
     }
+    '/_authenticated/_crm/crm/cremation-logs/$logId/print': {
+      id: '/_authenticated/_crm/crm/cremation-logs/$logId/print'
+      path: '/$logId/print'
+      fullPath: '/crm/cremation-logs/$logId/print'
+      preLoaderRoute: typeof AuthenticatedCrmCrmCremationLogsLogIdPrintRouteImport
+      parentRoute: typeof AuthenticatedCrmCrmCremationLogsRoute
+    }
   }
 }
 
+interface AuthenticatedCrmCrmCremationLogsRouteChildren {
+  AuthenticatedCrmCrmCremationLogsLogIdPrintRoute: typeof AuthenticatedCrmCrmCremationLogsLogIdPrintRoute
+}
+
+const AuthenticatedCrmCrmCremationLogsRouteChildren: AuthenticatedCrmCrmCremationLogsRouteChildren =
+  {
+    AuthenticatedCrmCrmCremationLogsLogIdPrintRoute:
+      AuthenticatedCrmCrmCremationLogsLogIdPrintRoute,
+  }
+
+const AuthenticatedCrmCrmCremationLogsRouteWithChildren =
+  AuthenticatedCrmCrmCremationLogsRoute._addFileChildren(
+    AuthenticatedCrmCrmCremationLogsRouteChildren,
+  )
+
 interface AuthenticatedCrmRouteChildren {
-  AuthenticatedCrmCrmCremationLogsRoute: typeof AuthenticatedCrmCrmCremationLogsRoute
+  AuthenticatedCrmCrmCremationLogsRoute: typeof AuthenticatedCrmCrmCremationLogsRouteWithChildren
   AuthenticatedCrmCrmDashboardRoute: typeof AuthenticatedCrmCrmDashboardRoute
   AuthenticatedCrmCrmDecedentsRoute: typeof AuthenticatedCrmCrmDecedentsRoute
   AuthenticatedCrmCrmFuneralHomesRoute: typeof AuthenticatedCrmCrmFuneralHomesRoute
@@ -647,7 +682,8 @@ interface AuthenticatedCrmRouteChildren {
 }
 
 const AuthenticatedCrmRouteChildren: AuthenticatedCrmRouteChildren = {
-  AuthenticatedCrmCrmCremationLogsRoute: AuthenticatedCrmCrmCremationLogsRoute,
+  AuthenticatedCrmCrmCremationLogsRoute:
+    AuthenticatedCrmCrmCremationLogsRouteWithChildren,
   AuthenticatedCrmCrmDashboardRoute: AuthenticatedCrmCrmDashboardRoute,
   AuthenticatedCrmCrmDecedentsRoute: AuthenticatedCrmCrmDecedentsRoute,
   AuthenticatedCrmCrmFuneralHomesRoute: AuthenticatedCrmCrmFuneralHomesRoute,
