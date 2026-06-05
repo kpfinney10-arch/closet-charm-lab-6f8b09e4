@@ -509,3 +509,79 @@ function ExportButtons({ organizationId }: { organizationId: string }) {
     </Popover>
   );
 }
+
+function ExportAuditCard({ organizationId }: { organizationId: string }) {
+  const fetchAudit = useServerFn(listCrmExportAudit);
+  const { data, isLoading } = useQuery({
+    queryKey: ["crm", "export-audit", organizationId],
+    queryFn: () => fetchAudit({ data: { organizationId, limit: 50 } }),
+    refetchInterval: 30_000,
+  });
+
+  const fmtRange = (from: string | null, to: string | null) => {
+    const f = from ? new Date(from).toLocaleDateString() : null;
+    const t = to ? new Date(to).toLocaleDateString() : null;
+    if (f && t) return `${f} → ${t}`;
+    if (f) return `from ${f}`;
+    if (t) return `until ${t}`;
+    return "All time";
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Export history</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="flex h-24 items-center justify-center">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : !data || data.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">
+            No exports recorded yet.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>When</TableHead>
+                <TableHead>By</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Range</TableHead>
+                <TableHead className="text-right">Rows</TableHead>
+                <TableHead>File</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                    {new Date(r.created_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {r.user_name ?? r.user_id.slice(0, 8)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="capitalize">
+                      {r.export_type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {fmtRange(r.range_from, r.range_to)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {r.row_count}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {r.filename}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
