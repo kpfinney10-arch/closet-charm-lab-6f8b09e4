@@ -19,6 +19,7 @@ import { Route as AuthenticatedDriverRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedDispatcherRouteImport } from './routes/_authenticated/_dispatcher'
 import { Route as AuthenticatedCrmRouteImport } from './routes/_authenticated/_crm'
 import { Route as AuthenticatedDriverIndexRouteImport } from './routes/_authenticated/driver/index'
+import { Route as AuthenticatedDriverActivityRouteImport } from './routes/_authenticated/driver/activity'
 import { Route as AuthenticatedDispatcherVehiclesRouteImport } from './routes/_authenticated/_dispatcher/vehicles'
 import { Route as AuthenticatedDispatcherUsersRouteImport } from './routes/_authenticated/_dispatcher/users'
 import { Route as AuthenticatedDispatcherSettingsRouteImport } from './routes/_authenticated/_dispatcher/settings'
@@ -89,6 +90,12 @@ const AuthenticatedDriverIndexRoute =
   AuthenticatedDriverIndexRouteImport.update({
     id: '/',
     path: '/',
+    getParentRoute: () => AuthenticatedDriverRoute,
+  } as any)
+const AuthenticatedDriverActivityRoute =
+  AuthenticatedDriverActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
     getParentRoute: () => AuthenticatedDriverRoute,
   } as any)
 const AuthenticatedDispatcherVehiclesRoute =
@@ -246,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedDispatcherSettingsRoute
   '/users': typeof AuthenticatedDispatcherUsersRoute
   '/vehicles': typeof AuthenticatedDispatcherVehiclesRoute
+  '/driver/activity': typeof AuthenticatedDriverActivityRoute
   '/driver/': typeof AuthenticatedDriverIndexRoute
   '/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRouteWithChildren
   '/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
@@ -277,6 +285,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedDispatcherSettingsRoute
   '/users': typeof AuthenticatedDispatcherUsersRoute
   '/vehicles': typeof AuthenticatedDispatcherVehiclesRoute
+  '/driver/activity': typeof AuthenticatedDriverActivityRoute
   '/driver': typeof AuthenticatedDriverIndexRoute
   '/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRouteWithChildren
   '/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
@@ -313,6 +322,7 @@ export interface FileRoutesById {
   '/_authenticated/_dispatcher/settings': typeof AuthenticatedDispatcherSettingsRoute
   '/_authenticated/_dispatcher/users': typeof AuthenticatedDispatcherUsersRoute
   '/_authenticated/_dispatcher/vehicles': typeof AuthenticatedDispatcherVehiclesRoute
+  '/_authenticated/driver/activity': typeof AuthenticatedDriverActivityRoute
   '/_authenticated/driver/': typeof AuthenticatedDriverIndexRoute
   '/_authenticated/_crm/crm/cremation-logs': typeof AuthenticatedCrmCrmCremationLogsRouteWithChildren
   '/_authenticated/_crm/crm/dashboard': typeof AuthenticatedCrmCrmDashboardRoute
@@ -347,6 +357,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/users'
     | '/vehicles'
+    | '/driver/activity'
     | '/driver/'
     | '/crm/cremation-logs'
     | '/crm/dashboard'
@@ -378,6 +389,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/users'
     | '/vehicles'
+    | '/driver/activity'
     | '/driver'
     | '/crm/cremation-logs'
     | '/crm/dashboard'
@@ -413,6 +425,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_dispatcher/settings'
     | '/_authenticated/_dispatcher/users'
     | '/_authenticated/_dispatcher/vehicles'
+    | '/_authenticated/driver/activity'
     | '/_authenticated/driver/'
     | '/_authenticated/_crm/crm/cremation-logs'
     | '/_authenticated/_crm/crm/dashboard'
@@ -509,6 +522,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/driver/'
       preLoaderRoute: typeof AuthenticatedDriverIndexRouteImport
+      parentRoute: typeof AuthenticatedDriverRoute
+    }
+    '/_authenticated/driver/activity': {
+      id: '/_authenticated/driver/activity'
+      path: '/activity'
+      fullPath: '/driver/activity'
+      preLoaderRoute: typeof AuthenticatedDriverActivityRouteImport
       parentRoute: typeof AuthenticatedDriverRoute
     }
     '/_authenticated/_dispatcher/vehicles': {
@@ -759,10 +779,12 @@ const AuthenticatedDispatcherRouteWithChildren =
   )
 
 interface AuthenticatedDriverRouteChildren {
+  AuthenticatedDriverActivityRoute: typeof AuthenticatedDriverActivityRoute
   AuthenticatedDriverIndexRoute: typeof AuthenticatedDriverIndexRoute
 }
 
 const AuthenticatedDriverRouteChildren: AuthenticatedDriverRouteChildren = {
+  AuthenticatedDriverActivityRoute: AuthenticatedDriverActivityRoute,
   AuthenticatedDriverIndexRoute: AuthenticatedDriverIndexRoute,
 }
 
