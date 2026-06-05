@@ -615,10 +615,7 @@ function CompletedView({ orgId }: { orgId: string }) {
               <Input
                 placeholder="Name, retort, operator…"
                 value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setPage(1);
-                }}
+                onChange={(e) => setQuery(e.target.value)}
                 className="pl-8"
               />
             </div>
@@ -627,10 +624,7 @@ function CompletedView({ orgId }: { orgId: string }) {
             <Label className="text-xs">Retort</Label>
             <Select
               value={retortFilter}
-              onValueChange={(v) => {
-                setRetortFilter(v);
-                setPage(1);
-              }}
+              onValueChange={(v) => updateSearch({ retort: v, page: 1 })}
             >
               <SelectTrigger className="w-[160px]">
                 <SelectValue />
@@ -648,10 +642,7 @@ function CompletedView({ orgId }: { orgId: string }) {
             <Input
               type="date"
               value={from}
-              onChange={(e) => {
-                setFrom(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => updateSearch({ from: e.target.value, page: 1 })}
               className="w-[160px]"
             />
           </div>
@@ -660,10 +651,7 @@ function CompletedView({ orgId }: { orgId: string }) {
             <Input
               type="date"
               value={to}
-              onChange={(e) => {
-                setTo(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => updateSearch({ to: e.target.value, page: 1 })}
               className="w-[160px]"
             />
           </div>
@@ -672,11 +660,8 @@ function CompletedView({ orgId }: { orgId: string }) {
               variant="ghost"
               size="sm"
               onClick={() => {
-                setRetortFilter("all");
-                setFrom("");
-                setTo("");
                 setQuery("");
-                setPage(1);
+                updateSearch({ retort: "all", from: "", to: "", q: "", page: 1 });
               }}
             >
               Clear
