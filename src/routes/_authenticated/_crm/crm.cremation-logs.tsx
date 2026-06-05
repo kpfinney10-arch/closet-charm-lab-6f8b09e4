@@ -44,7 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Flame, Loader2, Play, Square, Printer, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Flame, Loader2, Play, Square, Printer, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/_crm/crm/cremation-logs")({
