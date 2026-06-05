@@ -39,9 +39,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Loader2, UserSquare2, MoreVertical } from "lucide-react";
+import { Plus, Loader2, UserSquare2, MoreVertical, HandHeart, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ReleaseDialog } from "@/components/crm/release-dialog";
+import { checkoutDecedent } from "@/lib/decedent-releases.functions";
 
 export const Route = createFileRoute("/_authenticated/_crm/crm/decedents")({
   component: DecedentsPage,
