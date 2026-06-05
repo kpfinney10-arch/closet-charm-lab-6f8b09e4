@@ -488,6 +488,18 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
   const [to, setTo] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey>("start");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const handleSort = (k: SortKey) => {
+    if (sortKey === k) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(k);
+      setSortDir(k === "start" || k === "end" || k === "duration" ? "desc" : "asc");
+    }
+    setPage(1);
+  };
 
   const retorts = useMemo(() => {
     const s = new Set<string>();
@@ -496,14 +508,15 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
   }, [completed]);
 
   const filtered = useMemo(() => {
-    return completed.filter((l) => {
+    const rows = completed.filter((l) => {
       if (retortFilter !== "all" && (l.retort ?? "") !== retortFilter) return false;
       if (from && l.start_time && new Date(l.start_time) < new Date(from)) return false;
       if (to && l.start_time && new Date(l.start_time) > new Date(`${to}T23:59:59`)) return false;
       if (!matchesQuery(l, query)) return false;
       return true;
     });
-  }, [completed, retortFilter, from, to, query]);
+    return sortLogs(rows, sortKey, sortDir);
+  }, [completed, retortFilter, from, to, query, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE_COMPLETED));
   const safePage = Math.min(page, totalPages);
