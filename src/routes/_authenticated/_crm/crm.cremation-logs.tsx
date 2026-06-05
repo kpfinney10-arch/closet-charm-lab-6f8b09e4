@@ -322,40 +322,7 @@ const PAGE_SIZE_COMPLETED = 25;
 type SortKey = "name" | "retort" | "operator" | "start" | "end" | "duration";
 type SortDir = "asc" | "desc";
 
-function matchesQuery(l: any, q: string) {
-  if (!q) return true;
-  const needle = q.toLowerCase();
-  const name = decedentName(l).toLowerCase();
-  const retort = (l.retort ?? "").toLowerCase();
-  const operator = (l.operator_name ?? "").toLowerCase();
-  return name.includes(needle) || retort.includes(needle) || operator.includes(needle);
-}
-
-function sortValue(l: any, key: SortKey): string | number {
-  switch (key) {
-    case "name": return decedentName(l).toLowerCase();
-    case "retort": return (l.retort ?? "").toLowerCase();
-    case "operator": return (l.operator_name ?? "").toLowerCase();
-    case "start": return l.start_time ? new Date(l.start_time).getTime() : 0;
-    case "end": return l.end_time ? new Date(l.end_time).getTime() : 0;
-    case "duration": {
-      if (!l.start_time || !l.end_time) return -1;
-      return new Date(l.end_time).getTime() - new Date(l.start_time).getTime();
-    }
-  }
-}
-
-function sortLogs(rows: any[], key: SortKey, dir: SortDir) {
-  const copy = [...rows];
-  copy.sort((a, b) => {
-    const av = sortValue(a, key);
-    const bv = sortValue(b, key);
-    if (av < bv) return dir === "asc" ? -1 : 1;
-    if (av > bv) return dir === "asc" ? 1 : -1;
-    return 0;
-  });
-  return copy;
-}
+// Sorting and filtering are performed server-side; see list_cremation_logs RPC.
 
 function SortHead({
   label,
