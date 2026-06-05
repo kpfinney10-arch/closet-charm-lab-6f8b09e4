@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useCrm } from "@/contexts/crm-context";
 import { getCrmReports, type CrmReports } from "@/lib/crm-reports.functions";
+import { listReleases } from "@/lib/decedent-releases.functions";
+import { listCremationLogs } from "@/lib/cremation-logs.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -21,12 +23,40 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, Flame, PackageCheck, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Activity, Flame, PackageCheck, Clock, Download } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/_crm/crm/reports")({
   component: ReportsPage,
   head: () => ({ meta: [{ title: "Reports — CRM" }] }),
 });
+
+function toCsv(rows: Array<Record<string, unknown>>): string {
+  if (!rows.length) return "";
+  const headers = Object.keys(rows[0]);
+  const esc = (v: unknown) => {
+    if (v == null) return "";
+    const s = String(v);
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [
+    headers.join(","),
+    ...rows.map((r) => headers.map((h) => esc(r[h])).join(",")),
+  ].join("\n");
+}
+
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 const STATUS_LABELS: Record<string, string> = {
   checked_in: "Checked in",
@@ -67,19 +97,22 @@ function ReportsPage() {
             Operational snapshot for {currentOrg.organization_name}.
           </p>
         </div>
-        <Select
-          value={String(monthsBack)}
-          onValueChange={(v) => setMonthsBack(Number(v))}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="3">Last 3 months</SelectItem>
-            <SelectItem value="6">Last 6 months</SelectItem>
-            <SelectItem value="12">Last 12 months</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportButtons organizationId={currentOrg.organization_id} />
+          <Select
+            value={String(monthsBack)}
+            onValueChange={(v) => setMonthsBack(Number(v))}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3">Last 3 months</SelectItem>
+              <SelectItem value="6">Last 6 months</SelectItem>
+              <SelectItem value="12">Last 12 months</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </header>
 
       {isLoading || !data ? (
@@ -249,4 +282,89 @@ function fmtMonth(ym: string) {
     month: "short",
     year: "numeric",
   });
+}
+
+function ExportButtons({ organizationId }: { organizationId: string }) {
+  const fetchReleases = useServerFn(listReleases);
+  const fetchLogs = useServerFn(listCremationLogs);
+  const [busy, setBusy] = useState<"releases" | "cremations" | null>(null);
+  const stamp = () => new Date().toISOString().slice(0, 10);
+
+  const exportReleases = async () => {
+    setBusy("releases");
+    try {
+      const rows = await fetchReleases({ data: { organizationId, limit: 200 } });
+      const mapped = (rows as any[]).map((r) => ({
+        released_at: r.released_at,
+        decedent_last_name: r.decedents?.last_name ?? "",
+        decedent_first_name: r.decedents?.first_name ?? "",
+        item_type: r.item_type,
+        released_to_name: r.released_to_name,
+        released_to_relation: r.released_to_relation ?? "",
+        released_to_phone: r.released_to_phone ?? "",
+        id_type: r.id_type ?? "",
+        id_number: r.id_number ?? "",
+        witnessed_by: r.witnessed_by ?? "",
+        notes: r.notes ?? "",
+      }));
+      if (!mapped.length) {
+        toast.info("No releases to export");
+        return;
+      }
+      downloadCsv(`releases-${stamp()}.csv`, toCsv(mapped));
+    } catch (e: any) {
+      toast.error(e?.message ?? "Export failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const exportCremations = async () => {
+    setBusy("cremations");
+    try {
+      const rows = await fetchLogs({ data: { organizationId, scope: "all", limit: 500 } });
+      const mapped = (rows as any[]).map((r) => ({
+        start_time: r.start_time ?? "",
+        end_time: r.end_time ?? "",
+        decedent_last_name: r.decedents?.last_name ?? "",
+        decedent_first_name: r.decedents?.first_name ?? "",
+        operator: r.operator_name ?? "",
+        retort: r.retort ?? "",
+        container_type: r.container_type ?? "",
+        weight_lbs: r.weight_lbs ?? "",
+        ash_weight_lbs: r.ash_weight_lbs ?? "",
+        comment: r.comment ?? "",
+      }));
+      if (!mapped.length) {
+        toast.info("No cremation logs to export");
+        return;
+      }
+      downloadCsv(`cremations-${stamp()}.csv`, toCsv(mapped));
+    } catch (e: any) {
+      toast.error(e?.message ?? "Export failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={exportReleases} disabled={busy !== null}>
+        {busy === "releases" ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Download className="h-4 w-4" />
+        )}
+        Releases CSV
+      </Button>
+      <Button variant="outline" size="sm" onClick={exportCremations} disabled={busy !== null}>
+        {busy === "cremations" ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Download className="h-4 w-4" />
+        )}
+        Cremations CSV
+      </Button>
+    </>
+  );
 }
