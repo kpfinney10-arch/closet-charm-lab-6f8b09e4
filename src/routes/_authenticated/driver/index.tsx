@@ -196,6 +196,16 @@ function DriverQueue() {
 
   return (
     <div className="space-y-4 p-4">
+      <header className="flex items-center justify-between gap-2">
+        <h1 className="text-lg font-semibold">My runs</h1>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/driver/activity">
+            <Inbox className="h-4 w-4" />
+            Activity
+          </Link>
+        </Button>
+      </header>
+
       {/* On-duty toggle */}
       <Card>
         <CardContent className="flex items-center justify-between gap-3 py-4">
