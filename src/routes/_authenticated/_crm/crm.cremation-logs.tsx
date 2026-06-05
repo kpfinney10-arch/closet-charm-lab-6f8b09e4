@@ -52,7 +52,6 @@ import { toast } from "sonner";
 
 const sortKeySchema = z.enum(["name", "retort", "operator", "start", "end", "duration"]);
 const sortDirSchema = z.enum(["asc", "desc"]);
-const sortDirSchema = z.enum(["asc", "desc"]);
 
 const searchSchema = z.object({
   tab: fallback(z.enum(["active", "completed"]), "active").default("active"),
