@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -48,15 +50,32 @@ import {
 import { Flame, Loader2, Play, Square, Printer, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 
+const sortKeySchema = z.enum(["name", "retort", "operator", "start", "end", "duration"]);
+const sortDirSchema = z.enum(["asc", "desc"]);
+
+const searchSchema = z.object({
+  tab: fallback(z.enum(["active", "completed"]), "active").default("active"),
+  sort: fallback(sortKeySchema, "start").default("start"),
+  dir: fallback(sortDirSchema, "desc").default("desc"),
+  page: fallback(z.number().int().min(1), 1).default(1),
+  q: fallback(z.string(), "").default(""),
+  retort: fallback(z.string(), "all").default("all"),
+  from: fallback(z.string(), "").default(""),
+  to: fallback(z.string(), "").default(""),
+});
+
 export const Route = createFileRoute("/_authenticated/_crm/crm/cremation-logs")({
   component: CremationLogsPage,
   head: () => ({ meta: [{ title: "Cremation — CareOne CRM" }] }),
+  validateSearch: zodValidator(searchSchema),
 });
 
 function CremationLogsPage() {
   const { currentOrg } = useCrm();
   const orgId = currentOrg!.organization_id;
   const qc = useQueryClient();
+  const { tab } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
 
   const fetchLogs = useServerFn(listCremationLogs);
   const fetchDecedents = useServerFn(listDecedents);
@@ -161,7 +180,12 @@ function CremationLogsPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="active">
+      <Tabs
+        value={tab}
+        onValueChange={(v) =>
+          navigate({ search: (prev: any) => ({ ...prev, tab: v as "active" | "completed", page: 1 }), replace: true })
+        }
+      >
         <TabsList>
           <TabsTrigger value="active">
             Active {activeCount ? <Badge className="ml-2">{activeCount}</Badge> : null}
@@ -372,11 +396,24 @@ function ActiveView({
   onStop: (l: any) => void;
 }) {
   const fetchPaged = useServerFn(listCremationLogsPaged);
-  const [query, setQuery] = useState("");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const sortKey = search.sort;
+  const sortDir = search.dir;
+  const page = search.page;
+  const [query, setQuery] = useState(search.q);
   const debouncedQuery = useDebounced(query, 300);
-  const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState<SortKey>("start");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  // Sync URL when debounced query settles.
+  useEffect(() => {
+    if (debouncedQuery === search.q) return;
+    navigate({ search: (prev: any) => ({ ...prev, q: debouncedQuery, page: 1 }), replace: true });
+  }, [debouncedQuery]);
+
+  const setSort = (sort: SortKey, dir: SortDir) =>
+    navigate({ search: (prev: any) => ({ ...prev, sort, dir, page: 1 }), replace: true });
+  const setPage = (p: number) =>
+    navigate({ search: (prev: any) => ({ ...prev, page: p }), replace: true });
 
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -417,10 +454,7 @@ function ActiveView({
             <Input
               placeholder="Search name, retort, or operator…"
               value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => setQuery(e.target.value)}
               className="pl-8"
             />
           </div>
@@ -428,9 +462,7 @@ function ActiveView({
             value={`${sortKey}:${sortDir}`}
             onValueChange={(v) => {
               const [k, d] = v.split(":") as [SortKey, SortDir];
-              setSortKey(k);
-              setSortDir(d);
-              setPage(1);
+              setSort(k, d);
             }}
           >
             <SelectTrigger className="w-[200px]">
@@ -474,23 +506,37 @@ function ActiveView({
 
 function CompletedView({ orgId }: { orgId: string }) {
   const fetchPaged = useServerFn(listCremationLogsPaged);
-  const [retortFilter, setRetortFilter] = useState<string>("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [query, setQuery] = useState("");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const retortFilter = search.retort;
+  const from = search.from;
+  const to = search.to;
+  const sortKey = search.sort;
+  const sortDir = search.dir;
+  const page = search.page;
+  const [query, setQuery] = useState(search.q);
   const debouncedQuery = useDebounced(query, 300);
-  const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState<SortKey>("start");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  useEffect(() => {
+    if (debouncedQuery === search.q) return;
+    navigate({ search: (prev: any) => ({ ...prev, q: debouncedQuery, page: 1 }), replace: true });
+  }, [debouncedQuery]);
+
+  const updateSearch = (patch: Record<string, any>) =>
+    navigate({ search: (prev: any) => ({ ...prev, ...patch }), replace: true });
+
+  const setPage = (p: number) => updateSearch({ page: p });
 
   const handleSort = (k: SortKey) => {
     if (sortKey === k) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      updateSearch({ dir: sortDir === "asc" ? "desc" : "asc", page: 1 });
     } else {
-      setSortKey(k);
-      setSortDir(k === "start" || k === "end" || k === "duration" ? "desc" : "asc");
+      updateSearch({
+        sort: k,
+        dir: k === "start" || k === "end" || k === "duration" ? "desc" : "asc",
+        page: 1,
+      });
     }
-    setPage(1);
   };
 
   const fromIso = from ? new Date(`${from}T00:00:00`).toISOString() : null;
@@ -569,10 +615,7 @@ function CompletedView({ orgId }: { orgId: string }) {
               <Input
                 placeholder="Name, retort, operator…"
                 value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setPage(1);
-                }}
+                onChange={(e) => setQuery(e.target.value)}
                 className="pl-8"
               />
             </div>
@@ -581,10 +624,7 @@ function CompletedView({ orgId }: { orgId: string }) {
             <Label className="text-xs">Retort</Label>
             <Select
               value={retortFilter}
-              onValueChange={(v) => {
-                setRetortFilter(v);
-                setPage(1);
-              }}
+              onValueChange={(v) => updateSearch({ retort: v, page: 1 })}
             >
               <SelectTrigger className="w-[160px]">
                 <SelectValue />
@@ -602,10 +642,7 @@ function CompletedView({ orgId }: { orgId: string }) {
             <Input
               type="date"
               value={from}
-              onChange={(e) => {
-                setFrom(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => updateSearch({ from: e.target.value, page: 1 })}
               className="w-[160px]"
             />
           </div>
@@ -614,10 +651,7 @@ function CompletedView({ orgId }: { orgId: string }) {
             <Input
               type="date"
               value={to}
-              onChange={(e) => {
-                setTo(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => updateSearch({ to: e.target.value, page: 1 })}
               className="w-[160px]"
             />
           </div>
@@ -626,11 +660,8 @@ function CompletedView({ orgId }: { orgId: string }) {
               variant="ghost"
               size="sm"
               onClick={() => {
-                setRetortFilter("all");
-                setFrom("");
-                setTo("");
                 setQuery("");
-                setPage(1);
+                updateSearch({ retort: "all", from: "", to: "", q: "", page: 1 });
               }}
             >
               Clear
