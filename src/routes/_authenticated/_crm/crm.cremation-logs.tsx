@@ -191,52 +191,10 @@ function CremationLogsPage() {
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">
-          {isLoading ? (
-            <Loading />
-          ) : completed.length === 0 ? (
-            <EmptyState text="No completed runs yet." />
-          ) : (
-            <Card>
-              <CardContent className="p-0 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Decedent</TableHead>
-                      <TableHead>Retort</TableHead>
-                      <TableHead>Operator</TableHead>
-                      <TableHead>Start</TableHead>
-                      <TableHead>End</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead className="text-right">Record</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {completed.map((l: any) => (
-                      <TableRow key={l.id}>
-                        <TableCell className="font-medium">{decedentName(l)}</TableCell>
-                        <TableCell>{l.retort ?? "—"}</TableCell>
-                        <TableCell>{l.operator_name ?? "—"}</TableCell>
-                        <TableCell>{fmtDateTime(l.start_time)}</TableCell>
-                        <TableCell>{fmtDateTime(l.end_time)}</TableCell>
-                        <TableCell>{duration(l.start_time, l.end_time)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild size="sm" variant="outline">
-                            <Link
-                              to="/crm/cremation-logs/$logId/print"
-                              params={{ logId: l.id }}
-                              target="_blank"
-                            >
-                              <Printer className="mr-2 h-3.5 w-3.5" /> Print
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
+          <CompletedView
+            completed={completed}
+            isLoading={isLoading}
+          />
         </TabsContent>
       </Tabs>
 
@@ -366,6 +324,121 @@ function CremationLogsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: boolean }) {
+  const [retortFilter, setRetortFilter] = useState<string>("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  const retorts = useMemo(() => {
+    const s = new Set<string>();
+    completed.forEach((l) => l.retort && s.add(l.retort));
+    return Array.from(s).sort();
+  }, [completed]);
+
+  const filtered = useMemo(() => {
+    return completed.filter((l) => {
+      if (retortFilter !== "all" && (l.retort ?? "") !== retortFilter) return false;
+      if (from && l.start_time && new Date(l.start_time) < new Date(from)) return false;
+      if (to && l.start_time && new Date(l.start_time) > new Date(`${to}T23:59:59`)) return false;
+      return true;
+    });
+  }, [completed, retortFilter, from, to]);
+
+  if (isLoading) return <Loading />;
+
+  return (
+    <div className="space-y-3">
+      <Card>
+        <CardContent className="flex flex-wrap items-end gap-3 p-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Retort</Label>
+            <Select value={retortFilter} onValueChange={setRetortFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All retorts</SelectItem>
+                {retorts.map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">From</Label>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-[160px]" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">To</Label>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-[160px]" />
+          </div>
+          {(retortFilter !== "all" || from || to) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setRetortFilter("all");
+                setFrom("");
+                setTo("");
+              }}
+            >
+              Clear
+            </Button>
+          )}
+          <div className="ml-auto text-xs text-muted-foreground">
+            {filtered.length} of {completed.length}
+          </div>
+        </CardContent>
+      </Card>
+
+      {filtered.length === 0 ? (
+        <EmptyState text="No completed runs match the filters." />
+      ) : (
+        <Card>
+          <CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Decedent</TableHead>
+                  <TableHead>Retort</TableHead>
+                  <TableHead>Operator</TableHead>
+                  <TableHead>Start</TableHead>
+                  <TableHead>End</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead className="text-right">Record</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((l: any) => (
+                  <TableRow key={l.id}>
+                    <TableCell className="font-medium">{decedentName(l)}</TableCell>
+                    <TableCell>{l.retort ?? "—"}</TableCell>
+                    <TableCell>{l.operator_name ?? "—"}</TableCell>
+                    <TableCell>{fmtDateTime(l.start_time)}</TableCell>
+                    <TableCell>{fmtDateTime(l.end_time)}</TableCell>
+                    <TableCell>{duration(l.start_time, l.end_time)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild size="sm" variant="outline">
+                        <Link
+                          to="/crm/cremation-logs/$logId/print"
+                          params={{ logId: l.id }}
+                          target="_blank"
+                        >
+                          <Printer className="mr-2 h-3.5 w-3.5" /> Print
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
