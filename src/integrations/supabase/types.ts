@@ -438,6 +438,74 @@ export type Database = {
           },
         ]
       }
+      decedent_releases: {
+        Row: {
+          created_at: string
+          decedent_id: string
+          id: string
+          id_number: string | null
+          id_type: string | null
+          item_type: string
+          notes: string | null
+          organization_id: string
+          released_at: string
+          released_by: string | null
+          released_to_name: string
+          released_to_phone: string | null
+          released_to_relation: string | null
+          signature_data: string
+          signer_name: string
+          updated_at: string
+          witnessed_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          decedent_id: string
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          item_type: string
+          notes?: string | null
+          organization_id: string
+          released_at?: string
+          released_by?: string | null
+          released_to_name: string
+          released_to_phone?: string | null
+          released_to_relation?: string | null
+          signature_data: string
+          signer_name: string
+          updated_at?: string
+          witnessed_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          decedent_id?: string
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          item_type?: string
+          notes?: string | null
+          organization_id?: string
+          released_at?: string
+          released_by?: string | null
+          released_to_name?: string
+          released_to_phone?: string | null
+          released_to_relation?: string | null
+          signature_data?: string
+          signer_name?: string
+          updated_at?: string
+          witnessed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decedent_releases_decedent_id_fkey"
+            columns: ["decedent_id"]
+            isOneToOne: false
+            referencedRelation: "decedents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decedents: {
         Row: {
           check_in_at: string | null

@@ -39,9 +39,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Loader2, UserSquare2, MoreVertical } from "lucide-react";
+import { Plus, Loader2, UserSquare2, MoreVertical, HandHeart, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ReleaseDialog } from "@/components/crm/release-dialog";
+import { checkoutDecedent } from "@/lib/decedent-releases.functions";
 
 export const Route = createFileRoute("/_authenticated/_crm/crm/decedents")({
   component: DecedentsPage,
@@ -70,6 +72,9 @@ function DecedentsPage() {
   const fetchHomes = useServerFn(listFuneralHomes);
   const createFn = useServerFn(createDecedent);
   const statusFn = useServerFn(setDecedentStatus);
+  const checkoutFn = useServerFn(checkoutDecedent);
+
+  const [releaseFor, setReleaseFor] = useState<any | null>(null);
 
   const [includeOut, setIncludeOut] = useState(false);
   const [view, setView] = useState<"board" | "list">("board");
@@ -132,8 +137,19 @@ function DecedentsPage() {
     onSuccess: (_d, v) => {
       toast.success(`Marked ${STATUS_META[v.status].label.toLowerCase()}`);
       qc.invalidateQueries({ queryKey: ["crm", "decedents", orgId] });
+      qc.invalidateQueries({ queryKey: ["crm", "updates", orgId] });
     },
     onError: (e: any) => toast.error(e.message ?? "Update failed"),
+  });
+
+  const checkoutMut = useMutation({
+    mutationFn: (id: string) => checkoutFn({ data: { decedentId: id } }),
+    onSuccess: () => {
+      toast.success("Checked out");
+      qc.invalidateQueries({ queryKey: ["crm", "decedents", orgId] });
+      qc.invalidateQueries({ queryKey: ["crm", "updates", orgId] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Checkout failed"),
   });
 
   const grouped = useMemo(() => {
@@ -341,6 +357,8 @@ function DecedentsPage() {
                         key={d.id}
                         d={d}
                         onStatus={(s) => statusMut.mutate({ id: d.id, status: s })}
+                        onRelease={() => setReleaseFor(d)}
+                        onCheckout={() => checkoutMut.mutate(d.id)}
                       />
                     ))}
                     {grouped[status].length === 0 ? (
@@ -390,6 +408,8 @@ function DecedentsPage() {
                         <StatusMenu
                           current={d.status}
                           onSelect={(s) => statusMut.mutate({ id: d.id, status: s })}
+                          onRelease={() => setReleaseFor(d)}
+                          onCheckout={() => checkoutMut.mutate(d.id)}
                         />
                       </div>
                     </div>
@@ -400,6 +420,18 @@ function DecedentsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <ReleaseDialog
+        open={!!releaseFor}
+        onOpenChange={(o) => !o && setReleaseFor(null)}
+        organizationId={orgId}
+        decedent={releaseFor}
+        onReleased={() => {
+          setReleaseFor(null);
+          qc.invalidateQueries({ queryKey: ["crm", "decedents", orgId] });
+          qc.invalidateQueries({ queryKey: ["crm", "updates", orgId] });
+        }}
+      />
     </div>
   );
 }
@@ -423,9 +455,13 @@ function EmptyState() {
 function DecedentCard({
   d,
   onStatus,
+  onRelease,
+  onCheckout,
 }: {
   d: any;
   onStatus: (s: DecedentStatus) => void;
+  onRelease: () => void;
+  onCheckout: () => void;
 }) {
   return (
     <Card className="hover:shadow-sm transition-shadow">
@@ -441,7 +477,12 @@ function DecedentCard({
               </div>
             ) : null}
           </div>
-          <StatusMenu current={d.status} onSelect={onStatus} />
+          <StatusMenu
+            current={d.status}
+            onSelect={onStatus}
+            onRelease={onRelease}
+            onCheckout={onCheckout}
+          />
         </div>
         {(d.location || d.rack) ? (
           <div className="text-xs text-muted-foreground">
@@ -465,17 +506,15 @@ function DecedentCard({
 function StatusMenu({
   current,
   onSelect,
+  onRelease,
+  onCheckout,
 }: {
   current: DecedentStatus;
   onSelect: (s: DecedentStatus) => void;
+  onRelease: () => void;
+  onCheckout: () => void;
 }) {
-  const options: DecedentStatus[] = [
-    "checked_in",
-    "prepped",
-    "cremated",
-    "released",
-    "checked_out",
-  ];
+  const options: DecedentStatus[] = ["checked_in", "prepped", "cremated"];
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -491,6 +530,18 @@ function StatusMenu({
               Mark {STATUS_META[s].label.toLowerCase()}
             </DropdownMenuItem>
           ))}
+        {current !== "released" && current !== "checked_out" ? (
+          <DropdownMenuItem onClick={onRelease}>
+            <HandHeart className="mr-2 h-4 w-4" />
+            Release remains…
+          </DropdownMenuItem>
+        ) : null}
+        {current !== "checked_out" ? (
+          <DropdownMenuItem onClick={onCheckout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Check out of facility
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
