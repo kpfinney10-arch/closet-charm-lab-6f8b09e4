@@ -14,7 +14,9 @@ export const listCremationLogs = createServerFn({ method: "GET" })
       .object({
         organizationId: z.string().uuid(),
         scope: z.enum(["all", "active", "completed"]).optional().default("all"),
-        limit: z.number().int().min(1).max(500).optional().default(200),
+        from: z.string().datetime().optional(),
+        to: z.string().datetime().optional(),
+        limit: z.number().int().min(1).max(2000).optional().default(200),
       })
       .parse(d),
   )
@@ -29,6 +31,8 @@ export const listCremationLogs = createServerFn({ method: "GET" })
       .limit(data.limit);
     if (data.scope === "active") q = q.is("end_time", null);
     if (data.scope === "completed") q = q.not("end_time", "is", null);
+    if (data.from) q = q.gte("start_time", data.from);
+    if (data.to) q = q.lte("start_time", data.to);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
 
