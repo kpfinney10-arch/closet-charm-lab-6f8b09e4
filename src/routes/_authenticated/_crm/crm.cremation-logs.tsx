@@ -435,6 +435,26 @@ function ActiveView({
               className="pl-8"
             />
           </div>
+          <Select
+            value={`${sortKey}:${sortDir}`}
+            onValueChange={(v) => {
+              const [k, d] = v.split(":") as [SortKey, SortDir];
+              setSortKey(k);
+              setSortDir(d);
+            }}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name:asc">Name (A–Z)</SelectItem>
+              <SelectItem value="name:desc">Name (Z–A)</SelectItem>
+              <SelectItem value="retort:asc">Retort (A–Z)</SelectItem>
+              <SelectItem value="retort:desc">Retort (Z–A)</SelectItem>
+              <SelectItem value="start:desc">Started (newest)</SelectItem>
+              <SelectItem value="start:asc">Started (oldest)</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="text-xs text-muted-foreground">
             {filtered.length} of {active.length}
           </div>
