@@ -396,11 +396,24 @@ function ActiveView({
   onStop: (l: any) => void;
 }) {
   const fetchPaged = useServerFn(listCremationLogsPaged);
-  const [query, setQuery] = useState("");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const sortKey = search.sort;
+  const sortDir = search.dir;
+  const page = search.page;
+  const [query, setQuery] = useState(search.q);
   const debouncedQuery = useDebounced(query, 300);
-  const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState<SortKey>("start");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  // Sync URL when debounced query settles.
+  useEffect(() => {
+    if (debouncedQuery === search.q) return;
+    navigate({ search: (prev: any) => ({ ...prev, q: debouncedQuery, page: 1 }), replace: true });
+  }, [debouncedQuery]);
+
+  const setSort = (sort: SortKey, dir: SortDir) =>
+    navigate({ search: (prev: any) => ({ ...prev, sort, dir, page: 1 }), replace: true });
+  const setPage = (p: number) =>
+    navigate({ search: (prev: any) => ({ ...prev, page: p }), replace: true });
 
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -441,10 +454,7 @@ function ActiveView({
             <Input
               placeholder="Search name, retort, or operator…"
               value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => setQuery(e.target.value)}
               className="pl-8"
             />
           </div>
@@ -452,9 +462,7 @@ function ActiveView({
             value={`${sortKey}:${sortDir}`}
             onValueChange={(v) => {
               const [k, d] = v.split(":") as [SortKey, SortDir];
-              setSortKey(k);
-              setSortDir(d);
-              setPage(1);
+              setSort(k, d);
             }}
           >
             <SelectTrigger className="w-[200px]">
