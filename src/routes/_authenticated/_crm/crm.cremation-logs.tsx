@@ -74,6 +74,8 @@ function CremationLogsPage() {
   const { currentOrg } = useCrm();
   const orgId = currentOrg!.organization_id;
   const qc = useQueryClient();
+  const { tab } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
 
   const fetchLogs = useServerFn(listCremationLogs);
   const fetchDecedents = useServerFn(listDecedents);
