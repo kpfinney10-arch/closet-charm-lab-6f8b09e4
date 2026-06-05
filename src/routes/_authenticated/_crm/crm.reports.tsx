@@ -310,10 +310,15 @@ function ExportButtons({ organizationId }: { organizationId: string }) {
 
   const exportReleases = async () => {
     setBusy("releases");
+    const toastId = toast.loading("Preparing releases export…");
     try {
       const { fromIso, toIso } = rangeIso();
+      toast.loading("Fetching releases…", { id: toastId });
       const rows = await fetchReleases({
         data: { organizationId, limit: 2000, from: fromIso, to: toIso },
+      });
+      toast.loading(`Formatting ${rows.length} row${rows.length === 1 ? "" : "s"}…`, {
+        id: toastId,
       });
       const mapped = (rows as any[]).map((r) => ({
         released_at: r.released_at,
@@ -329,12 +334,17 @@ function ExportButtons({ organizationId }: { organizationId: string }) {
         notes: r.notes ?? "",
       }));
       if (!mapped.length) {
-        toast.info("No releases to export");
+        toast.info("No releases to export", { id: toastId });
         return;
       }
-      downloadCsv(`releases-${rangeSuffix()}.csv`, toCsv(mapped));
+      const filename = `releases-${rangeSuffix()}.csv`;
+      downloadCsv(filename, toCsv(mapped));
+      toast.success(`Downloaded ${mapped.length} release${mapped.length === 1 ? "" : "s"}`, {
+        id: toastId,
+        description: filename,
+      });
     } catch (e: any) {
-      toast.error(e?.message ?? "Export failed");
+      toast.error(e?.message ?? "Export failed", { id: toastId });
     } finally {
       setBusy(null);
     }
@@ -342,10 +352,15 @@ function ExportButtons({ organizationId }: { organizationId: string }) {
 
   const exportCremations = async () => {
     setBusy("cremations");
+    const toastId = toast.loading("Preparing cremations export…");
     try {
       const { fromIso, toIso } = rangeIso();
+      toast.loading("Fetching cremation logs…", { id: toastId });
       const rows = await fetchLogs({
         data: { organizationId, scope: "all", limit: 2000, from: fromIso, to: toIso },
+      });
+      toast.loading(`Formatting ${rows.length} row${rows.length === 1 ? "" : "s"}…`, {
+        id: toastId,
       });
       const mapped = (rows as any[]).map((r) => ({
         start_time: r.start_time ?? "",
@@ -360,12 +375,17 @@ function ExportButtons({ organizationId }: { organizationId: string }) {
         comment: r.comment ?? "",
       }));
       if (!mapped.length) {
-        toast.info("No cremation logs to export");
+        toast.info("No cremation logs to export", { id: toastId });
         return;
       }
-      downloadCsv(`cremations-${rangeSuffix()}.csv`, toCsv(mapped));
+      const filename = `cremations-${rangeSuffix()}.csv`;
+      downloadCsv(filename, toCsv(mapped));
+      toast.success(`Downloaded ${mapped.length} log${mapped.length === 1 ? "" : "s"}`, {
+        id: toastId,
+        description: filename,
+      });
     } catch (e: any) {
-      toast.error(e?.message ?? "Export failed");
+      toast.error(e?.message ?? "Export failed", { id: toastId });
     } finally {
       setBusy(null);
     }
