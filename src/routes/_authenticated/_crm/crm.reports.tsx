@@ -29,6 +29,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Loader2, Activity, Flame, PackageCheck, Clock, Download } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/_crm/crm/reports")({
@@ -189,29 +199,38 @@ function ReportsBody({ data }: { data: CrmReports }) {
           <CardHeader>
             <CardTitle className="text-base">Monthly activity</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Month</TableHead>
-                  <TableHead className="text-right">Check-ins</TableHead>
-                  <TableHead className="text-right">Cremations</TableHead>
-                  <TableHead className="text-right">Releases</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.monthly.map((m) => (
-                  <TableRow key={m.month}>
-                    <TableCell className="font-medium">{fmtMonth(m.month)}</TableCell>
-                    <TableCell className="text-right">{m.checkIns}</TableCell>
-                    <TableCell className="text-right">{m.cremations}</TableCell>
-                    <TableCell className="text-right">{m.releases}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <CardContent>
+            {data.monthly.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No activity yet.</p>
+            ) : (
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={data.monthly.map((m) => ({ ...m, label: fmtMonth(m.month) }))}
+                    margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{
+                        background: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 6,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="checkIns" name="Check-ins" fill="hsl(217 91% 60%)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="cremations" name="Cremations" fill="hsl(25 95% 53%)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="releases" name="Releases" fill="hsl(142 71% 45%)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
+
       </div>
 
       <Card>
