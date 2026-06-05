@@ -6,6 +6,7 @@ import { useCrm } from "@/contexts/crm-context";
 import { getCrmReports, type CrmReports } from "@/lib/crm-reports.functions";
 import { listReleases } from "@/lib/decedent-releases.functions";
 import { listCremationLogs } from "@/lib/cremation-logs.functions";
+import { logCrmExport, listCrmExportAudit } from "@/lib/export-audit.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
