@@ -420,6 +420,18 @@ function DecedentsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <ReleaseDialog
+        open={!!releaseFor}
+        onOpenChange={(o) => !o && setReleaseFor(null)}
+        organizationId={orgId}
+        decedent={releaseFor}
+        onReleased={() => {
+          setReleaseFor(null);
+          qc.invalidateQueries({ queryKey: ["crm", "decedents", orgId] });
+          qc.invalidateQueries({ queryKey: ["crm", "updates", orgId] });
+        }}
+      />
     </div>
   );
 }
