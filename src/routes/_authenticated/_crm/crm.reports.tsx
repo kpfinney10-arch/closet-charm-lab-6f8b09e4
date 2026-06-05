@@ -97,19 +97,22 @@ function ReportsPage() {
             Operational snapshot for {currentOrg.organization_name}.
           </p>
         </div>
-        <Select
-          value={String(monthsBack)}
-          onValueChange={(v) => setMonthsBack(Number(v))}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="3">Last 3 months</SelectItem>
-            <SelectItem value="6">Last 6 months</SelectItem>
-            <SelectItem value="12">Last 12 months</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportButtons organizationId={currentOrg.organization_id} />
+          <Select
+            value={String(monthsBack)}
+            onValueChange={(v) => setMonthsBack(Number(v))}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3">Last 3 months</SelectItem>
+              <SelectItem value="6">Last 6 months</SelectItem>
+              <SelectItem value="12">Last 12 months</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </header>
 
       {isLoading || !data ? (
