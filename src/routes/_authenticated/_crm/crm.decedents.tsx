@@ -72,6 +72,9 @@ function DecedentsPage() {
   const fetchHomes = useServerFn(listFuneralHomes);
   const createFn = useServerFn(createDecedent);
   const statusFn = useServerFn(setDecedentStatus);
+  const checkoutFn = useServerFn(checkoutDecedent);
+
+  const [releaseFor, setReleaseFor] = useState<any | null>(null);
 
   const [includeOut, setIncludeOut] = useState(false);
   const [view, setView] = useState<"board" | "list">("board");
