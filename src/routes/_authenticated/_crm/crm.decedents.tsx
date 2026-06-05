@@ -494,17 +494,15 @@ function DecedentCard({
 function StatusMenu({
   current,
   onSelect,
+  onRelease,
+  onCheckout,
 }: {
   current: DecedentStatus;
   onSelect: (s: DecedentStatus) => void;
+  onRelease: () => void;
+  onCheckout: () => void;
 }) {
-  const options: DecedentStatus[] = [
-    "checked_in",
-    "prepped",
-    "cremated",
-    "released",
-    "checked_out",
-  ];
+  const options: DecedentStatus[] = ["checked_in", "prepped", "cremated"];
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -520,6 +518,18 @@ function StatusMenu({
               Mark {STATUS_META[s].label.toLowerCase()}
             </DropdownMenuItem>
           ))}
+        {current !== "released" && current !== "checked_out" ? (
+          <DropdownMenuItem onClick={onRelease}>
+            <HandHeart className="mr-2 h-4 w-4" />
+            Release remains…
+          </DropdownMenuItem>
+        ) : null}
+        {current !== "checked_out" ? (
+          <DropdownMenuItem onClick={onCheckout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Check out of facility
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
