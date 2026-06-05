@@ -401,10 +401,12 @@ function ActiveView({
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey>("start");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const filtered = useMemo(
-    () => active.filter((l) => matchesQuery(l, query)),
-    [active, query],
+    () => sortLogs(active.filter((l) => matchesQuery(l, query)), sortKey, sortDir),
+    [active, query, sortKey, sortDir],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE_ACTIVE));
