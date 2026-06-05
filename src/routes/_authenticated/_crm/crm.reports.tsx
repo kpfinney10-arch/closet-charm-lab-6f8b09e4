@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useCrm } from "@/contexts/crm-context";
 import { getCrmReports, type CrmReports } from "@/lib/crm-reports.functions";
+import { listReleases } from "@/lib/decedent-releases.functions";
+import { listCremationLogs } from "@/lib/cremation-logs.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -21,12 +23,40 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, Flame, PackageCheck, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Activity, Flame, PackageCheck, Clock, Download } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/_crm/crm/reports")({
   component: ReportsPage,
   head: () => ({ meta: [{ title: "Reports — CRM" }] }),
 });
+
+function toCsv(rows: Array<Record<string, unknown>>): string {
+  if (!rows.length) return "";
+  const headers = Object.keys(rows[0]);
+  const esc = (v: unknown) => {
+    if (v == null) return "";
+    const s = String(v);
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [
+    headers.join(","),
+    ...rows.map((r) => headers.map((h) => esc(r[h])).join(",")),
+  ].join("\n");
+}
+
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 const STATUS_LABELS: Record<string, string> = {
   checked_in: "Checked in",
