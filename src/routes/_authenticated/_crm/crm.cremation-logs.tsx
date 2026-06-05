@@ -169,25 +169,15 @@ function CremationLogsPage() {
         </TabsList>
 
         <TabsContent value="active" className="mt-4">
-          {isLoading ? (
-            <Loading />
-          ) : active.length === 0 ? (
-            <EmptyState text="No active cremations." />
-          ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {active.map((l: any) => (
-                <ActiveCard
-                  key={l.id}
-                  log={l}
-                  onStop={() => {
-                    setStopLog(l);
-                    setAshWeight("");
-                    setStopComment(l.comment ?? "");
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          <ActiveView
+            active={active}
+            isLoading={isLoading}
+            onStop={(l) => {
+              setStopLog(l);
+              setAshWeight("");
+              setStopComment(l.comment ?? "");
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">
