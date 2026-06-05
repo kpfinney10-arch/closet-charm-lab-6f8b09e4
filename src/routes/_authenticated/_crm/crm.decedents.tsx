@@ -220,6 +220,7 @@ function DecedentsPage() {
                   Add a new decedent to the in-house board.
                 </DialogDescription>
               </DialogHeader>
+
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
