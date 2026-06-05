@@ -44,7 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Flame, Loader2, Play, Square, Printer, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Flame, Loader2, Play, Square, Printer, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/_crm/crm/cremation-logs")({
@@ -321,6 +321,9 @@ function CremationLogsPage() {
 const PAGE_SIZE_ACTIVE = 12;
 const PAGE_SIZE_COMPLETED = 25;
 
+type SortKey = "name" | "retort" | "operator" | "start" | "end" | "duration";
+type SortDir = "asc" | "desc";
+
 function matchesQuery(l: any, q: string) {
   if (!q) return true;
   const needle = q.toLowerCase();
@@ -328,6 +331,63 @@ function matchesQuery(l: any, q: string) {
   const retort = (l.retort ?? "").toLowerCase();
   const operator = (l.operator_name ?? "").toLowerCase();
   return name.includes(needle) || retort.includes(needle) || operator.includes(needle);
+}
+
+function sortValue(l: any, key: SortKey): string | number {
+  switch (key) {
+    case "name": return decedentName(l).toLowerCase();
+    case "retort": return (l.retort ?? "").toLowerCase();
+    case "operator": return (l.operator_name ?? "").toLowerCase();
+    case "start": return l.start_time ? new Date(l.start_time).getTime() : 0;
+    case "end": return l.end_time ? new Date(l.end_time).getTime() : 0;
+    case "duration": {
+      if (!l.start_time || !l.end_time) return -1;
+      return new Date(l.end_time).getTime() - new Date(l.start_time).getTime();
+    }
+  }
+}
+
+function sortLogs(rows: any[], key: SortKey, dir: SortDir) {
+  const copy = [...rows];
+  copy.sort((a, b) => {
+    const av = sortValue(a, key);
+    const bv = sortValue(b, key);
+    if (av < bv) return dir === "asc" ? -1 : 1;
+    if (av > bv) return dir === "asc" ? 1 : -1;
+    return 0;
+  });
+  return copy;
+}
+
+function SortHead({
+  label,
+  sortKey,
+  active,
+  dir,
+  onSort,
+  className,
+}: {
+  label: string;
+  sortKey: SortKey;
+  active: SortKey;
+  dir: SortDir;
+  onSort: (k: SortKey) => void;
+  className?: string;
+}) {
+  const isActive = active === sortKey;
+  const Icon = isActive ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="inline-flex items-center gap-1 font-medium hover:text-foreground"
+      >
+        {label}
+        <Icon className={`h-3.5 w-3.5 ${isActive ? "text-foreground" : "text-muted-foreground/60"}`} />
+      </button>
+    </TableHead>
+  );
 }
 
 function ActiveView({
@@ -341,10 +401,12 @@ function ActiveView({
 }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey>("start");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const filtered = useMemo(
-    () => active.filter((l) => matchesQuery(l, query)),
-    [active, query],
+    () => sortLogs(active.filter((l) => matchesQuery(l, query)), sortKey, sortDir),
+    [active, query, sortKey, sortDir],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE_ACTIVE));
@@ -373,6 +435,26 @@ function ActiveView({
               className="pl-8"
             />
           </div>
+          <Select
+            value={`${sortKey}:${sortDir}`}
+            onValueChange={(v) => {
+              const [k, d] = v.split(":") as [SortKey, SortDir];
+              setSortKey(k);
+              setSortDir(d);
+            }}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name:asc">Name (A–Z)</SelectItem>
+              <SelectItem value="name:desc">Name (Z–A)</SelectItem>
+              <SelectItem value="retort:asc">Retort (A–Z)</SelectItem>
+              <SelectItem value="retort:desc">Retort (Z–A)</SelectItem>
+              <SelectItem value="start:desc">Started (newest)</SelectItem>
+              <SelectItem value="start:asc">Started (oldest)</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="text-xs text-muted-foreground">
             {filtered.length} of {active.length}
           </div>
@@ -406,6 +488,18 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
   const [to, setTo] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey>("start");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const handleSort = (k: SortKey) => {
+    if (sortKey === k) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(k);
+      setSortDir(k === "start" || k === "end" || k === "duration" ? "desc" : "asc");
+    }
+    setPage(1);
+  };
 
   const retorts = useMemo(() => {
     const s = new Set<string>();
@@ -414,14 +508,15 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
   }, [completed]);
 
   const filtered = useMemo(() => {
-    return completed.filter((l) => {
+    const rows = completed.filter((l) => {
       if (retortFilter !== "all" && (l.retort ?? "") !== retortFilter) return false;
       if (from && l.start_time && new Date(l.start_time) < new Date(from)) return false;
       if (to && l.start_time && new Date(l.start_time) > new Date(`${to}T23:59:59`)) return false;
       if (!matchesQuery(l, query)) return false;
       return true;
     });
-  }, [completed, retortFilter, from, to, query]);
+    return sortLogs(rows, sortKey, sortDir);
+  }, [completed, retortFilter, from, to, query, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE_COMPLETED));
   const safePage = Math.min(page, totalPages);
@@ -524,12 +619,12 @@ function CompletedView({ completed, isLoading }: { completed: any[]; isLoading: 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Decedent</TableHead>
-                  <TableHead>Retort</TableHead>
-                  <TableHead>Operator</TableHead>
-                  <TableHead>Start</TableHead>
-                  <TableHead>End</TableHead>
-                  <TableHead>Duration</TableHead>
+                  <SortHead label="Decedent" sortKey="name" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="Retort" sortKey="retort" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="Operator" sortKey="operator" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="Start" sortKey="start" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="End" sortKey="end" active={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="Duration" sortKey="duration" active={sortKey} dir={sortDir} onSort={handleSort} />
                   <TableHead className="text-right">Record</TableHead>
                 </TableRow>
               </TableHeader>
