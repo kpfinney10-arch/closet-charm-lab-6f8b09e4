@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useCrm } from "@/contexts/crm-context";
 import {
   listCremationLogs,
+  listCremationLogsPaged,
   startCremationLog,
   stopCremationLog,
 } from "@/lib/cremation-logs.functions";
