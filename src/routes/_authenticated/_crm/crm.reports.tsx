@@ -71,7 +71,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function ReportsPage() {
-  const { currentOrg, loading } = useCrm();
+  const { currentOrg, loading, isAdmin } = useCrm();
   const [monthsBack, setMonthsBack] = useState(6);
   const fetchReports = useServerFn(getCrmReports);
 
@@ -126,7 +126,7 @@ function ReportsPage() {
       ) : (
         <>
           <ReportsBody data={data} />
-          <ExportAuditCard organizationId={currentOrg.organization_id} />
+          {isAdmin && <ExportAuditCard organizationId={currentOrg.organization_id} />}
         </>
       )}
     </div>

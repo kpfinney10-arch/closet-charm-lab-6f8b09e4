@@ -51,7 +51,19 @@ export const listCrmExportAudit = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => listInput.parse(d))
   .handler(async ({ data, context }): Promise<CrmExportAuditRow[]> => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+
+    const { data: membership, error: memErr } = await supabase
+      .from("organization_members")
+      .select("crm_role, approved")
+      .eq("organization_id", data.organizationId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (memErr) throw new Error(memErr.message);
+    if (!membership?.approved || membership.crm_role !== "crm_admin") {
+      throw new Error("Forbidden: admin access required");
+    }
+
     const { data: rows, error } = await supabase
       .from("crm_export_audit")
       .select(
