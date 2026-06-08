@@ -406,6 +406,7 @@ function ReportsPage() {
   const fetchPresets = useServerFn(listExportPresets);
   const savePresetFn = useServerFn(upsertExportPreset);
   const deletePresetFn = useServerFn(deleteExportPreset);
+  const renamePresetFn = useServerFn(renameExportPreset);
   const [savingName, setSavingName] = useState("");
 
   const presetsQ = useQuery({
