@@ -154,6 +154,31 @@ function PrintRunSheet() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseQ.data, driversQ.data, facilitiesQ.data, signaturesQ.data, eventsQ.data]);
 
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  async function handleDownloadPdf() {
+    if (!sheetRef.current || !caseQ.data) return;
+    setDownloading(true);
+    try {
+      const { default: html2pdf } = await import("html2pdf.js");
+      const filename = `run-sheet-${caseQ.data.case_number ?? "case"}.pdf`;
+      await html2pdf()
+        .set({
+          margin: 0.5,
+          filename,
+          image: { type: "jpeg", quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+          jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+          pagebreak: { mode: ["css", "legacy"] },
+        })
+        .from(sheetRef.current)
+        .save();
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   if (caseQ.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
