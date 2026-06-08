@@ -62,7 +62,12 @@ function defaultTo() {
 const searchSchema = z.object({
   from: fallback(z.string(), defaultFrom()).default(defaultFrom()),
   to: fallback(z.string(), defaultTo()).default(defaultTo()),
+  q: fallback(z.string(), "").default(""),
+  driver: fallback(z.string(), "").default(""),
+  pickup: fallback(z.string(), "").default(""),
 });
+
+type ReportsSearch = z.infer<typeof searchSchema>;
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/reports")({
   validateSearch: zodValidator(searchSchema),
