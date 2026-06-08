@@ -468,6 +468,20 @@ function ReportsPage() {
 
   const deleteSavedPreset = (id: string) => deleteMut.mutate(id);
 
+  const renameSavedPreset = (p: ExportPreset) => {
+    const next = typeof window !== "undefined"
+      ? window.prompt(`Rename preset "${p.name}" to:`, p.name)
+      : null;
+    if (next == null) return;
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === p.name) return;
+    if (trimmed.length > 60) {
+      toast.error("Preset name must be 60 characters or fewer");
+      return;
+    }
+    renameMut.mutate({ id: p.id, name: trimmed });
+  };
+
   const activeSavedPreset = savedPresets.find(
     (p) =>
       p.opts.includeHeader === exportOpts.includeHeader &&
