@@ -120,7 +120,7 @@ function downloadCsv(filename: string, rows: (string | number | null | undefined
 }
 
 function ReportsPage() {
-  const { from, to } = Route.useSearch();
+  const { from, to, q, driver, pickup } = Route.useSearch();
   const navigate = useNavigate({ from: "/reports" });
   const fetchReports = useServerFn(getDispatchReports);
 
@@ -134,6 +134,40 @@ function ReportsPage() {
 
   const data = reportsQ.data as DispatchReports | undefined;
   const loading = reportsQ.isLoading;
+
+  const filteredReleases = useMemo(() => {
+    if (!data) return [];
+    const needle = q.trim().toLowerCase();
+    return data.releases.filter((r) => {
+      if (driver) {
+        // perDriver stores driverId; release rows only have name — match by name
+        const driverName = data.perDriver.find((d) => d.driverId === driver)?.name ?? "";
+        if (r.primaryDriver !== driverName && r.secondaryDriver !== driverName) return false;
+      }
+      if (pickup) {
+        const facName = data.perPickupFacility.find((f) => f.facilityId === pickup)?.name ?? "";
+        if (r.pickupFacility !== facName) return false;
+      }
+      if (needle) {
+        const hay = [
+          r.caseNumber,
+          r.decedentName,
+          r.pickupFacility,
+          r.dropoffFacility,
+          r.primaryDriver,
+          r.secondaryDriver,
+          r.releasedBy,
+          r.releasedByTitle,
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!hay.includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [data, q, driver, pickup]);
+
+  const filtersActive = Boolean(q || driver || pickup);
 
   const exportCounts = () => {
     if (!data) return;
@@ -169,7 +203,8 @@ function ReportsPage() {
   };
   const exportReleases = () => {
     if (!data) return;
-    downloadCsv(`release-log-${from}_to_${to}.csv`, [
+    const suffix = filtersActive ? "-filtered" : "";
+    downloadCsv(`release-log-${from}_to_${to}${suffix}.csv`, [
       [
         "case_number",
         "decedent",
@@ -182,7 +217,7 @@ function ReportsPage() {
         "released_by",
         "released_by_title",
       ],
-      ...data.releases.map((r) => [
+      ...filteredReleases.map((r) => [
         r.caseNumber,
         r.decedentName,
         r.deliveredAt ?? "",
@@ -197,9 +232,10 @@ function ReportsPage() {
     ]);
   };
 
-  const setRange = (next: { from?: string; to?: string }) => {
-    navigate({ search: (prev: { from: string; to: string }) => ({ ...prev, ...next }) });
+  const updateSearch = (next: Partial<ReportsSearch>) => {
+    navigate({ search: (prev: ReportsSearch) => ({ ...prev, ...next }) });
   };
+  const setRange = (next: { from?: string; to?: string }) => updateSearch(next);
 
   const setPreset = (days: number) => {
     const end = new Date();
@@ -212,6 +248,7 @@ function ReportsPage() {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
     setRange({ from: ymd(start), to: ymd(now) });
   };
+  const clearReleaseFilters = () => updateSearch({ q: "", driver: "", pickup: "" });
 
   const statusChart =
     data?.statusCounts.map((r) => ({
