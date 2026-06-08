@@ -120,16 +120,30 @@ function PrintRunSheet() {
     },
   });
 
+  const eventsQ = useQuery({
+    queryKey: ["case-print-events", caseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("case_events")
+        .select("id, event_type, from_status, to_status, notes, created_at")
+        .eq("case_id", caseId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   // Auto-trigger print dialog once all data is loaded
   useEffect(() => {
     if (!caseQ.data) return;
     if (driverIds.length > 0 && !driversQ.data) return;
     if (facilityIds.length > 0 && !facilitiesQ.data) return;
     if (!signaturesQ.data) return;
+    if (!eventsQ.data) return;
     const t = setTimeout(() => window.print(), 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [caseQ.data, driversQ.data, facilitiesQ.data, signaturesQ.data]);
+  }, [caseQ.data, driversQ.data, facilitiesQ.data, signaturesQ.data, eventsQ.data]);
 
   if (caseQ.isLoading) {
     return (
