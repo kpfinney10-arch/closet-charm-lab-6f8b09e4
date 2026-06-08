@@ -43,6 +43,15 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+const EVENT_LABEL: Record<string, string> = {
+  created: "Case created",
+  assigned: "Driver assigned",
+  reassigned: "Driver reassigned",
+  status_changed: "Status changed",
+  cancelled: "Cancelled",
+  note_added: "Note added",
+};
+
 function fmtDateTime(s: string | null | undefined) {
   if (!s) return "—";
   try {
