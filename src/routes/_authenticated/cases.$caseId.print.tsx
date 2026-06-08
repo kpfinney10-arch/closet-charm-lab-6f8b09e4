@@ -228,20 +228,26 @@ function PrintRunSheet() {
       `}</style>
 
       {/* Toolbar (screen only) */}
-      <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b bg-white p-3">
+      <div className="no-print sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-white p-3">
         <Button asChild variant="ghost" size="sm">
           <Link to="/cases/$caseId" params={{ caseId }}>
             <ArrowLeft className="h-4 w-4" />
             Back to case
           </Link>
         </Button>
-        <Button size="sm" onClick={() => window.print()}>
-          <Printer className="h-4 w-4" />
-          Save as PDF / Print
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" />
+            Print
+          </Button>
+          <Button size="sm" onClick={handleDownloadPdf} disabled={downloading}>
+            {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Download PDF
+          </Button>
+        </div>
       </div>
 
-      <div className="print-page mx-auto max-w-3xl p-6">
+      <div ref={sheetRef} className="print-page mx-auto max-w-3xl p-6">
         {/* Header */}
         <div className="flex items-start justify-between border-b border-zinc-300 pb-3">
           <div>
