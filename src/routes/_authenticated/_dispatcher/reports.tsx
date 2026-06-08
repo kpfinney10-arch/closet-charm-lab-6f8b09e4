@@ -661,6 +661,29 @@ function ReportsPage() {
       <Card>
         <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4">
           <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground">Columns</Label>
+            <div className="flex rounded-md border" role="group" aria-label="Column preset">
+              {(Object.keys(COLUMN_PRESETS) as Array<keyof typeof COLUMN_PRESETS>).map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => applyPreset(name)}
+                  title={COLUMN_PRESETS[name].desc}
+                  className={`px-3 py-1 text-xs ${activePreset === name ? "bg-primary text-primary-foreground" : "bg-background"}`}
+                >
+                  {COLUMN_PRESETS[name].label}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled
+                className={`px-3 py-1 text-xs ${activePreset === null ? "bg-muted text-muted-foreground" : "hidden"}`}
+              >
+                Custom
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground">Format</Label>
             <div className="flex rounded-md border">
               <button
