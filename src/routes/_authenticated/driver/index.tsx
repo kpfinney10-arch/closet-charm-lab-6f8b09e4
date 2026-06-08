@@ -17,6 +17,7 @@ import {
   Bell,
   BellOff,
   PenLine,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
