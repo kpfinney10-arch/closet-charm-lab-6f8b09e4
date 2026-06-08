@@ -114,22 +114,52 @@ function fmtDateTime(s: string | null | undefined) {
   }
 }
 
-function downloadCsv(filename: string, rows: (string | number | null | undefined)[][]) {
-  const csv = rows
-    .map((r) =>
-      r
-        .map((cell) => {
-          const v = String(cell ?? "");
-          return /[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v;
-        })
-        .join(","),
-    )
-    .join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+type ExportFormat = "csv" | "tsv";
+type ExportOptions = {
+  format: ExportFormat;
+  includeHeader: boolean;
+  includePercent: boolean;
+  includeZeroRows: boolean;
+  includeMetadata: boolean;
+};
+
+function downloadTable(
+  baseName: string,
+  header: string[],
+  rows: (string | number | null | undefined)[][],
+  opts: ExportOptions,
+  meta: { range: string; filters: string },
+) {
+  const delim = opts.format === "tsv" ? "\t" : ",";
+  const ext = opts.format === "tsv" ? "tsv" : "csv";
+  const mime =
+    opts.format === "tsv" ? "text/tab-separated-values;charset=utf-8" : "text/csv;charset=utf-8";
+
+  const encodeCell = (cell: string | number | null | undefined) => {
+    const v = String(cell ?? "");
+    const needsQuote =
+      v.includes(delim) || v.includes("\n") || v.includes('"');
+    return needsQuote ? `"${v.replaceAll('"', '""')}"` : v;
+  };
+
+  const out: string[] = [];
+  if (opts.includeMetadata) {
+    out.push(`# Generated${delim}${new Date().toISOString()}`);
+    out.push(`# Range${delim}${meta.range}`);
+    out.push(`# Filters${delim}${meta.filters || "none"}`);
+  }
+  if (opts.includeHeader) {
+    out.push(header.map(encodeCell).join(delim));
+  }
+  for (const r of rows) {
+    out.push(r.map(encodeCell).join(delim));
+  }
+
+  const blob = new Blob([out.join("\n")], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename;
+  a.download = `${baseName}.${ext}`;
   a.click();
   URL.revokeObjectURL(url);
 }
