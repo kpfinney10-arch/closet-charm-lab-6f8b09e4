@@ -340,6 +340,59 @@ function ReportsPage() {
   const toggleOpt = (k: keyof ExportOptions) =>
     setExportOpts((p) => ({ ...p, [k]: !p[k] }));
 
+  type ColumnPreset = "minimal" | "standard" | "full";
+  const COLUMN_PRESETS: Record<
+    ColumnPreset,
+    { label: string; desc: string; opts: Omit<ExportOptions, "format"> }
+  > = {
+    minimal: {
+      label: "Minimal",
+      desc: "Label + count only",
+      opts: {
+        includeHeader: true,
+        includePercent: false,
+        includeZeroRows: false,
+        includeMetadata: false,
+      },
+    },
+    standard: {
+      label: "Standard",
+      desc: "Label + count + % of total",
+      opts: {
+        includeHeader: true,
+        includePercent: true,
+        includeZeroRows: false,
+        includeMetadata: false,
+      },
+    },
+    full: {
+      label: "Full",
+      desc: "All columns, zero-count rows, and metadata header",
+      opts: {
+        includeHeader: true,
+        includePercent: true,
+        includeZeroRows: true,
+        includeMetadata: true,
+      },
+    },
+  };
+  const activePreset: ColumnPreset | null = (() => {
+    for (const name of Object.keys(COLUMN_PRESETS) as ColumnPreset[]) {
+      const p = COLUMN_PRESETS[name].opts;
+      if (
+        p.includeHeader === exportOpts.includeHeader &&
+        p.includePercent === exportOpts.includePercent &&
+        p.includeZeroRows === exportOpts.includeZeroRows &&
+        p.includeMetadata === exportOpts.includeMetadata
+      ) {
+        return name;
+      }
+    }
+    return null;
+  })();
+  const applyPreset = (name: ColumnPreset) =>
+    setExportOpts((p) => ({ ...p, ...COLUMN_PRESETS[name].opts }));
+
   const fileSuffix = `${from}_to_${to}${filtersActive ? "-filtered" : ""}`;
 
   const filterSummary = useMemo(() => {
@@ -607,6 +660,29 @@ function ReportsPage() {
       {/* CSV export options — apply to all downloads below */}
       <Card>
         <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground">Columns</Label>
+            <div className="flex rounded-md border" role="group" aria-label="Column preset">
+              {(Object.keys(COLUMN_PRESETS) as Array<keyof typeof COLUMN_PRESETS>).map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => applyPreset(name)}
+                  title={COLUMN_PRESETS[name].desc}
+                  className={`px-3 py-1 text-xs ${activePreset === name ? "bg-primary text-primary-foreground" : "bg-background"}`}
+                >
+                  {COLUMN_PRESETS[name].label}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled
+                className={`px-3 py-1 text-xs ${activePreset === null ? "bg-muted text-muted-foreground" : "hidden"}`}
+              >
+                Custom
+              </button>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground">Format</Label>
             <div className="flex rounded-md border">
