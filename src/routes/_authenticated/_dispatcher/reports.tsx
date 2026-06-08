@@ -867,6 +867,16 @@ function ReportsPage() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => renameSavedPreset(p)}
+                      title={`Rename "${p.name}"`}
+                      aria-label={`Rename preset ${p.name}`}
+                      disabled={renameMut.isPending}
+                      className="px-1.5 py-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                    >
+                      ✎
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => deleteSavedPreset(p.id)}
                       title={`Delete "${p.name}"`}
                       aria-label={`Delete preset ${p.name}`}
