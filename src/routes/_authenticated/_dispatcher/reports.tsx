@@ -393,6 +393,71 @@ function ReportsPage() {
   const applyPreset = (name: ColumnPreset) =>
     setExportOpts((p) => ({ ...p, ...COLUMN_PRESETS[name].opts }));
 
+  // ---- Saved (user-named) column presets, persisted to localStorage ----
+  type SavedPreset = { name: string; opts: Omit<ExportOptions, "format"> };
+  const SAVED_KEY = "reports.csv.savedPresets.v1";
+  const [savedPresets, setSavedPresets] = useState<SavedPreset[]>([]);
+  const [savingName, setSavingName] = useState("");
+
+  // Load on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(SAVED_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setSavedPresets(parsed);
+      }
+    } catch {
+      // ignore corrupted storage
+    }
+  }, []);
+
+  const persistSaved = (next: SavedPreset[]) => {
+    setSavedPresets(next);
+    try {
+      window.localStorage.setItem(SAVED_KEY, JSON.stringify(next));
+    } catch {
+      // ignore quota errors
+    }
+  };
+
+  const saveCurrentAsPreset = () => {
+    const name = savingName.trim();
+    if (!name) return;
+    const entry: SavedPreset = {
+      name,
+      opts: {
+        includeHeader: exportOpts.includeHeader,
+        includePercent: exportOpts.includePercent,
+        includeZeroRows: exportOpts.includeZeroRows,
+        includeMetadata: exportOpts.includeMetadata,
+      },
+    };
+    const next = [...savedPresets.filter((p) => p.name !== name), entry].sort(
+      (a, b) => a.name.localeCompare(b.name),
+    );
+    persistSaved(next);
+    setSavingName("");
+  };
+
+  const applySavedPreset = (name: string) => {
+    const p = savedPresets.find((s) => s.name === name);
+    if (!p) return;
+    setExportOpts((prev) => ({ ...prev, ...p.opts }));
+  };
+
+  const deleteSavedPreset = (name: string) =>
+    persistSaved(savedPresets.filter((p) => p.name !== name));
+
+  const activeSavedPreset = savedPresets.find(
+    (p) =>
+      p.opts.includeHeader === exportOpts.includeHeader &&
+      p.opts.includePercent === exportOpts.includePercent &&
+      p.opts.includeZeroRows === exportOpts.includeZeroRows &&
+      p.opts.includeMetadata === exportOpts.includeMetadata,
+  )?.name ?? null;
+
   const fileSuffix = `${from}_to_${to}${filtersActive ? "-filtered" : ""}`;
 
   const filterSummary = useMemo(() => {
