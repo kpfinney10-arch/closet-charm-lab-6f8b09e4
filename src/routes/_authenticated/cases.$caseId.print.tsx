@@ -202,7 +202,7 @@ function PrintRunSheet() {
         </Button>
         <Button size="sm" onClick={() => window.print()}>
           <Printer className="h-4 w-4" />
-          Print
+          Save as PDF / Print
         </Button>
       </div>
 
