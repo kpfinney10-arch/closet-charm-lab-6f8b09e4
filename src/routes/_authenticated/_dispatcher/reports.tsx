@@ -12,8 +12,6 @@ import {
   Loader2,
   Download,
   ClipboardList,
-  Truck,
-  Timer,
   CheckCircle2,
   XCircle,
   Activity,
@@ -27,7 +25,11 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { getDispatchReports, type DispatchReports } from "@/lib/dispatch-reports.functions";
+import {
+  getDispatchReports,
+  type DispatchCaseRow,
+  type DispatchReports,
+} from "@/lib/dispatch-reports.functions";
 
 const STATUS_LABEL: Record<string, string> = {
   new: "New",
@@ -40,6 +42,18 @@ const STATUS_LABEL: Record<string, string> = {
   closed: "Closed",
   cancelled: "Cancelled",
 };
+
+const ALL_STATUSES = [
+  "new",
+  "assigned",
+  "en_route_pickup",
+  "on_scene",
+  "in_custody",
+  "en_route_dropoff",
+  "delivered",
+  "closed",
+  "cancelled",
+] as const;
 
 function isoStart(d: string) {
   return new Date(`${d}T00:00:00`).toISOString();
@@ -63,10 +77,10 @@ const searchSchema = z.object({
   from: fallback(z.string(), defaultFrom()).default(defaultFrom()),
   to: fallback(z.string(), defaultTo()).default(defaultTo()),
   q: fallback(z.string(), "").default(""),
+  status: fallback(z.string(), "").default(""),
   driver: fallback(z.string(), "").default(""),
   pickup: fallback(z.string(), "").default(""),
 });
-
 type ReportsSearch = z.infer<typeof searchSchema>;
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/reports")({
@@ -119,8 +133,15 @@ function downloadCsv(filename: string, rows: (string | number | null | undefined
   URL.revokeObjectURL(url);
 }
 
+function median(values: number[]): number | null {
+  if (!values.length) return null;
+  const s = [...values].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
 function ReportsPage() {
-  const { from, to, q, driver, pickup } = Route.useSearch();
+  const { from, to, q, status, driver, pickup } = Route.useSearch();
   const navigate = useNavigate({ from: "/reports" });
   const fetchReports = useServerFn(getDispatchReports);
 
@@ -135,29 +156,36 @@ function ReportsPage() {
   const data = reportsQ.data as DispatchReports | undefined;
   const loading = reportsQ.isLoading;
 
-  const filteredReleases = useMemo(() => {
-    if (!data) return [];
+  const facilityById = useMemo(() => {
+    const m = new Map<string, string>();
+    (data?.facilities ?? []).forEach((f) => m.set(f.id, f.name));
+    return m;
+  }, [data]);
+  const driverById = useMemo(() => {
+    const m = new Map<string, string>();
+    (data?.drivers ?? []).forEach((d) => m.set(d.id, d.name));
+    return m;
+  }, [data]);
+
+  // Apply filters to per-case rows; all aggregates derive from this list.
+  const filteredCases = useMemo<DispatchCaseRow[]>(() => {
+    const rows = data?.cases ?? [];
     const needle = q.trim().toLowerCase();
-    return data.releases.filter((r) => {
-      if (driver) {
-        // perDriver stores driverId; release rows only have name — match by name
-        const driverName = data.perDriver.find((d) => d.driverId === driver)?.name ?? "";
-        if (r.primaryDriver !== driverName && r.secondaryDriver !== driverName) return false;
-      }
-      if (pickup) {
-        const facName = data.perPickupFacility.find((f) => f.facilityId === pickup)?.name ?? "";
-        if (r.pickupFacility !== facName) return false;
-      }
+    return rows.filter((c) => {
+      if (status && c.status !== status) return false;
+      if (driver && c.primaryDriverId !== driver && c.secondaryDriverId !== driver)
+        return false;
+      if (pickup && c.pickupFacilityId !== pickup) return false;
       if (needle) {
         const hay = [
-          r.caseNumber,
-          r.decedentName,
-          r.pickupFacility,
-          r.dropoffFacility,
-          r.primaryDriver,
-          r.secondaryDriver,
-          r.releasedBy,
-          r.releasedByTitle,
+          c.caseNumber,
+          c.decedentName,
+          c.releasedBy,
+          c.releasedByTitle,
+          facilityById.get(c.pickupFacilityId ?? "") ?? "",
+          facilityById.get(c.dropoffFacilityId ?? "") ?? "",
+          driverById.get(c.primaryDriverId ?? "") ?? "",
+          driverById.get(c.secondaryDriverId ?? "") ?? "",
         ]
           .join(" ")
           .toLowerCase();
@@ -165,36 +193,140 @@ function ReportsPage() {
       }
       return true;
     });
-  }, [data, q, driver, pickup]);
+  }, [data, q, status, driver, pickup, facilityById, driverById]);
 
-  const filtersActive = Boolean(q || driver || pickup);
+  const filtersActive = Boolean(q || status || driver || pickup);
+
+  // Totals
+  const totals = useMemo(() => {
+    let delivered = 0;
+    let cancelled = 0;
+    let inProgress = 0;
+    for (const c of filteredCases) {
+      if (c.status === "delivered" || c.status === "closed") delivered++;
+      else if (c.status === "cancelled") cancelled++;
+      else inProgress++;
+    }
+    return { total: filteredCases.length, delivered, cancelled, inProgress };
+  }, [filteredCases]);
+
+  // Status counts (in canonical order; only non-zero buckets shown)
+  const statusCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of filteredCases) map.set(c.status, (map.get(c.status) ?? 0) + 1);
+    return ALL_STATUSES.filter((s) => (map.get(s) ?? 0) > 0).map((s) => ({
+      status: s,
+      label: STATUS_LABEL[s] ?? s,
+      count: map.get(s) ?? 0,
+    }));
+  }, [filteredCases]);
+
+  // Runs per driver
+  const perDriver = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of filteredCases) {
+      if (c.primaryDriverId) {
+        map.set(c.primaryDriverId, (map.get(c.primaryDriverId) ?? 0) + 1);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([driverId, count]) => ({
+        driverId,
+        name: driverById.get(driverId) || "Unknown",
+        count,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [filteredCases, driverById]);
+
+  // Runs per pickup facility
+  const perPickupFacility = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of filteredCases) {
+      if (c.pickupFacilityId) {
+        map.set(c.pickupFacilityId, (map.get(c.pickupFacilityId) ?? 0) + 1);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([facilityId, count]) => ({
+        facilityId,
+        name: facilityById.get(facilityId) || "Unknown",
+        count,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [filteredCases, facilityById]);
+
+  // Time in custody
+  const timeInCustody = useMemo(() => {
+    const durations: number[] = [];
+    const perFacility = new Map<string, number[]>();
+    for (const c of filteredCases) {
+      if (!c.inCustodyAt || !c.deliveredAt) continue;
+      const hrs =
+        (new Date(c.deliveredAt).getTime() - new Date(c.inCustodyAt).getTime()) /
+        3_600_000;
+      if (hrs <= 0) continue;
+      durations.push(hrs);
+      if (c.pickupFacilityId) {
+        const arr = perFacility.get(c.pickupFacilityId) ?? [];
+        arr.push(hrs);
+        perFacility.set(c.pickupFacilityId, arr);
+      }
+    }
+    const avg = durations.length
+      ? durations.reduce((a, b) => a + b, 0) / durations.length
+      : null;
+    return {
+      sampleSize: durations.length,
+      avgHours: avg,
+      medianHours: median(durations),
+      perFacility: Array.from(perFacility.entries())
+        .map(([facilityId, arr]) => ({
+          facilityId,
+          name: facilityById.get(facilityId) || "Unknown",
+          sampleSize: arr.length,
+          avgHours: arr.reduce((a, b) => a + b, 0) / arr.length,
+        }))
+        .sort((a, b) => b.sampleSize - a.sampleSize),
+    };
+  }, [filteredCases, facilityById]);
+
+  // Release log = filtered cases that are delivered/closed
+  const releases = useMemo(
+    () =>
+      filteredCases
+        .filter((c) => c.status === "delivered" || c.status === "closed")
+        .sort((a, b) => (b.deliveredAt ?? "").localeCompare(a.deliveredAt ?? "")),
+    [filteredCases],
+  );
+
+  const fileSuffix = `${from}_to_${to}${filtersActive ? "-filtered" : ""}`;
 
   const exportCounts = () => {
-    if (!data) return;
-    downloadCsv(`status-counts-${from}_to_${to}.csv`, [
+    if (!statusCounts.length) return;
+    downloadCsv(`status-counts-${fileSuffix}.csv`, [
       ["status", "count"],
-      ...data.statusCounts.map((r) => [STATUS_LABEL[r.status] ?? r.status, r.count]),
+      ...statusCounts.map((r) => [r.label, r.count]),
     ]);
   };
   const exportDrivers = () => {
-    if (!data) return;
-    downloadCsv(`runs-per-driver-${from}_to_${to}.csv`, [
+    if (!perDriver.length) return;
+    downloadCsv(`runs-per-driver-${fileSuffix}.csv`, [
       ["driver", "runs"],
-      ...data.perDriver.map((r) => [r.name, r.count]),
+      ...perDriver.map((r) => [r.name, r.count]),
     ]);
   };
   const exportFacilities = () => {
-    if (!data) return;
-    downloadCsv(`runs-per-pickup-facility-${from}_to_${to}.csv`, [
+    if (!perPickupFacility.length) return;
+    downloadCsv(`runs-per-pickup-facility-${fileSuffix}.csv`, [
       ["facility", "runs"],
-      ...data.perPickupFacility.map((r) => [r.name, r.count]),
+      ...perPickupFacility.map((r) => [r.name, r.count]),
     ]);
   };
   const exportTimeInCustody = () => {
-    if (!data) return;
-    downloadCsv(`time-in-custody-${from}_to_${to}.csv`, [
+    if (!timeInCustody.perFacility.length) return;
+    downloadCsv(`time-in-custody-${fileSuffix}.csv`, [
       ["pickup_facility", "sample_size", "avg_hours"],
-      ...data.timeInCustody.perFacility.map((r) => [
+      ...timeInCustody.perFacility.map((r) => [
         r.name,
         r.sampleSize,
         r.avgHours.toFixed(2),
@@ -202,9 +334,8 @@ function ReportsPage() {
     ]);
   };
   const exportReleases = () => {
-    if (!data) return;
-    const suffix = filtersActive ? "-filtered" : "";
-    downloadCsv(`release-log-${from}_to_${to}${suffix}.csv`, [
+    if (!releases.length) return;
+    downloadCsv(`release-log-${fileSuffix}.csv`, [
       [
         "case_number",
         "decedent",
@@ -217,14 +348,14 @@ function ReportsPage() {
         "released_by",
         "released_by_title",
       ],
-      ...filteredReleases.map((r) => [
+      ...releases.map((r) => [
         r.caseNumber,
         r.decedentName,
         r.deliveredAt ?? "",
-        r.pickupFacility,
-        r.dropoffFacility,
-        r.primaryDriver,
-        r.secondaryDriver,
+        facilityById.get(r.pickupFacilityId ?? "") ?? "",
+        facilityById.get(r.dropoffFacilityId ?? "") ?? "",
+        driverById.get(r.primaryDriverId ?? "") ?? "",
+        driverById.get(r.secondaryDriverId ?? "") ?? "",
         r.releasedAt ?? "",
         r.releasedBy,
         r.releasedByTitle,
@@ -236,7 +367,6 @@ function ReportsPage() {
     navigate({ search: (prev: ReportsSearch) => ({ ...prev, ...next }) });
   };
   const setRange = (next: { from?: string; to?: string }) => updateSearch(next);
-
   const setPreset = (days: number) => {
     const end = new Date();
     const start = new Date();
@@ -248,13 +378,13 @@ function ReportsPage() {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
     setRange({ from: ymd(start), to: ymd(now) });
   };
-  const clearReleaseFilters = () => updateSearch({ q: "", driver: "", pickup: "" });
+  const clearFilters = () =>
+    updateSearch({ q: "", status: "", driver: "", pickup: "" });
 
-  const statusChart =
-    data?.statusCounts.map((r) => ({
-      status: STATUS_LABEL[r.status] ?? r.status,
-      count: r.count,
-    })) ?? [];
+  // Driver/facility options (use full lists from server so filters work even
+  // when a driver/facility has no runs in the current selection).
+  const driverOptions = data?.drivers ?? [];
+  const facilityOptions = data?.facilities ?? [];
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -267,9 +397,7 @@ function ReportsPage() {
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
-            <Label htmlFor="from" className="text-xs">
-              From
-            </Label>
+            <Label htmlFor="from" className="text-xs">From</Label>
             <Input
               id="from"
               type="date"
@@ -280,9 +408,7 @@ function ReportsPage() {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="to" className="text-xs">
-              To
-            </Label>
+            <Label htmlFor="to" className="text-xs">To</Label>
             <Input
               id="to"
               type="date"
@@ -293,61 +419,96 @@ function ReportsPage() {
             />
           </div>
           <div className="flex gap-1">
-            <Button variant="outline" size="sm" onClick={() => setPreset(7)}>
-              7d
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setPreset(30)}>
-              30d
-            </Button>
-            <Button variant="outline" size="sm" onClick={setThisMonth}>
-              This month
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setPreset(90)}>
-              90d
-            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPreset(7)}>7d</Button>
+            <Button variant="outline" size="sm" onClick={() => setPreset(30)}>30d</Button>
+            <Button variant="outline" size="sm" onClick={setThisMonth}>This month</Button>
+            <Button variant="outline" size="sm" onClick={() => setPreset(90)}>90d</Button>
           </div>
         </div>
       </div>
 
+      {/* Global filters — apply to ALL aggregates and CSV exports */}
+      <Card>
+        <CardContent className="flex flex-wrap items-end gap-2 p-4">
+          <div className="space-y-1">
+            <Label htmlFor="f-q" className="text-xs">Search</Label>
+            <Input
+              id="f-q"
+              value={q}
+              onChange={(e) => updateSearch({ q: e.target.value })}
+              placeholder="Case #, decedent, released to…"
+              className="h-9 w-[240px]"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="f-status" className="text-xs">Status</Label>
+            <select
+              id="f-status"
+              value={status}
+              onChange={(e) => updateSearch({ status: e.target.value })}
+              className="h-9 w-[180px] rounded-md border bg-background px-2 text-sm"
+            >
+              <option value="">All statuses</option>
+              {ALL_STATUSES.map((s) => (
+                <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="f-driver" className="text-xs">Driver</Label>
+            <select
+              id="f-driver"
+              value={driver}
+              onChange={(e) => updateSearch({ driver: e.target.value })}
+              className="h-9 w-[200px] rounded-md border bg-background px-2 text-sm"
+            >
+              <option value="">All drivers</option>
+              {driverOptions.map((d) => (
+                <option key={d.id} value={d.id}>{d.name || "Unnamed"}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="f-pickup" className="text-xs">Pickup facility</Label>
+            <select
+              id="f-pickup"
+              value={pickup}
+              onChange={(e) => updateSearch({ pickup: e.target.value })}
+              className="h-9 w-[220px] rounded-md border bg-background px-2 text-sm"
+            >
+              <option value="">All facilities</option>
+              {facilityOptions.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          </div>
+          {filtersActive && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+          {filtersActive && (
+            <span className="ml-auto text-xs text-muted-foreground">
+              Filters apply to all charts, tables, and CSV exports below.
+            </span>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat
-          icon={ClipboardList}
-          label="Cases in range"
-          value={data?.totals.cases ?? 0}
-          loading={loading}
-        />
-        <Stat
-          icon={CheckCircle2}
-          label="Delivered"
-          value={data?.totals.delivered ?? 0}
-          loading={loading}
-        />
-        <Stat
-          icon={Activity}
-          label="In progress"
-          value={data?.totals.inProgress ?? 0}
-          loading={loading}
-        />
-        <Stat
-          icon={XCircle}
-          label="Cancelled"
-          value={data?.totals.cancelled ?? 0}
-          loading={loading}
-        />
+        <Stat icon={ClipboardList} label={filtersActive ? "Cases (filtered)" : "Cases in range"} value={totals.total} loading={loading} />
+        <Stat icon={CheckCircle2} label="Delivered" value={totals.delivered} loading={loading} />
+        <Stat icon={Activity} label="In progress" value={totals.inProgress} loading={loading} />
+        <Stat icon={XCircle} label="Cancelled" value={totals.cancelled} loading={loading} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Cases by status chart */}
+        {/* Cases by status */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Cases by status</CardTitle>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={exportCounts}
-              disabled={!data || data.statusCounts.length === 0}
-            >
+            <Button size="sm" variant="ghost" onClick={exportCounts} disabled={statusCounts.length === 0}>
               <Download className="h-4 w-4" />
               CSV
             </Button>
@@ -355,25 +516,16 @@ function ReportsPage() {
           <CardContent>
             {loading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : statusChart.length === 0 ? (
+            ) : statusCounts.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">
-                No cases in this range.
+                No cases match the current selection.
               </p>
             ) : (
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={statusChart}
-                    margin={{ left: -16, right: 8, top: 8, bottom: 24 }}
-                  >
+                  <BarChart data={statusCounts} margin={{ left: -16, right: 8, top: 8, bottom: 24 }}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis
-                      dataKey="status"
-                      angle={-30}
-                      textAnchor="end"
-                      height={60}
-                      tick={{ fontSize: 11 }}
-                    />
+                    <XAxis dataKey="label" angle={-30} textAnchor="end" height={60} tick={{ fontSize: 11 }} />
                     <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                     <Tooltip
                       contentStyle={{
@@ -395,44 +547,25 @@ function ReportsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Time in custody</CardTitle>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={exportTimeInCustody}
-              disabled={!data || data.timeInCustody.perFacility.length === 0}
-            >
+            <Button size="sm" variant="ghost" onClick={exportTimeInCustody} disabled={timeInCustody.perFacility.length === 0}>
               <Download className="h-4 w-4" />
               CSV
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-3 gap-2 text-center">
-              <Mini label="Samples" value={data?.timeInCustody.sampleSize ?? 0} />
-              <Mini
-                label="Avg hours"
-                value={
-                  data?.timeInCustody.avgHours == null
-                    ? "—"
-                    : data.timeInCustody.avgHours.toFixed(1)
-                }
-              />
-              <Mini
-                label="Median hours"
-                value={
-                  data?.timeInCustody.medianHours == null
-                    ? "—"
-                    : data.timeInCustody.medianHours.toFixed(1)
-                }
-              />
+              <Mini label="Samples" value={timeInCustody.sampleSize} />
+              <Mini label="Avg hours" value={timeInCustody.avgHours == null ? "—" : timeInCustody.avgHours.toFixed(1)} />
+              <Mini label="Median hours" value={timeInCustody.medianHours == null ? "—" : timeInCustody.medianHours.toFixed(1)} />
             </div>
             <div className="text-xs text-muted-foreground">
               Measured from in-custody event to delivered event.
             </div>
             {loading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : (data?.timeInCustody.perFacility.length ?? 0) === 0 ? (
+            ) : timeInCustody.perFacility.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                No completed custody-to-delivery cycles in this range.
+                No completed custody-to-delivery cycles in this selection.
               </p>
             ) : (
               <div className="max-h-60 overflow-auto">
@@ -445,13 +578,11 @@ function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {data!.timeInCustody.perFacility.map((r) => (
+                    {timeInCustody.perFacility.map((r) => (
                       <tr key={r.facilityId}>
                         <td className="py-2">{r.name}</td>
                         <td className="py-2 text-right tabular-nums">{r.sampleSize}</td>
-                        <td className="py-2 text-right tabular-nums">
-                          {r.avgHours.toFixed(1)}
-                        </td>
+                        <td className="py-2 text-right tabular-nums">{r.avgHours.toFixed(1)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -465,12 +596,7 @@ function ReportsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Runs per driver</CardTitle>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={exportDrivers}
-              disabled={!data || data.perDriver.length === 0}
-            >
+            <Button size="sm" variant="ghost" onClick={exportDrivers} disabled={perDriver.length === 0}>
               <Download className="h-4 w-4" />
               CSV
             </Button>
@@ -478,17 +604,14 @@ function ReportsPage() {
           <CardContent>
             {loading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : (data?.perDriver.length ?? 0) === 0 ? (
+            ) : perDriver.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">
-                No driver-assigned runs in this range.
+                No driver-assigned runs in this selection.
               </p>
             ) : (
               <ul className="divide-y">
-                {data!.perDriver.map((r) => (
-                  <li
-                    key={r.driverId}
-                    className="flex items-center justify-between py-2 text-sm"
-                  >
+                {perDriver.map((r) => (
+                  <li key={r.driverId} className="flex items-center justify-between py-2 text-sm">
                     <span className="font-medium">{r.name}</span>
                     <span className="tabular-nums text-muted-foreground">{r.count}</span>
                   </li>
@@ -502,12 +625,7 @@ function ReportsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Runs per pickup facility</CardTitle>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={exportFacilities}
-              disabled={!data || data.perPickupFacility.length === 0}
-            >
+            <Button size="sm" variant="ghost" onClick={exportFacilities} disabled={perPickupFacility.length === 0}>
               <Download className="h-4 w-4" />
               CSV
             </Button>
@@ -515,17 +633,14 @@ function ReportsPage() {
           <CardContent>
             {loading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : (data?.perPickupFacility.length ?? 0) === 0 ? (
+            ) : perPickupFacility.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">
-                No pickup facilities recorded in this range.
+                No pickup facilities recorded in this selection.
               </p>
             ) : (
               <ul className="divide-y">
-                {data!.perPickupFacility.map((r) => (
-                  <li
-                    key={r.facilityId}
-                    className="flex items-center justify-between py-2 text-sm"
-                  >
+                {perPickupFacility.map((r) => (
+                  <li key={r.facilityId} className="flex items-center justify-between py-2 text-sm">
                     <span className="font-medium">{r.name}</span>
                     <span className="tabular-nums text-muted-foreground">{r.count}</span>
                   </li>
@@ -543,83 +658,20 @@ function ReportsPage() {
             <CardTitle className="text-base">Release log</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
               Delivered cases with chain-of-custody release details.
-              {filtersActive && (
-                <>
-                  {" "}
-                  Showing {filteredReleases.length} of {data?.releases.length ?? 0}.
-                </>
-              )}
+              {filtersActive && <> Showing {releases.length} delivery records.</>}
             </p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={exportReleases}
-            disabled={filteredReleases.length === 0}
-          >
+          <Button size="sm" variant="outline" onClick={exportReleases} disabled={releases.length === 0}>
             <Download className="h-4 w-4" />
             {filtersActive ? "Download filtered CSV" : "Download CSV"}
           </Button>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Filters */}
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="space-y-1">
-              <Label htmlFor="rel-q" className="text-xs">Search</Label>
-              <Input
-                id="rel-q"
-                value={q}
-                onChange={(e) => updateSearch({ q: e.target.value })}
-                placeholder="Case #, decedent, released to…"
-                className="h-9 w-[240px]"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="rel-driver" className="text-xs">Driver</Label>
-              <select
-                id="rel-driver"
-                value={driver}
-                onChange={(e) => updateSearch({ driver: e.target.value })}
-                className="h-9 w-[180px] rounded-md border bg-background px-2 text-sm"
-              >
-                <option value="">All drivers</option>
-                {(data?.perDriver ?? []).map((d) => (
-                  <option key={d.driverId} value={d.driverId}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="rel-pickup" className="text-xs">Pickup facility</Label>
-              <select
-                id="rel-pickup"
-                value={pickup}
-                onChange={(e) => updateSearch({ pickup: e.target.value })}
-                className="h-9 w-[200px] rounded-md border bg-background px-2 text-sm"
-              >
-                <option value="">All facilities</option>
-                {(data?.perPickupFacility ?? []).map((f) => (
-                  <option key={f.facilityId} value={f.facilityId}>
-                    {f.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {filtersActive && (
-              <Button variant="ghost" size="sm" onClick={clearReleaseFilters}>
-                Clear filters
-              </Button>
-            )}
-          </div>
-
+        <CardContent>
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          ) : filteredReleases.length === 0 ? (
+          ) : releases.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">
-              {filtersActive
-                ? "No deliveries match the current filters."
-                : "No deliveries in this range."}
+              No deliveries in this selection.
             </p>
           ) : (
             <div className="overflow-auto">
@@ -636,24 +688,26 @@ function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {filteredReleases.map((r) => (
-                    <tr key={r.caseId}>
+                  {releases.map((r) => (
+                    <tr key={r.id}>
                       <td className="px-2 py-2 font-mono text-xs">{r.caseNumber}</td>
                       <td className="px-2 py-2">{r.decedentName}</td>
-                      <td className="px-2 py-2 whitespace-nowrap">
-                        {fmtDateTime(r.deliveredAt)}
+                      <td className="px-2 py-2 whitespace-nowrap">{fmtDateTime(r.deliveredAt)}</td>
+                      <td className="px-2 py-2">
+                        {facilityById.get(r.pickupFacilityId ?? "") || "—"}
                       </td>
-                      <td className="px-2 py-2">{r.pickupFacility || "—"}</td>
-                      <td className="px-2 py-2">{r.dropoffFacility || "—"}</td>
-                      <td className="px-2 py-2">{r.primaryDriver || "—"}</td>
+                      <td className="px-2 py-2">
+                        {facilityById.get(r.dropoffFacilityId ?? "") || "—"}
+                      </td>
+                      <td className="px-2 py-2">
+                        {driverById.get(r.primaryDriverId ?? "") || "—"}
+                      </td>
                       <td className="px-2 py-2">
                         {r.releasedBy ? (
                           <>
                             <div>{r.releasedBy}</div>
                             {r.releasedByTitle && (
-                              <div className="text-xs text-muted-foreground">
-                                {r.releasedByTitle}
-                              </div>
+                              <div className="text-xs text-muted-foreground">{r.releasedByTitle}</div>
                             )}
                           </>
                         ) : (
@@ -703,9 +757,7 @@ function Stat({
 function Mini({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-md border bg-muted/30 p-2">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="text-lg font-semibold tabular-nums">{value}</div>
     </div>
   );
