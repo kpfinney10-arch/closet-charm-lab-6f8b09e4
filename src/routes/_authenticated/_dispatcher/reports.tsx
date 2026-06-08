@@ -9,6 +9,7 @@ import {
   listExportPresets,
   upsertExportPreset,
   deleteExportPreset,
+  renameExportPreset,
   type ExportPreset,
 } from "@/lib/report-presets.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -405,6 +406,7 @@ function ReportsPage() {
   const fetchPresets = useServerFn(listExportPresets);
   const savePresetFn = useServerFn(upsertExportPreset);
   const deletePresetFn = useServerFn(deleteExportPreset);
+  const renamePresetFn = useServerFn(renameExportPreset);
   const [savingName, setSavingName] = useState("");
 
   const presetsQ = useQuery({
@@ -433,6 +435,16 @@ function ReportsPage() {
     onError: (e: unknown) =>
       toast.error(e instanceof Error ? e.message : "Could not delete preset"),
   });
+  const renameMut = useMutation({
+    mutationFn: (vars: { id: string; name: string }) =>
+      renamePresetFn({ data: vars }),
+    onSuccess: (p) => {
+      toast.success(`Renamed preset to "${p.name}"`);
+      queryClient.invalidateQueries({ queryKey: ["report-export-presets"] });
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Could not rename preset"),
+  });
 
   const saveCurrentAsPreset = () => {
     const name = savingName.trim();
@@ -455,6 +467,20 @@ function ReportsPage() {
   };
 
   const deleteSavedPreset = (id: string) => deleteMut.mutate(id);
+
+  const renameSavedPreset = (p: ExportPreset) => {
+    const next = typeof window !== "undefined"
+      ? window.prompt(`Rename preset "${p.name}" to:`, p.name)
+      : null;
+    if (next == null) return;
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === p.name) return;
+    if (trimmed.length > 60) {
+      toast.error("Preset name must be 60 characters or fewer");
+      return;
+    }
+    renameMut.mutate({ id: p.id, name: trimmed });
+  };
 
   const activeSavedPreset = savedPresets.find(
     (p) =>
@@ -838,6 +864,16 @@ function ReportsPage() {
                       className="px-2 py-1"
                     >
                       {p.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => renameSavedPreset(p)}
+                      title={`Rename "${p.name}"`}
+                      aria-label={`Rename preset ${p.name}`}
+                      disabled={renameMut.isPending}
+                      className="px-1.5 py-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                    >
+                      ✎
                     </button>
                     <button
                       type="button"

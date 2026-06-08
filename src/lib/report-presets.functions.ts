@@ -112,3 +112,44 @@ export const deleteExportPreset = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+export const renameExportPreset = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; name: string }) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        name: z.string().min(1).max(60).trim(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }): Promise<ExportPreset> => {
+    const { supabase } = context;
+
+    // Guard against name collisions with a different preset
+    const { data: clash, error: clashErr } = await supabase
+      .from("report_export_presets")
+      .select("id")
+      .eq("name", data.name)
+      .neq("id", data.id)
+      .maybeSingle();
+    if (clashErr) throw new Error(clashErr.message);
+    if (clash) throw new Error(`A preset named "${data.name}" already exists`);
+
+    const { data: updated, error } = await supabase
+      .from("report_export_presets")
+      .update({ name: data.name })
+      .eq("id", data.id)
+      .select("id, name, opts, created_by, created_at, updated_at")
+      .single();
+    if (error) throw new Error(error.message);
+    return {
+      id: updated.id,
+      name: updated.name,
+      opts: updated.opts as ExportPresetOpts,
+      createdBy: updated.created_by,
+      createdByName: null,
+      createdAt: updated.created_at,
+      updatedAt: updated.updated_at,
+    };
+  });
