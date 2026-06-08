@@ -9,6 +9,7 @@ import {
   listExportPresets,
   upsertExportPreset,
   deleteExportPreset,
+  renameExportPreset,
   type ExportPreset,
 } from "@/lib/report-presets.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
