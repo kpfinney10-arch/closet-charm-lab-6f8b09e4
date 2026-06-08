@@ -354,6 +354,16 @@ function DriverQueue() {
                         <PenLine className="h-4 w-4" />
                         Signatures
                       </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <Link
+                          to="/cases/$caseId/print"
+                          params={{ caseId: c.id }}
+                          target="_blank"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Run sheet PDF
+                        </Link>
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
