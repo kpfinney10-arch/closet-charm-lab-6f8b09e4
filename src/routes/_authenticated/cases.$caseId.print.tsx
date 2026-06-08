@@ -154,9 +154,11 @@ function PrintRunSheet() {
       const mod = (await import("html2pdf.js")) as unknown as { default: any };
       const html2pdf = mod.default;
       const filename = `run-sheet-${caseQ.data.case_number ?? "case"}.pdf`;
-      await html2pdf()
+      const generatedAt = new Date().toLocaleString();
+      const caseNumber = caseQ.data.case_number ?? "";
+      const worker = html2pdf()
         .set({
-          margin: 0.5,
+          margin: [0.5, 0.5, 0.75, 0.5],
           filename,
           image: { type: "jpeg", quality: 0.95 },
           html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
@@ -164,7 +166,32 @@ function PrintRunSheet() {
           pagebreak: { mode: ["css", "legacy"] },
         })
         .from(sheetRef.current)
-        .save();
+        .toPdf();
+
+      await worker.get("pdf").then((pdf: any) => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+          pdf.setFontSize(8);
+          pdf.setTextColor(115, 115, 115);
+          const footerY = pageHeight - 0.3;
+          pdf.text(
+            `Case ${caseNumber} · Generated ${generatedAt}`,
+            0.5,
+            footerY,
+          );
+          pdf.text(
+            `Page ${i} of ${totalPages}`,
+            pageWidth - 0.5,
+            footerY,
+            { align: "right" },
+          );
+        }
+      });
+
+      await worker.save();
     } finally {
       setDownloading(false);
     }
