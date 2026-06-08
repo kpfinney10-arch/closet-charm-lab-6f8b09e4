@@ -435,6 +435,16 @@ function ReportsPage() {
     onError: (e: unknown) =>
       toast.error(e instanceof Error ? e.message : "Could not delete preset"),
   });
+  const renameMut = useMutation({
+    mutationFn: (vars: { id: string; name: string }) =>
+      renamePresetFn({ data: vars }),
+    onSuccess: (p) => {
+      toast.success(`Renamed preset to "${p.name}"`);
+      queryClient.invalidateQueries({ queryKey: ["report-export-presets"] });
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Could not rename preset"),
+  });
 
   const saveCurrentAsPreset = () => {
     const name = savingName.trim();
