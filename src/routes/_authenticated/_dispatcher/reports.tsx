@@ -1,9 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import {
+  listExportPresets,
+  upsertExportPreset,
+  deleteExportPreset,
+  type ExportPreset,
+} from "@/lib/report-presets.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -393,39 +400,44 @@ function ReportsPage() {
   const applyPreset = (name: ColumnPreset) =>
     setExportOpts((p) => ({ ...p, ...COLUMN_PRESETS[name].opts }));
 
-  // ---- Saved (user-named) column presets, persisted to localStorage ----
-  type SavedPreset = { name: string; opts: Omit<ExportOptions, "format"> };
-  const SAVED_KEY = "reports.csv.savedPresets.v1";
-  const [savedPresets, setSavedPresets] = useState<SavedPreset[]>([]);
+  // ---- Saved (team-shared) column presets, persisted server-side ----
+  const queryClient = useQueryClient();
+  const fetchPresets = useServerFn(listExportPresets);
+  const savePresetFn = useServerFn(upsertExportPreset);
+  const deletePresetFn = useServerFn(deleteExportPreset);
   const [savingName, setSavingName] = useState("");
 
-  // Load on mount
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(SAVED_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setSavedPresets(parsed);
-      }
-    } catch {
-      // ignore corrupted storage
-    }
-  }, []);
+  const presetsQ = useQuery({
+    queryKey: ["report-export-presets"],
+    queryFn: () => fetchPresets(),
+    staleTime: 60_000,
+  });
+  const savedPresets: ExportPreset[] = presetsQ.data ?? [];
 
-  const persistSaved = (next: SavedPreset[]) => {
-    setSavedPresets(next);
-    try {
-      window.localStorage.setItem(SAVED_KEY, JSON.stringify(next));
-    } catch {
-      // ignore quota errors
-    }
-  };
+  const saveMut = useMutation({
+    mutationFn: (vars: { name: string; opts: Omit<ExportOptions, "format"> }) =>
+      savePresetFn({ data: vars }),
+    onSuccess: (p) => {
+      toast.success(`Saved preset "${p.name}" for the team`);
+      setSavingName("");
+      queryClient.invalidateQueries({ queryKey: ["report-export-presets"] });
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Could not save preset"),
+  });
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deletePresetFn({ data: { id } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["report-export-presets"] });
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Could not delete preset"),
+  });
 
   const saveCurrentAsPreset = () => {
     const name = savingName.trim();
     if (!name) return;
-    const entry: SavedPreset = {
+    saveMut.mutate({
       name,
       opts: {
         includeHeader: exportOpts.includeHeader,
@@ -433,22 +445,16 @@ function ReportsPage() {
         includeZeroRows: exportOpts.includeZeroRows,
         includeMetadata: exportOpts.includeMetadata,
       },
-    };
-    const next = [...savedPresets.filter((p) => p.name !== name), entry].sort(
-      (a, b) => a.name.localeCompare(b.name),
-    );
-    persistSaved(next);
-    setSavingName("");
+    });
   };
 
-  const applySavedPreset = (name: string) => {
-    const p = savedPresets.find((s) => s.name === name);
+  const applySavedPreset = (id: string) => {
+    const p = savedPresets.find((s) => s.id === id);
     if (!p) return;
     setExportOpts((prev) => ({ ...prev, ...p.opts }));
   };
 
-  const deleteSavedPreset = (name: string) =>
-    persistSaved(savedPresets.filter((p) => p.name !== name));
+  const deleteSavedPreset = (id: string) => deleteMut.mutate(id);
 
   const activeSavedPreset = savedPresets.find(
     (p) =>
@@ -456,7 +462,7 @@ function ReportsPage() {
       p.opts.includePercent === exportOpts.includePercent &&
       p.opts.includeZeroRows === exportOpts.includeZeroRows &&
       p.opts.includeMetadata === exportOpts.includeMetadata,
-  )?.name ?? null;
+  )?.id ?? null;
 
   const fileSuffix = `${from}_to_${to}${filtersActive ? "-filtered" : ""}`;
 
@@ -799,36 +805,47 @@ function ReportsPage() {
             Options apply to all CSV/TSV downloads below.
           </span>
 
-          {/* Saved (user-named) presets */}
+          {/* Saved (team-shared) presets */}
           <div className="mt-2 flex w-full flex-wrap items-center gap-2 border-t pt-3">
-            <Label className="text-xs text-muted-foreground">Saved presets</Label>
-            {savedPresets.length === 0 ? (
-              <span className="text-xs text-muted-foreground">None yet.</span>
+            <Label className="text-xs text-muted-foreground">
+              Team presets
+            </Label>
+            {presetsQ.isLoading ? (
+              <span className="text-xs text-muted-foreground">Loading…</span>
+            ) : savedPresets.length === 0 ? (
+              <span className="text-xs text-muted-foreground">
+                None saved yet — name and save below to share with your team.
+              </span>
             ) : (
               <div className="flex flex-wrap gap-1">
                 {savedPresets.map((p) => (
                   <span
-                    key={p.name}
+                    key={p.id}
                     className={`inline-flex items-center gap-1 rounded-md border text-xs ${
-                      activeSavedPreset === p.name
+                      activeSavedPreset === p.id
                         ? "border-primary bg-primary/10"
                         : "bg-background"
                     }`}
                   >
                     <button
                       type="button"
-                      onClick={() => applySavedPreset(p.name)}
-                      title={`Apply "${p.name}"`}
+                      onClick={() => applySavedPreset(p.id)}
+                      title={
+                        p.createdByName
+                          ? `Apply "${p.name}" (saved by ${p.createdByName})`
+                          : `Apply "${p.name}"`
+                      }
                       className="px-2 py-1"
                     >
                       {p.name}
                     </button>
                     <button
                       type="button"
-                      onClick={() => deleteSavedPreset(p.name)}
+                      onClick={() => deleteSavedPreset(p.id)}
                       title={`Delete "${p.name}"`}
                       aria-label={`Delete preset ${p.name}`}
-                      className="px-1.5 py-1 text-muted-foreground hover:text-destructive"
+                      disabled={deleteMut.isPending}
+                      className="px-1.5 py-1 text-muted-foreground hover:text-destructive disabled:opacity-50"
                     >
                       ×
                     </button>
@@ -841,6 +858,7 @@ function ReportsPage() {
                 value={savingName}
                 onChange={(e) => setSavingName(e.target.value)}
                 placeholder="Preset name"
+                maxLength={60}
                 className="h-8 w-[160px] text-xs"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -854,9 +872,9 @@ function ReportsPage() {
                 size="sm"
                 variant="outline"
                 onClick={saveCurrentAsPreset}
-                disabled={!savingName.trim()}
+                disabled={!savingName.trim() || saveMut.isPending}
               >
-                Save current
+                {saveMut.isPending ? "Saving…" : "Save for team"}
               </Button>
             </div>
           </div>

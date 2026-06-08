@@ -907,6 +907,33 @@ export type Database = {
         }
         Relationships: []
       }
+      report_export_presets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          opts: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          opts: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          opts?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
