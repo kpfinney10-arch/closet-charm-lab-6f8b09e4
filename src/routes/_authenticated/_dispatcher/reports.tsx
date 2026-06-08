@@ -543,24 +543,83 @@ function ReportsPage() {
             <CardTitle className="text-base">Release log</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
               Delivered cases with chain-of-custody release details.
+              {filtersActive && (
+                <>
+                  {" "}
+                  Showing {filteredReleases.length} of {data?.releases.length ?? 0}.
+                </>
+              )}
             </p>
           </div>
           <Button
             size="sm"
             variant="outline"
             onClick={exportReleases}
-            disabled={!data || data.releases.length === 0}
+            disabled={filteredReleases.length === 0}
           >
             <Download className="h-4 w-4" />
-            Download CSV
+            {filtersActive ? "Download filtered CSV" : "Download CSV"}
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {/* Filters */}
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="rel-q" className="text-xs">Search</Label>
+              <Input
+                id="rel-q"
+                value={q}
+                onChange={(e) => updateSearch({ q: e.target.value })}
+                placeholder="Case #, decedent, released to…"
+                className="h-9 w-[240px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="rel-driver" className="text-xs">Driver</Label>
+              <select
+                id="rel-driver"
+                value={driver}
+                onChange={(e) => updateSearch({ driver: e.target.value })}
+                className="h-9 w-[180px] rounded-md border bg-background px-2 text-sm"
+              >
+                <option value="">All drivers</option>
+                {(data?.perDriver ?? []).map((d) => (
+                  <option key={d.driverId} value={d.driverId}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="rel-pickup" className="text-xs">Pickup facility</Label>
+              <select
+                id="rel-pickup"
+                value={pickup}
+                onChange={(e) => updateSearch({ pickup: e.target.value })}
+                className="h-9 w-[200px] rounded-md border bg-background px-2 text-sm"
+              >
+                <option value="">All facilities</option>
+                {(data?.perPickupFacility ?? []).map((f) => (
+                  <option key={f.facilityId} value={f.facilityId}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {filtersActive && (
+              <Button variant="ghost" size="sm" onClick={clearReleaseFilters}>
+                Clear filters
+              </Button>
+            )}
+          </div>
+
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          ) : (data?.releases.length ?? 0) === 0 ? (
+          ) : filteredReleases.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">
-              No deliveries in this range.
+              {filtersActive
+                ? "No deliveries match the current filters."
+                : "No deliveries in this range."}
             </p>
           ) : (
             <div className="overflow-auto">
@@ -577,7 +636,7 @@ function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {data!.releases.map((r) => (
+                  {filteredReleases.map((r) => (
                     <tr key={r.caseId}>
                       <td className="px-2 py-2 font-mono text-xs">{r.caseNumber}</td>
                       <td className="px-2 py-2">{r.decedentName}</td>
