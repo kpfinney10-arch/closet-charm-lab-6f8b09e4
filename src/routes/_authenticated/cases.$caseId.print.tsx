@@ -43,6 +43,15 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+const EVENT_LABEL: Record<string, string> = {
+  created: "Case created",
+  assigned: "Driver assigned",
+  reassigned: "Driver reassigned",
+  status_changed: "Status changed",
+  cancelled: "Cancelled",
+  note_added: "Note added",
+};
+
 function fmtDateTime(s: string | null | undefined) {
   if (!s) return "—";
   try {
@@ -120,16 +129,30 @@ function PrintRunSheet() {
     },
   });
 
+  const eventsQ = useQuery({
+    queryKey: ["case-print-events", caseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("case_events")
+        .select("id, event_type, from_status, to_status, notes, created_at")
+        .eq("case_id", caseId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   // Auto-trigger print dialog once all data is loaded
   useEffect(() => {
     if (!caseQ.data) return;
     if (driverIds.length > 0 && !driversQ.data) return;
     if (facilityIds.length > 0 && !facilitiesQ.data) return;
     if (!signaturesQ.data) return;
+    if (!eventsQ.data) return;
     const t = setTimeout(() => window.print(), 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [caseQ.data, driversQ.data, facilitiesQ.data, signaturesQ.data]);
+  }, [caseQ.data, driversQ.data, facilitiesQ.data, signaturesQ.data, eventsQ.data]);
 
   if (caseQ.isLoading) {
     return (
@@ -188,7 +211,7 @@ function PrintRunSheet() {
         </Button>
         <Button size="sm" onClick={() => window.print()}>
           <Printer className="h-4 w-4" />
-          Print
+          Save as PDF / Print
         </Button>
       </div>
 
@@ -353,6 +376,53 @@ function PrintRunSheet() {
             </div>
           </div>
         )}
+
+        {/* Timeline */}
+        {(eventsQ.data?.length ?? 0) > 0 && (
+          <div className="sheet-section" style={{ pageBreakInside: "avoid" }}>
+            <h2>Timeline</h2>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr style={{ textAlign: "left", color: "#71717a" }}>
+                  <th style={{ padding: "4px 6px", borderBottom: "1px solid #e4e4e7", fontWeight: 600, width: "38%" }}>
+                    Timestamp
+                  </th>
+                  <th style={{ padding: "4px 6px", borderBottom: "1px solid #e4e4e7", fontWeight: 600 }}>
+                    Event
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(eventsQ.data ?? []).map((ev) => {
+                  const label = EVENT_LABEL[ev.event_type] ?? ev.event_type;
+                  const statusBit =
+                    ev.event_type === "status_changed" && ev.to_status
+                      ? `${ev.from_status ? `${STATUS_LABEL[ev.from_status] ?? ev.from_status} → ` : ""}${STATUS_LABEL[ev.to_status] ?? ev.to_status}`
+                      : "";
+                  return (
+                    <tr key={ev.id} style={{ verticalAlign: "top" }}>
+                      <td style={{ padding: "4px 6px", borderBottom: "1px solid #f4f4f5", whiteSpace: "nowrap" }}>
+                        {fmtDateTime(ev.created_at)}
+                      </td>
+                      <td style={{ padding: "4px 6px", borderBottom: "1px solid #f4f4f5" }}>
+                        <div style={{ fontWeight: 500 }}>{label}</div>
+                        {statusBit && (
+                          <div style={{ color: "#52525b", fontSize: 10 }}>{statusBit}</div>
+                        )}
+                        {ev.notes && (
+                          <div style={{ color: "#3f3f46", fontSize: 10, whiteSpace: "pre-wrap" }}>
+                            {ev.notes}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
 
         {/* Signatures */}
         {(() => {
