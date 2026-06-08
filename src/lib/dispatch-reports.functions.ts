@@ -8,41 +8,28 @@ const input = z.object({
   to: z.string().datetime(),
 });
 
+export type DispatchCaseRow = {
+  id: string;
+  caseNumber: string;
+  status: string;
+  decedentName: string;
+  primaryDriverId: string | null;
+  secondaryDriverId: string | null;
+  pickupFacilityId: string | null;
+  dropoffFacilityId: string | null;
+  inCustodyAt: string | null;
+  deliveredAt: string | null;
+  releasedAt: string | null;
+  releasedBy: string;
+  releasedByTitle: string;
+  createdAt: string;
+};
+
 export type DispatchReports = {
   range: { from: string; to: string };
-  totals: {
-    cases: number;
-    delivered: number;
-    cancelled: number;
-    inProgress: number;
-  };
-  statusCounts: Array<{ status: string; count: number }>;
-  perDriver: Array<{ driverId: string; name: string; count: number }>;
-  perPickupFacility: Array<{ facilityId: string; name: string; count: number }>;
-  timeInCustody: {
-    sampleSize: number;
-    avgHours: number | null;
-    medianHours: number | null;
-    perFacility: Array<{
-      facilityId: string;
-      name: string;
-      sampleSize: number;
-      avgHours: number;
-    }>;
-  };
-  releases: Array<{
-    caseId: string;
-    caseNumber: string;
-    decedentName: string;
-    deliveredAt: string | null;
-    pickupFacility: string;
-    dropoffFacility: string;
-    primaryDriver: string;
-    secondaryDriver: string;
-    releasedAt: string | null;
-    releasedBy: string;
-    releasedByTitle: string;
-  }>;
+  facilities: Array<{ id: string; name: string }>;
+  drivers: Array<{ id: string; name: string }>;
+  cases: DispatchCaseRow[];
 };
 
 function median(values: number[]): number | null {
