@@ -475,7 +475,7 @@ function CaseDetail() {
             <Button asChild variant="outline" size="sm">
               <Link to="/cases/$caseId/print" params={{ caseId }} target="_blank">
                 <Printer className="h-4 w-4" />
-                Print run sheet
+                Run sheet PDF
               </Link>
             </Button>
             <Select
