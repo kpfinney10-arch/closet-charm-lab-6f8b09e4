@@ -193,7 +193,7 @@ function ReportsPage() {
   };
 
   const setRange = (next: { from?: string; to?: string }) => {
-    navigate({ search: (prev) => ({ ...prev, ...next }) });
+    navigate({ search: (prev: { from: string; to: string }) => ({ ...prev, ...next }) });
   };
 
   const setPreset = (days: number) => {
