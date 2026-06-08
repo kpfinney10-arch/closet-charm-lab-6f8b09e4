@@ -3,11 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Loader2,
   Download,
@@ -113,22 +114,52 @@ function fmtDateTime(s: string | null | undefined) {
   }
 }
 
-function downloadCsv(filename: string, rows: (string | number | null | undefined)[][]) {
-  const csv = rows
-    .map((r) =>
-      r
-        .map((cell) => {
-          const v = String(cell ?? "");
-          return /[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v;
-        })
-        .join(","),
-    )
-    .join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+type ExportFormat = "csv" | "tsv";
+type ExportOptions = {
+  format: ExportFormat;
+  includeHeader: boolean;
+  includePercent: boolean;
+  includeZeroRows: boolean;
+  includeMetadata: boolean;
+};
+
+function downloadTable(
+  baseName: string,
+  header: string[],
+  rows: (string | number | null | undefined)[][],
+  opts: ExportOptions,
+  meta: { range: string; filters: string },
+) {
+  const delim = opts.format === "tsv" ? "\t" : ",";
+  const ext = opts.format === "tsv" ? "tsv" : "csv";
+  const mime =
+    opts.format === "tsv" ? "text/tab-separated-values;charset=utf-8" : "text/csv;charset=utf-8";
+
+  const encodeCell = (cell: string | number | null | undefined) => {
+    const v = String(cell ?? "");
+    const needsQuote =
+      v.includes(delim) || v.includes("\n") || v.includes('"');
+    return needsQuote ? `"${v.replaceAll('"', '""')}"` : v;
+  };
+
+  const out: string[] = [];
+  if (opts.includeMetadata) {
+    out.push(`# Generated${delim}${new Date().toISOString()}`);
+    out.push(`# Range${delim}${meta.range}`);
+    out.push(`# Filters${delim}${meta.filters || "none"}`);
+  }
+  if (opts.includeHeader) {
+    out.push(header.map(encodeCell).join(delim));
+  }
+  for (const r of rows) {
+    out.push(r.map(encodeCell).join(delim));
+  }
+
+  const blob = new Blob([out.join("\n")], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename;
+  a.download = `${baseName}.${ext}`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -299,43 +330,119 @@ function ReportsPage() {
     [filteredCases],
   );
 
+  const [exportOpts, setExportOpts] = useState<ExportOptions>({
+    format: "csv",
+    includeHeader: true,
+    includePercent: true,
+    includeZeroRows: false,
+    includeMetadata: false,
+  });
+  const toggleOpt = (k: keyof ExportOptions) =>
+    setExportOpts((p) => ({ ...p, [k]: !p[k] }));
+
   const fileSuffix = `${from}_to_${to}${filtersActive ? "-filtered" : ""}`;
 
+  const filterSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (q) parts.push(`q=${q}`);
+    if (status) parts.push(`status=${status}`);
+    if (driver) parts.push(`driver=${driverById.get(driver) || driver}`);
+    if (pickup) parts.push(`pickup=${facilityById.get(pickup) || pickup}`);
+    return parts.join("; ");
+  }, [q, status, driver, pickup, driverById, facilityById]);
+
+  const meta = { range: `${from} to ${to}`, filters: filterSummary };
+
+  const pct = (n: number, total: number) =>
+    total > 0 ? `${((n / total) * 100).toFixed(1)}%` : "0.0%";
+
   const exportCounts = () => {
-    if (!statusCounts.length) return;
-    downloadCsv(`status-counts-${fileSuffix}.csv`, [
-      ["status", "count"],
-      ...statusCounts.map((r) => [r.label, r.count]),
-    ]);
+    const total = filteredCases.length;
+    const map = new Map(statusCounts.map((s) => [s.status, s.count]));
+    const sources = exportOpts.includeZeroRows
+      ? ALL_STATUSES.map((s) => ({
+          status: s,
+          label: STATUS_LABEL[s] ?? s,
+          count: map.get(s) ?? 0,
+        }))
+      : statusCounts;
+    if (!sources.length) return;
+    const header = exportOpts.includePercent
+      ? ["status", "count", "percent"]
+      : ["status", "count"];
+    const rows = sources.map((r) =>
+      exportOpts.includePercent
+        ? [r.label, r.count, pct(r.count, total)]
+        : [r.label, r.count],
+    );
+    downloadTable(`status-counts-${fileSuffix}`, header, rows, exportOpts, meta);
   };
   const exportDrivers = () => {
-    if (!perDriver.length) return;
-    downloadCsv(`runs-per-driver-${fileSuffix}.csv`, [
-      ["driver", "runs"],
-      ...perDriver.map((r) => [r.name, r.count]),
-    ]);
+    const total = filteredCases.length;
+    const map = new Map(perDriver.map((d) => [d.driverId, d.count]));
+    const sources = exportOpts.includeZeroRows
+      ? (data?.drivers ?? []).map((d) => ({
+          driverId: d.id,
+          name: d.name || "Unnamed",
+          count: map.get(d.id) ?? 0,
+        }))
+      : perDriver;
+    if (!sources.length) return;
+    const header = exportOpts.includePercent
+      ? ["driver", "runs", "percent"]
+      : ["driver", "runs"];
+    const rows = sources.map((r) =>
+      exportOpts.includePercent
+        ? [r.name, r.count, pct(r.count, total)]
+        : [r.name, r.count],
+    );
+    downloadTable(`runs-per-driver-${fileSuffix}`, header, rows, exportOpts, meta);
   };
   const exportFacilities = () => {
-    if (!perPickupFacility.length) return;
-    downloadCsv(`runs-per-pickup-facility-${fileSuffix}.csv`, [
-      ["facility", "runs"],
-      ...perPickupFacility.map((r) => [r.name, r.count]),
-    ]);
+    const total = filteredCases.length;
+    const map = new Map(perPickupFacility.map((f) => [f.facilityId, f.count]));
+    const sources = exportOpts.includeZeroRows
+      ? (data?.facilities ?? []).map((f) => ({
+          facilityId: f.id,
+          name: f.name,
+          count: map.get(f.id) ?? 0,
+        }))
+      : perPickupFacility;
+    if (!sources.length) return;
+    const header = exportOpts.includePercent
+      ? ["facility", "runs", "percent"]
+      : ["facility", "runs"];
+    const rows = sources.map((r) =>
+      exportOpts.includePercent
+        ? [r.name, r.count, pct(r.count, total)]
+        : [r.name, r.count],
+    );
+    downloadTable(
+      `runs-per-pickup-facility-${fileSuffix}`,
+      header,
+      rows,
+      exportOpts,
+      meta,
+    );
   };
   const exportTimeInCustody = () => {
     if (!timeInCustody.perFacility.length) return;
-    downloadCsv(`time-in-custody-${fileSuffix}.csv`, [
+    downloadTable(
+      `time-in-custody-${fileSuffix}`,
       ["pickup_facility", "sample_size", "avg_hours"],
-      ...timeInCustody.perFacility.map((r) => [
+      timeInCustody.perFacility.map((r) => [
         r.name,
         r.sampleSize,
         r.avgHours.toFixed(2),
       ]),
-    ]);
+      exportOpts,
+      meta,
+    );
   };
   const exportReleases = () => {
     if (!releases.length) return;
-    downloadCsv(`release-log-${fileSuffix}.csv`, [
+    downloadTable(
+      `release-log-${fileSuffix}`,
       [
         "case_number",
         "decedent",
@@ -348,7 +455,7 @@ function ReportsPage() {
         "released_by",
         "released_by_title",
       ],
-      ...releases.map((r) => [
+      releases.map((r) => [
         r.caseNumber,
         r.decedentName,
         r.deliveredAt ?? "",
@@ -360,7 +467,9 @@ function ReportsPage() {
         r.releasedBy,
         r.releasedByTitle,
       ]),
-    ]);
+      exportOpts,
+      meta,
+    );
   };
 
   const updateSearch = (next: Partial<ReportsSearch>) => {
@@ -492,6 +601,62 @@ function ReportsPage() {
               Filters apply to all charts, tables, and CSV exports below.
             </span>
           )}
+        </CardContent>
+      </Card>
+
+      {/* CSV export options — apply to all downloads below */}
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground">Format</Label>
+            <div className="flex rounded-md border">
+              <button
+                type="button"
+                onClick={() => setExportOpts((p) => ({ ...p, format: "csv" }))}
+                className={`px-3 py-1 text-xs ${exportOpts.format === "csv" ? "bg-primary text-primary-foreground" : "bg-background"}`}
+              >
+                CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => setExportOpts((p) => ({ ...p, format: "tsv" }))}
+                className={`px-3 py-1 text-xs ${exportOpts.format === "tsv" ? "bg-primary text-primary-foreground" : "bg-background"}`}
+              >
+                TSV
+              </button>
+            </div>
+          </div>
+          <Label className="flex items-center gap-2 text-xs">
+            <Checkbox
+              checked={exportOpts.includeHeader}
+              onCheckedChange={() => toggleOpt("includeHeader")}
+            />
+            Header row
+          </Label>
+          <Label className="flex items-center gap-2 text-xs">
+            <Checkbox
+              checked={exportOpts.includePercent}
+              onCheckedChange={() => toggleOpt("includePercent")}
+            />
+            % of total column
+          </Label>
+          <Label className="flex items-center gap-2 text-xs">
+            <Checkbox
+              checked={exportOpts.includeZeroRows}
+              onCheckedChange={() => toggleOpt("includeZeroRows")}
+            />
+            Include zero-count rows
+          </Label>
+          <Label className="flex items-center gap-2 text-xs">
+            <Checkbox
+              checked={exportOpts.includeMetadata}
+              onCheckedChange={() => toggleOpt("includeMetadata")}
+            />
+            Metadata header (range, filters)
+          </Label>
+          <span className="ml-auto text-xs text-muted-foreground">
+            Options apply to all CSV/TSV downloads below.
+          </span>
         </CardContent>
       </Card>
 
