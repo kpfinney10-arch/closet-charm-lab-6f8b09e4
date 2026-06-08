@@ -1,10 +1,23 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Download, ClipboardList, Truck, Timer, CheckCircle2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Loader2,
+  Download,
+  ClipboardList,
+  Truck,
+  Timer,
+  CheckCircle2,
+  XCircle,
+  Activity,
+} from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -14,22 +27,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { Database } from "@/integrations/supabase/types";
+import { getDispatchReports, type DispatchReports } from "@/lib/dispatch-reports.functions";
 
-export const Route = createFileRoute("/_authenticated/_dispatcher/reports")({
-  component: ReportsPage,
-  head: () => ({
-    meta: [
-      { title: "Reports — Transport Dispatch" },
-      { name: "description", content: "Operational reports: cases by status, time-to-delivery, runs per driver." },
-    ],
-  }),
-});
-
-type CaseRow = Database["public"]["Tables"]["cases"]["Row"];
-type CaseStatus = Database["public"]["Enums"]["case_status"];
-
-const STATUS_LABEL: Record<CaseStatus, string> = {
+const STATUS_LABEL: Record<string, string> = {
   new: "New",
   assigned: "Assigned",
   en_route_pickup: "En route pickup",
@@ -41,203 +41,289 @@ const STATUS_LABEL: Record<CaseStatus, string> = {
   cancelled: "Cancelled",
 };
 
-const ALL_STATUSES: CaseStatus[] = [
-  "new",
-  "assigned",
-  "en_route_pickup",
-  "on_scene",
-  "in_custody",
-  "en_route_dropoff",
-  "delivered",
-  "closed",
-  "cancelled",
-];
-
-function startOfWeek(d = new Date()) {
-  const x = new Date(d);
-  const day = x.getDay(); // 0 = Sun
-  const diff = (day + 6) % 7; // make Monday start
-  x.setHours(0, 0, 0, 0);
-  x.setDate(x.getDate() - diff);
-  return x;
+function isoStart(d: string) {
+  return new Date(`${d}T00:00:00`).toISOString();
+}
+function isoEnd(d: string) {
+  return new Date(`${d}T23:59:59.999`).toISOString();
+}
+function ymd(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+function defaultFrom() {
+  const d = new Date();
+  d.setDate(d.getDate() - 29);
+  return ymd(d);
+}
+function defaultTo() {
+  return ymd(new Date());
 }
 
-function startOfMonth(d = new Date()) {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
+const searchSchema = z.object({
+  from: fallback(z.string(), defaultFrom()).default(defaultFrom()),
+  to: fallback(z.string(), defaultTo()).default(defaultTo()),
+});
+
+export const Route = createFileRoute("/_authenticated/_dispatcher/reports")({
+  validateSearch: zodValidator(searchSchema),
+  component: ReportsPage,
+  head: () => ({
+    meta: [
+      { title: "Reports — Transport Dispatch" },
+      {
+        name: "description",
+        content:
+          "Operational reports: counts, time-in-custody, and monthly release logs.",
+      },
+    ],
+  }),
+  errorComponent: ({ error }) => (
+    <div className="p-6 text-sm text-destructive">
+      Could not load reports: {error.message}
+    </div>
+  ),
+  notFoundComponent: () => <div className="p-6 text-sm">Reports not found.</div>,
+});
+
+function fmtDateTime(s: string | null | undefined) {
+  if (!s) return "—";
+  try {
+    return new Date(s).toLocaleString();
+  } catch {
+    return s;
+  }
+}
+
+function downloadCsv(filename: string, rows: (string | number | null | undefined)[][]) {
+  const csv = rows
+    .map((r) =>
+      r
+        .map((cell) => {
+          const v = String(cell ?? "");
+          return /[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v;
+        })
+        .join(","),
+    )
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function ReportsPage() {
-  const weekStart = useMemo(() => startOfWeek(), []);
-  const monthStart = useMemo(() => startOfMonth(), []);
+  const { from, to } = Route.useSearch();
+  const navigate = useNavigate({ from: "/reports" });
+  const fetchReports = useServerFn(getDispatchReports);
 
-  const casesQ = useQuery({
-    queryKey: ["reports", "cases-30d"],
-    queryFn: async () => {
-      const since = new Date();
-      since.setDate(since.getDate() - 30);
-      const { data, error } = await supabase
-        .from("cases")
-        .select("*")
-        .gte("created_at", since.toISOString())
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as CaseRow[];
-    },
+  const fromIso = useMemo(() => isoStart(from), [from]);
+  const toIso = useMemo(() => isoEnd(to), [to]);
+
+  const reportsQ = useQuery({
+    queryKey: ["dispatch-reports", fromIso, toIso],
+    queryFn: () => fetchReports({ data: { from: fromIso, to: toIso } }),
   });
 
-  const driversQ = useQuery({
-    queryKey: ["reports", "drivers"],
-    queryFn: async () => {
-      const { data: roleRows, error } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "driver");
-      if (error) throw error;
-      const ids = (roleRows ?? []).map((r) => r.user_id);
-      if (ids.length === 0) return [] as { id: string; full_name: string | null }[];
-      const { data, error: e2 } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", ids);
-      if (e2) throw e2;
-      return data ?? [];
-    },
-  });
+  const data = reportsQ.data as DispatchReports | undefined;
+  const loading = reportsQ.isLoading;
 
-  const cases = casesQ.data ?? [];
-
-  const statusCounts = useMemo(() => {
-    const m: Record<CaseStatus, number> = {
-      new: 0, assigned: 0, en_route_pickup: 0, on_scene: 0,
-      in_custody: 0, en_route_dropoff: 0, delivered: 0, closed: 0, cancelled: 0,
-    };
-    cases.forEach((c) => { m[c.status] += 1; });
-    return ALL_STATUSES.map((s) => ({ status: STATUS_LABEL[s], count: m[s] }));
-  }, [cases]);
-
-  const delivered = useMemo(
-    () => cases.filter((c) => c.status === "delivered" || c.status === "closed"),
-    [cases],
-  );
-
-  const avgTtdHours = useMemo(() => {
-    if (delivered.length === 0) return null;
-    const ms = delivered.reduce(
-      (acc, c) => acc + (new Date(c.updated_at).getTime() - new Date(c.created_at).getTime()),
-      0,
-    );
-    return ms / delivered.length / 3600_000;
-  }, [delivered]);
-
-  const driverNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    (driversQ.data ?? []).forEach((d) => m.set(d.id, d.full_name ?? "Unnamed"));
-    return m;
-  }, [driversQ.data]);
-
-  const runsPerDriverWeek = useMemo(() => {
-    const m = new Map<string, number>();
-    cases
-      .filter((c) => new Date(c.created_at) >= weekStart && c.primary_driver_id)
-      .forEach((c) => {
-        const id = c.primary_driver_id!;
-        m.set(id, (m.get(id) ?? 0) + 1);
-      });
-    return Array.from(m.entries())
-      .map(([id, count]) => ({
-        driver: driverNameById.get(id) ?? "Unknown",
-        count,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [cases, driverNameById, weekStart]);
-
-  const monthDelivered = useMemo(
-    () => delivered.filter((c) => new Date(c.updated_at) >= monthStart).length,
-    [delivered, monthStart],
-  );
-
-  const exportCsv = () => {
-    const headers = [
-      "case_number", "status", "decedent_first_name", "decedent_last_name",
-      "pickup_city", "pickup_state", "dropoff_city", "dropoff_state",
-      "primary_driver", "scheduled_at", "created_at", "updated_at",
-    ];
-    const rows = cases.map((c) => [
-      c.case_number,
-      c.status,
-      c.decedent_first_name ?? "",
-      c.decedent_last_name ?? "",
-      c.pickup_city ?? "",
-      c.pickup_state ?? "",
-      c.dropoff_city ?? "",
-      c.dropoff_state ?? "",
-      c.primary_driver_id ? driverNameById.get(c.primary_driver_id) ?? "" : "",
-      c.scheduled_at ?? "",
-      c.created_at,
-      c.updated_at,
+  const exportCounts = () => {
+    if (!data) return;
+    downloadCsv(`status-counts-${from}_to_${to}.csv`, [
+      ["status", "count"],
+      ...data.statusCounts.map((r) => [STATUS_LABEL[r.status] ?? r.status, r.count]),
     ]);
-    const csv = [headers, ...rows]
-      .map((r) =>
-        r.map((cell) => {
-          const v = String(cell ?? "");
-          return /[",\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v;
-        }).join(","),
-      )
-      .join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `cases-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  };
+  const exportDrivers = () => {
+    if (!data) return;
+    downloadCsv(`runs-per-driver-${from}_to_${to}.csv`, [
+      ["driver", "runs"],
+      ...data.perDriver.map((r) => [r.name, r.count]),
+    ]);
+  };
+  const exportFacilities = () => {
+    if (!data) return;
+    downloadCsv(`runs-per-pickup-facility-${from}_to_${to}.csv`, [
+      ["facility", "runs"],
+      ...data.perPickupFacility.map((r) => [r.name, r.count]),
+    ]);
+  };
+  const exportTimeInCustody = () => {
+    if (!data) return;
+    downloadCsv(`time-in-custody-${from}_to_${to}.csv`, [
+      ["pickup_facility", "sample_size", "avg_hours"],
+      ...data.timeInCustody.perFacility.map((r) => [
+        r.name,
+        r.sampleSize,
+        r.avgHours.toFixed(2),
+      ]),
+    ]);
+  };
+  const exportReleases = () => {
+    if (!data) return;
+    downloadCsv(`release-log-${from}_to_${to}.csv`, [
+      [
+        "case_number",
+        "decedent",
+        "delivered_at",
+        "pickup_facility",
+        "dropoff_facility",
+        "primary_driver",
+        "secondary_driver",
+        "released_at",
+        "released_by",
+        "released_by_title",
+      ],
+      ...data.releases.map((r) => [
+        r.caseNumber,
+        r.decedentName,
+        r.deliveredAt ?? "",
+        r.pickupFacility,
+        r.dropoffFacility,
+        r.primaryDriver,
+        r.secondaryDriver,
+        r.releasedAt ?? "",
+        r.releasedBy,
+        r.releasedByTitle,
+      ]),
+    ]);
   };
 
-  const loading = casesQ.isLoading || driversQ.isLoading;
+  const setRange = (next: { from?: string; to?: string }) => {
+    navigate({ search: (prev) => ({ ...prev, ...next }) });
+  };
+
+  const setPreset = (days: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - (days - 1));
+    setRange({ from: ymd(start), to: ymd(end) });
+  };
+  const setThisMonth = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    setRange({ from: ymd(start), to: ymd(now) });
+  };
+
+  const statusChart =
+    data?.statusCounts.map((r) => ({
+      status: STATUS_LABEL[r.status] ?? r.status,
+      count: r.count,
+    })) ?? [];
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Reports</h1>
-          <p className="text-sm text-muted-foreground">Last 30 days of activity.</p>
+          <p className="text-sm text-muted-foreground">
+            Operational counts, time-in-custody, and release logs.
+          </p>
         </div>
-        <Button variant="outline" onClick={exportCsv} disabled={cases.length === 0}>
-          <Download className="h-4 w-4" />
-          Export CSV
-        </Button>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1">
+            <Label htmlFor="from" className="text-xs">
+              From
+            </Label>
+            <Input
+              id="from"
+              type="date"
+              value={from}
+              max={to}
+              onChange={(e) => setRange({ from: e.target.value })}
+              className="h-9 w-[160px]"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="to" className="text-xs">
+              To
+            </Label>
+            <Input
+              id="to"
+              type="date"
+              value={to}
+              min={from}
+              onChange={(e) => setRange({ to: e.target.value })}
+              className="h-9 w-[160px]"
+            />
+          </div>
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm" onClick={() => setPreset(7)}>
+              7d
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPreset(30)}>
+              30d
+            </Button>
+            <Button variant="outline" size="sm" onClick={setThisMonth}>
+              This month
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPreset(90)}>
+              90d
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat icon={ClipboardList} label="Cases (30d)" value={cases.length} loading={loading} />
-        <Stat icon={CheckCircle2} label="Delivered (mo)" value={monthDelivered} loading={loading} />
         <Stat
-          icon={Timer}
-          label="Avg time to deliver"
-          value={avgTtdHours == null ? "—" : `${avgTtdHours.toFixed(1)}h`}
+          icon={ClipboardList}
+          label="Cases in range"
+          value={data?.totals.cases ?? 0}
           loading={loading}
         />
         <Stat
-          icon={Truck}
-          label="Active drivers (wk)"
-          value={runsPerDriverWeek.length}
+          icon={CheckCircle2}
+          label="Delivered"
+          value={data?.totals.delivered ?? 0}
+          loading={loading}
+        />
+        <Stat
+          icon={Activity}
+          label="In progress"
+          value={data?.totals.inProgress ?? 0}
+          loading={loading}
+        />
+        <Stat
+          icon={XCircle}
+          label="Cancelled"
+          value={data?.totals.cancelled ?? 0}
           loading={loading}
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {/* Cases by status chart */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Cases by status</CardTitle>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={exportCounts}
+              disabled={!data || data.statusCounts.length === 0}
+            >
+              <Download className="h-4 w-4" />
+              CSV
+            </Button>
           </CardHeader>
           <CardContent>
             {loading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : statusChart.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted-foreground">
+                No cases in this range.
+              </p>
             ) : (
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={statusCounts} margin={{ left: -16, right: 8, top: 8, bottom: 24 }}>
+                  <BarChart
+                    data={statusChart}
+                    margin={{ left: -16, right: 8, top: 8, bottom: 24 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis
                       dataKey="status"
@@ -263,22 +349,142 @@ function ReportsPage() {
           </CardContent>
         </Card>
 
+        {/* Time in custody */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Runs per driver (this week)</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">Time in custody</CardTitle>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={exportTimeInCustody}
+              disabled={!data || data.timeInCustody.perFacility.length === 0}
+            >
+              <Download className="h-4 w-4" />
+              CSV
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <Mini label="Samples" value={data?.timeInCustody.sampleSize ?? 0} />
+              <Mini
+                label="Avg hours"
+                value={
+                  data?.timeInCustody.avgHours == null
+                    ? "—"
+                    : data.timeInCustody.avgHours.toFixed(1)
+                }
+              />
+              <Mini
+                label="Median hours"
+                value={
+                  data?.timeInCustody.medianHours == null
+                    ? "—"
+                    : data.timeInCustody.medianHours.toFixed(1)
+                }
+              />
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Measured from in-custody event to delivered event.
+            </div>
+            {loading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : (data?.timeInCustody.perFacility.length ?? 0) === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No completed custody-to-delivery cycles in this range.
+              </p>
+            ) : (
+              <div className="max-h-60 overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-xs text-muted-foreground">
+                    <tr className="border-b">
+                      <th className="py-2 text-left font-medium">Pickup facility</th>
+                      <th className="py-2 text-right font-medium">Samples</th>
+                      <th className="py-2 text-right font-medium">Avg hrs</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {data!.timeInCustody.perFacility.map((r) => (
+                      <tr key={r.facilityId}>
+                        <td className="py-2">{r.name}</td>
+                        <td className="py-2 text-right tabular-nums">{r.sampleSize}</td>
+                        <td className="py-2 text-right tabular-nums">
+                          {r.avgHours.toFixed(1)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Runs per driver */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">Runs per driver</CardTitle>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={exportDrivers}
+              disabled={!data || data.perDriver.length === 0}
+            >
+              <Download className="h-4 w-4" />
+              CSV
+            </Button>
           </CardHeader>
           <CardContent>
             {loading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : runsPerDriverWeek.length === 0 ? (
+            ) : (data?.perDriver.length ?? 0) === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">
-                No driver-assigned runs this week yet.
+                No driver-assigned runs in this range.
               </p>
             ) : (
               <ul className="divide-y">
-                {runsPerDriverWeek.map((r) => (
-                  <li key={r.driver} className="flex items-center justify-between py-2 text-sm">
-                    <span className="font-medium">{r.driver}</span>
+                {data!.perDriver.map((r) => (
+                  <li
+                    key={r.driverId}
+                    className="flex items-center justify-between py-2 text-sm"
+                  >
+                    <span className="font-medium">{r.name}</span>
+                    <span className="tabular-nums text-muted-foreground">{r.count}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Runs per pickup facility */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">Runs per pickup facility</CardTitle>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={exportFacilities}
+              disabled={!data || data.perPickupFacility.length === 0}
+            >
+              <Download className="h-4 w-4" />
+              CSV
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : (data?.perPickupFacility.length ?? 0) === 0 ? (
+              <p className="py-12 text-center text-sm text-muted-foreground">
+                No pickup facilities recorded in this range.
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {data!.perPickupFacility.map((r) => (
+                  <li
+                    key={r.facilityId}
+                    className="flex items-center justify-between py-2 text-sm"
+                  >
+                    <span className="font-medium">{r.name}</span>
                     <span className="tabular-nums text-muted-foreground">{r.count}</span>
                   </li>
                 ))}
@@ -287,6 +493,80 @@ function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Release log */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-base">Release log</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Delivered cases with chain-of-custody release details.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={exportReleases}
+            disabled={!data || data.releases.length === 0}
+          >
+            <Download className="h-4 w-4" />
+            Download CSV
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          ) : (data?.releases.length ?? 0) === 0 ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              No deliveries in this range.
+            </p>
+          ) : (
+            <div className="overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs text-muted-foreground">
+                  <tr className="border-b">
+                    <th className="px-2 py-2 text-left font-medium">Case #</th>
+                    <th className="px-2 py-2 text-left font-medium">Decedent</th>
+                    <th className="px-2 py-2 text-left font-medium">Delivered</th>
+                    <th className="px-2 py-2 text-left font-medium">Pickup</th>
+                    <th className="px-2 py-2 text-left font-medium">Dropoff</th>
+                    <th className="px-2 py-2 text-left font-medium">Driver</th>
+                    <th className="px-2 py-2 text-left font-medium">Released to</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {data!.releases.map((r) => (
+                    <tr key={r.caseId}>
+                      <td className="px-2 py-2 font-mono text-xs">{r.caseNumber}</td>
+                      <td className="px-2 py-2">{r.decedentName}</td>
+                      <td className="px-2 py-2 whitespace-nowrap">
+                        {fmtDateTime(r.deliveredAt)}
+                      </td>
+                      <td className="px-2 py-2">{r.pickupFacility || "—"}</td>
+                      <td className="px-2 py-2">{r.dropoffFacility || "—"}</td>
+                      <td className="px-2 py-2">{r.primaryDriver || "—"}</td>
+                      <td className="px-2 py-2">
+                        {r.releasedBy ? (
+                          <>
+                            <div>{r.releasedBy}</div>
+                            {r.releasedByTitle && (
+                              <div className="text-xs text-muted-foreground">
+                                {r.releasedByTitle}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -316,5 +596,16 @@ function Stat({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function Mini({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-md border bg-muted/30 p-2">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="text-lg font-semibold tabular-nums">{value}</div>
+    </div>
   );
 }
