@@ -805,36 +805,47 @@ function ReportsPage() {
             Options apply to all CSV/TSV downloads below.
           </span>
 
-          {/* Saved (user-named) presets */}
+          {/* Saved (team-shared) presets */}
           <div className="mt-2 flex w-full flex-wrap items-center gap-2 border-t pt-3">
-            <Label className="text-xs text-muted-foreground">Saved presets</Label>
-            {savedPresets.length === 0 ? (
-              <span className="text-xs text-muted-foreground">None yet.</span>
+            <Label className="text-xs text-muted-foreground">
+              Team presets
+            </Label>
+            {presetsQ.isLoading ? (
+              <span className="text-xs text-muted-foreground">Loading…</span>
+            ) : savedPresets.length === 0 ? (
+              <span className="text-xs text-muted-foreground">
+                None saved yet — name and save below to share with your team.
+              </span>
             ) : (
               <div className="flex flex-wrap gap-1">
                 {savedPresets.map((p) => (
                   <span
-                    key={p.name}
+                    key={p.id}
                     className={`inline-flex items-center gap-1 rounded-md border text-xs ${
-                      activeSavedPreset === p.name
+                      activeSavedPreset === p.id
                         ? "border-primary bg-primary/10"
                         : "bg-background"
                     }`}
                   >
                     <button
                       type="button"
-                      onClick={() => applySavedPreset(p.name)}
-                      title={`Apply "${p.name}"`}
+                      onClick={() => applySavedPreset(p.id)}
+                      title={
+                        p.createdByName
+                          ? `Apply "${p.name}" (saved by ${p.createdByName})`
+                          : `Apply "${p.name}"`
+                      }
                       className="px-2 py-1"
                     >
                       {p.name}
                     </button>
                     <button
                       type="button"
-                      onClick={() => deleteSavedPreset(p.name)}
+                      onClick={() => deleteSavedPreset(p.id)}
                       title={`Delete "${p.name}"`}
                       aria-label={`Delete preset ${p.name}`}
-                      className="px-1.5 py-1 text-muted-foreground hover:text-destructive"
+                      disabled={deleteMut.isPending}
+                      className="px-1.5 py-1 text-muted-foreground hover:text-destructive disabled:opacity-50"
                     >
                       ×
                     </button>
@@ -847,6 +858,7 @@ function ReportsPage() {
                 value={savingName}
                 onChange={(e) => setSavingName(e.target.value)}
                 placeholder="Preset name"
+                maxLength={60}
                 className="h-8 w-[160px] text-xs"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -860,9 +872,9 @@ function ReportsPage() {
                 size="sm"
                 variant="outline"
                 onClick={saveCurrentAsPreset}
-                disabled={!savingName.trim()}
+                disabled={!savingName.trim() || saveMut.isPending}
               >
-                Save current
+                {saveMut.isPending ? "Saving…" : "Save for team"}
               </Button>
             </div>
           </div>
