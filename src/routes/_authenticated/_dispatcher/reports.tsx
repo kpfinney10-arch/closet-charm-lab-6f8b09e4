@@ -62,7 +62,12 @@ function defaultTo() {
 const searchSchema = z.object({
   from: fallback(z.string(), defaultFrom()).default(defaultFrom()),
   to: fallback(z.string(), defaultTo()).default(defaultTo()),
+  q: fallback(z.string(), "").default(""),
+  driver: fallback(z.string(), "").default(""),
+  pickup: fallback(z.string(), "").default(""),
 });
+
+type ReportsSearch = z.infer<typeof searchSchema>;
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/reports")({
   validateSearch: zodValidator(searchSchema),
@@ -115,7 +120,7 @@ function downloadCsv(filename: string, rows: (string | number | null | undefined
 }
 
 function ReportsPage() {
-  const { from, to } = Route.useSearch();
+  const { from, to, q, driver, pickup } = Route.useSearch();
   const navigate = useNavigate({ from: "/reports" });
   const fetchReports = useServerFn(getDispatchReports);
 
@@ -129,6 +134,40 @@ function ReportsPage() {
 
   const data = reportsQ.data as DispatchReports | undefined;
   const loading = reportsQ.isLoading;
+
+  const filteredReleases = useMemo(() => {
+    if (!data) return [];
+    const needle = q.trim().toLowerCase();
+    return data.releases.filter((r) => {
+      if (driver) {
+        // perDriver stores driverId; release rows only have name — match by name
+        const driverName = data.perDriver.find((d) => d.driverId === driver)?.name ?? "";
+        if (r.primaryDriver !== driverName && r.secondaryDriver !== driverName) return false;
+      }
+      if (pickup) {
+        const facName = data.perPickupFacility.find((f) => f.facilityId === pickup)?.name ?? "";
+        if (r.pickupFacility !== facName) return false;
+      }
+      if (needle) {
+        const hay = [
+          r.caseNumber,
+          r.decedentName,
+          r.pickupFacility,
+          r.dropoffFacility,
+          r.primaryDriver,
+          r.secondaryDriver,
+          r.releasedBy,
+          r.releasedByTitle,
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!hay.includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [data, q, driver, pickup]);
+
+  const filtersActive = Boolean(q || driver || pickup);
 
   const exportCounts = () => {
     if (!data) return;
@@ -164,7 +203,8 @@ function ReportsPage() {
   };
   const exportReleases = () => {
     if (!data) return;
-    downloadCsv(`release-log-${from}_to_${to}.csv`, [
+    const suffix = filtersActive ? "-filtered" : "";
+    downloadCsv(`release-log-${from}_to_${to}${suffix}.csv`, [
       [
         "case_number",
         "decedent",
@@ -177,7 +217,7 @@ function ReportsPage() {
         "released_by",
         "released_by_title",
       ],
-      ...data.releases.map((r) => [
+      ...filteredReleases.map((r) => [
         r.caseNumber,
         r.decedentName,
         r.deliveredAt ?? "",
@@ -192,9 +232,10 @@ function ReportsPage() {
     ]);
   };
 
-  const setRange = (next: { from?: string; to?: string }) => {
-    navigate({ search: (prev: { from: string; to: string }) => ({ ...prev, ...next }) });
+  const updateSearch = (next: Partial<ReportsSearch>) => {
+    navigate({ search: (prev: ReportsSearch) => ({ ...prev, ...next }) });
   };
+  const setRange = (next: { from?: string; to?: string }) => updateSearch(next);
 
   const setPreset = (days: number) => {
     const end = new Date();
@@ -207,6 +248,7 @@ function ReportsPage() {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
     setRange({ from: ymd(start), to: ymd(now) });
   };
+  const clearReleaseFilters = () => updateSearch({ q: "", driver: "", pickup: "" });
 
   const statusChart =
     data?.statusCounts.map((r) => ({
@@ -501,24 +543,83 @@ function ReportsPage() {
             <CardTitle className="text-base">Release log</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
               Delivered cases with chain-of-custody release details.
+              {filtersActive && (
+                <>
+                  {" "}
+                  Showing {filteredReleases.length} of {data?.releases.length ?? 0}.
+                </>
+              )}
             </p>
           </div>
           <Button
             size="sm"
             variant="outline"
             onClick={exportReleases}
-            disabled={!data || data.releases.length === 0}
+            disabled={filteredReleases.length === 0}
           >
             <Download className="h-4 w-4" />
-            Download CSV
+            {filtersActive ? "Download filtered CSV" : "Download CSV"}
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {/* Filters */}
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="rel-q" className="text-xs">Search</Label>
+              <Input
+                id="rel-q"
+                value={q}
+                onChange={(e) => updateSearch({ q: e.target.value })}
+                placeholder="Case #, decedent, released to…"
+                className="h-9 w-[240px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="rel-driver" className="text-xs">Driver</Label>
+              <select
+                id="rel-driver"
+                value={driver}
+                onChange={(e) => updateSearch({ driver: e.target.value })}
+                className="h-9 w-[180px] rounded-md border bg-background px-2 text-sm"
+              >
+                <option value="">All drivers</option>
+                {(data?.perDriver ?? []).map((d) => (
+                  <option key={d.driverId} value={d.driverId}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="rel-pickup" className="text-xs">Pickup facility</Label>
+              <select
+                id="rel-pickup"
+                value={pickup}
+                onChange={(e) => updateSearch({ pickup: e.target.value })}
+                className="h-9 w-[200px] rounded-md border bg-background px-2 text-sm"
+              >
+                <option value="">All facilities</option>
+                {(data?.perPickupFacility ?? []).map((f) => (
+                  <option key={f.facilityId} value={f.facilityId}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {filtersActive && (
+              <Button variant="ghost" size="sm" onClick={clearReleaseFilters}>
+                Clear filters
+              </Button>
+            )}
+          </div>
+
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          ) : (data?.releases.length ?? 0) === 0 ? (
+          ) : filteredReleases.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">
-              No deliveries in this range.
+              {filtersActive
+                ? "No deliveries match the current filters."
+                : "No deliveries in this range."}
             </p>
           ) : (
             <div className="overflow-auto">
@@ -535,7 +636,7 @@ function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {data!.releases.map((r) => (
+                  {filteredReleases.map((r) => (
                     <tr key={r.caseId}>
                       <td className="px-2 py-2 font-mono text-xs">{r.caseNumber}</td>
                       <td className="px-2 py-2">{r.decedentName}</td>
