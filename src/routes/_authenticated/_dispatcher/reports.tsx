@@ -604,6 +604,62 @@ function ReportsPage() {
         </CardContent>
       </Card>
 
+      {/* CSV export options — apply to all downloads below */}
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground">Format</Label>
+            <div className="flex rounded-md border">
+              <button
+                type="button"
+                onClick={() => setExportOpts((p) => ({ ...p, format: "csv" }))}
+                className={`px-3 py-1 text-xs ${exportOpts.format === "csv" ? "bg-primary text-primary-foreground" : "bg-background"}`}
+              >
+                CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => setExportOpts((p) => ({ ...p, format: "tsv" }))}
+                className={`px-3 py-1 text-xs ${exportOpts.format === "tsv" ? "bg-primary text-primary-foreground" : "bg-background"}`}
+              >
+                TSV
+              </button>
+            </div>
+          </div>
+          <Label className="flex items-center gap-2 text-xs">
+            <Checkbox
+              checked={exportOpts.includeHeader}
+              onCheckedChange={() => toggleOpt("includeHeader")}
+            />
+            Header row
+          </Label>
+          <Label className="flex items-center gap-2 text-xs">
+            <Checkbox
+              checked={exportOpts.includePercent}
+              onCheckedChange={() => toggleOpt("includePercent")}
+            />
+            % of total column
+          </Label>
+          <Label className="flex items-center gap-2 text-xs">
+            <Checkbox
+              checked={exportOpts.includeZeroRows}
+              onCheckedChange={() => toggleOpt("includeZeroRows")}
+            />
+            Include zero-count rows
+          </Label>
+          <Label className="flex items-center gap-2 text-xs">
+            <Checkbox
+              checked={exportOpts.includeMetadata}
+              onCheckedChange={() => toggleOpt("includeMetadata")}
+            />
+            Metadata header (range, filters)
+          </Label>
+          <span className="ml-auto text-xs text-muted-foreground">
+            Options apply to all CSV/TSV downloads below.
+          </span>
+        </CardContent>
+      </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat icon={ClipboardList} label={filtersActive ? "Cases (filtered)" : "Cases in range"} value={totals.total} loading={loading} />
