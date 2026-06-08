@@ -400,39 +400,44 @@ function ReportsPage() {
   const applyPreset = (name: ColumnPreset) =>
     setExportOpts((p) => ({ ...p, ...COLUMN_PRESETS[name].opts }));
 
-  // ---- Saved (user-named) column presets, persisted to localStorage ----
-  type SavedPreset = { name: string; opts: Omit<ExportOptions, "format"> };
-  const SAVED_KEY = "reports.csv.savedPresets.v1";
-  const [savedPresets, setSavedPresets] = useState<SavedPreset[]>([]);
+  // ---- Saved (team-shared) column presets, persisted server-side ----
+  const queryClient = useQueryClient();
+  const fetchPresets = useServerFn(listExportPresets);
+  const savePresetFn = useServerFn(upsertExportPreset);
+  const deletePresetFn = useServerFn(deleteExportPreset);
   const [savingName, setSavingName] = useState("");
 
-  // Load on mount
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(SAVED_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setSavedPresets(parsed);
-      }
-    } catch {
-      // ignore corrupted storage
-    }
-  }, []);
+  const presetsQ = useQuery({
+    queryKey: ["report-export-presets"],
+    queryFn: () => fetchPresets(),
+    staleTime: 60_000,
+  });
+  const savedPresets: ExportPreset[] = presetsQ.data ?? [];
 
-  const persistSaved = (next: SavedPreset[]) => {
-    setSavedPresets(next);
-    try {
-      window.localStorage.setItem(SAVED_KEY, JSON.stringify(next));
-    } catch {
-      // ignore quota errors
-    }
-  };
+  const saveMut = useMutation({
+    mutationFn: (vars: { name: string; opts: Omit<ExportOptions, "format"> }) =>
+      savePresetFn({ data: vars }),
+    onSuccess: (p) => {
+      toast.success(`Saved preset "${p.name}" for the team`);
+      setSavingName("");
+      queryClient.invalidateQueries({ queryKey: ["report-export-presets"] });
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Could not save preset"),
+  });
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deletePresetFn({ data: { id } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["report-export-presets"] });
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Could not delete preset"),
+  });
 
   const saveCurrentAsPreset = () => {
     const name = savingName.trim();
     if (!name) return;
-    const entry: SavedPreset = {
+    saveMut.mutate({
       name,
       opts: {
         includeHeader: exportOpts.includeHeader,
@@ -440,22 +445,16 @@ function ReportsPage() {
         includeZeroRows: exportOpts.includeZeroRows,
         includeMetadata: exportOpts.includeMetadata,
       },
-    };
-    const next = [...savedPresets.filter((p) => p.name !== name), entry].sort(
-      (a, b) => a.name.localeCompare(b.name),
-    );
-    persistSaved(next);
-    setSavingName("");
+    });
   };
 
-  const applySavedPreset = (name: string) => {
-    const p = savedPresets.find((s) => s.name === name);
+  const applySavedPreset = (id: string) => {
+    const p = savedPresets.find((s) => s.id === id);
     if (!p) return;
     setExportOpts((prev) => ({ ...prev, ...p.opts }));
   };
 
-  const deleteSavedPreset = (name: string) =>
-    persistSaved(savedPresets.filter((p) => p.name !== name));
+  const deleteSavedPreset = (id: string) => deleteMut.mutate(id);
 
   const activeSavedPreset = savedPresets.find(
     (p) =>
@@ -463,7 +462,7 @@ function ReportsPage() {
       p.opts.includePercent === exportOpts.includePercent &&
       p.opts.includeZeroRows === exportOpts.includeZeroRows &&
       p.opts.includeMetadata === exportOpts.includeMetadata,
-  )?.name ?? null;
+  )?.id ?? null;
 
   const fileSuffix = `${from}_to_${to}${filtersActive ? "-filtered" : ""}`;
 
