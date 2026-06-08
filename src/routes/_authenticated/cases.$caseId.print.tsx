@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Printer, ArrowLeft } from "lucide-react";
+import { Loader2, Printer, ArrowLeft, Download } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/cases/$caseId/print")({
@@ -142,17 +142,33 @@ function PrintRunSheet() {
     },
   });
 
-  // Auto-trigger print dialog once all data is loaded
-  useEffect(() => {
-    if (!caseQ.data) return;
-    if (driverIds.length > 0 && !driversQ.data) return;
-    if (facilityIds.length > 0 && !facilitiesQ.data) return;
-    if (!signaturesQ.data) return;
-    if (!eventsQ.data) return;
-    const t = setTimeout(() => window.print(), 350);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [caseQ.data, driversQ.data, facilitiesQ.data, signaturesQ.data, eventsQ.data]);
+  // Data loads on mount; user explicitly clicks Print or Download PDF.
+
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  async function handleDownloadPdf() {
+    if (!sheetRef.current || !caseQ.data) return;
+    setDownloading(true);
+    try {
+      const mod = (await import("html2pdf.js")) as unknown as { default: any };
+      const html2pdf = mod.default;
+      const filename = `run-sheet-${caseQ.data.case_number ?? "case"}.pdf`;
+      await html2pdf()
+        .set({
+          margin: 0.5,
+          filename,
+          image: { type: "jpeg", quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+          jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+          pagebreak: { mode: ["css", "legacy"] },
+        })
+        .from(sheetRef.current)
+        .save();
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   if (caseQ.isLoading) {
     return (
@@ -202,20 +218,26 @@ function PrintRunSheet() {
       `}</style>
 
       {/* Toolbar (screen only) */}
-      <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b bg-white p-3">
+      <div className="no-print sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-white p-3">
         <Button asChild variant="ghost" size="sm">
           <Link to="/cases/$caseId" params={{ caseId }}>
             <ArrowLeft className="h-4 w-4" />
             Back to case
           </Link>
         </Button>
-        <Button size="sm" onClick={() => window.print()}>
-          <Printer className="h-4 w-4" />
-          Save as PDF / Print
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" />
+            Print
+          </Button>
+          <Button size="sm" onClick={handleDownloadPdf} disabled={downloading}>
+            {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Download PDF
+          </Button>
+        </div>
       </div>
 
-      <div className="print-page mx-auto max-w-3xl p-6">
+      <div ref={sheetRef} className="print-page mx-auto max-w-3xl p-6">
         {/* Header */}
         <div className="flex items-start justify-between border-b border-zinc-300 pb-3">
           <div>
