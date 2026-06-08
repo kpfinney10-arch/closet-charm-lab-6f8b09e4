@@ -163,13 +163,14 @@ function PrintRunSheet() {
     try {
       const { default: html2pdf } = await import("html2pdf.js");
       const filename = `run-sheet-${caseQ.data.case_number ?? "case"}.pdf`;
-      await html2pdf()
+      await (html2pdf() as ReturnType<typeof html2pdf>)
         .set({
           margin: 0.5,
           filename,
           image: { type: "jpeg", quality: 0.95 },
           html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
           jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+          // @ts-expect-error - pagebreak supported at runtime but missing from types
           pagebreak: { mode: ["css", "legacy"] },
         })
         .from(sheetRef.current)
