@@ -340,6 +340,59 @@ function ReportsPage() {
   const toggleOpt = (k: keyof ExportOptions) =>
     setExportOpts((p) => ({ ...p, [k]: !p[k] }));
 
+  type ColumnPreset = "minimal" | "standard" | "full";
+  const COLUMN_PRESETS: Record<
+    ColumnPreset,
+    { label: string; desc: string; opts: Omit<ExportOptions, "format"> }
+  > = {
+    minimal: {
+      label: "Minimal",
+      desc: "Label + count only",
+      opts: {
+        includeHeader: true,
+        includePercent: false,
+        includeZeroRows: false,
+        includeMetadata: false,
+      },
+    },
+    standard: {
+      label: "Standard",
+      desc: "Label + count + % of total",
+      opts: {
+        includeHeader: true,
+        includePercent: true,
+        includeZeroRows: false,
+        includeMetadata: false,
+      },
+    },
+    full: {
+      label: "Full",
+      desc: "All columns, zero-count rows, and metadata header",
+      opts: {
+        includeHeader: true,
+        includePercent: true,
+        includeZeroRows: true,
+        includeMetadata: true,
+      },
+    },
+  };
+  const activePreset: ColumnPreset | null = (() => {
+    for (const name of Object.keys(COLUMN_PRESETS) as ColumnPreset[]) {
+      const p = COLUMN_PRESETS[name].opts;
+      if (
+        p.includeHeader === exportOpts.includeHeader &&
+        p.includePercent === exportOpts.includePercent &&
+        p.includeZeroRows === exportOpts.includeZeroRows &&
+        p.includeMetadata === exportOpts.includeMetadata
+      ) {
+        return name;
+      }
+    }
+    return null;
+  })();
+  const applyPreset = (name: ColumnPreset) =>
+    setExportOpts((p) => ({ ...p, ...COLUMN_PRESETS[name].opts }));
+
   const fileSuffix = `${from}_to_${to}${filtersActive ? "-filtered" : ""}`;
 
   const filterSummary = useMemo(() => {
