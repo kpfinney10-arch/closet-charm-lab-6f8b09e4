@@ -368,6 +368,53 @@ function PrintRunSheet() {
           </div>
         )}
 
+        {/* Timeline */}
+        {(eventsQ.data?.length ?? 0) > 0 && (
+          <div className="sheet-section" style={{ pageBreakInside: "avoid" }}>
+            <h2>Timeline</h2>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+              <thead>
+                <tr style={{ textAlign: "left", color: "#71717a" }}>
+                  <th style={{ padding: "4px 6px", borderBottom: "1px solid #e4e4e7", fontWeight: 600, width: "38%" }}>
+                    Timestamp
+                  </th>
+                  <th style={{ padding: "4px 6px", borderBottom: "1px solid #e4e4e7", fontWeight: 600 }}>
+                    Event
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(eventsQ.data ?? []).map((ev) => {
+                  const label = EVENT_LABEL[ev.event_type] ?? ev.event_type;
+                  const statusBit =
+                    ev.event_type === "status_changed" && ev.to_status
+                      ? `${ev.from_status ? `${STATUS_LABEL[ev.from_status] ?? ev.from_status} → ` : ""}${STATUS_LABEL[ev.to_status] ?? ev.to_status}`
+                      : "";
+                  return (
+                    <tr key={ev.id} style={{ verticalAlign: "top" }}>
+                      <td style={{ padding: "4px 6px", borderBottom: "1px solid #f4f4f5", whiteSpace: "nowrap" }}>
+                        {fmtDateTime(ev.created_at)}
+                      </td>
+                      <td style={{ padding: "4px 6px", borderBottom: "1px solid #f4f4f5" }}>
+                        <div style={{ fontWeight: 500 }}>{label}</div>
+                        {statusBit && (
+                          <div style={{ color: "#52525b", fontSize: 10 }}>{statusBit}</div>
+                        )}
+                        {ev.notes && (
+                          <div style={{ color: "#3f3f46", fontSize: 10, whiteSpace: "pre-wrap" }}>
+                            {ev.notes}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+
         {/* Signatures */}
         {(() => {
           const byType = new Map(
