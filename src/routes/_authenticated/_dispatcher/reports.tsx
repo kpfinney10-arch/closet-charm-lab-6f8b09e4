@@ -33,6 +33,9 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  AreaChart,
+  Area,
+  Cell,
 } from "recharts";
 import {
   getDispatchReports,
@@ -259,6 +262,49 @@ function ReportsPage() {
       count: map.get(s) ?? 0,
     }));
   }, [filteredCases]);
+
+  // Daily case volume across the selected range, segmented by outcome
+  const dailyCounts = useMemo(() => {
+    const start = new Date(`${from}T00:00:00`);
+    const end = new Date(`${to}T00:00:00`);
+    const days: Array<{
+      day: string;
+      label: string;
+      total: number;
+      delivered: number;
+      cancelled: number;
+      inProgress: number;
+    }> = [];
+    const map = new Map<string, { delivered: number; cancelled: number; inProgress: number }>();
+    for (const c of filteredCases) {
+      const key = (c.createdAt ?? "").slice(0, 10);
+      if (!key) continue;
+      const bucket = map.get(key) ?? { delivered: 0, cancelled: 0, inProgress: 0 };
+      if (c.status === "delivered" || c.status === "closed") bucket.delivered++;
+      else if (c.status === "cancelled") bucket.cancelled++;
+      else bucket.inProgress++;
+      map.set(key, bucket);
+    }
+    const cursor = new Date(start);
+    // Cap to ~120 buckets to keep chart legible
+    const maxDays = 120;
+    let count = 0;
+    while (cursor <= end && count < maxDays) {
+      const key = ymd(cursor);
+      const b = map.get(key) ?? { delivered: 0, cancelled: 0, inProgress: 0 };
+      const total = b.delivered + b.cancelled + b.inProgress;
+      days.push({
+        day: key,
+        label: cursor.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        total,
+        ...b,
+      });
+      cursor.setDate(cursor.getDate() + 1);
+      count++;
+    }
+    return days;
+  }, [filteredCases, from, to]);
+
 
   // Runs per driver
   const perDriver = useMemo(() => {
@@ -969,7 +1015,86 @@ function ReportsPage() {
         <Stat icon={XCircle} label="Cancelled" value={totals.cancelled} loading={loading} />
       </div>
 
+      {/* Cases over time */}
+      <Card>
+        <CardHeader className="space-y-0">
+          <CardTitle className="text-base">Cases over time</CardTitle>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Daily case volume by outcome across the selected range.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          ) : dailyCounts.every((d) => d.total === 0) ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              No cases match the current selection.
+            </p>
+          ) : (
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={dailyCounts}
+                  margin={{ left: -16, right: 8, top: 8, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="gDelivered" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(142 70% 45%)" stopOpacity={0.55} />
+                      <stop offset="100%" stopColor="hsl(142 70% 45%)" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="gInProgress" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.55} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="gCancelled" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.45} />
+                      <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={20} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 6,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    name="Delivered"
+                    dataKey="delivered"
+                    stackId="1"
+                    stroke="hsl(142 70% 45%)"
+                    fill="url(#gDelivered)"
+                  />
+                  <Area
+                    type="monotone"
+                    name="In progress"
+                    dataKey="inProgress"
+                    stackId="1"
+                    stroke="hsl(var(--primary))"
+                    fill="url(#gInProgress)"
+                  />
+                  <Area
+                    type="monotone"
+                    name="Cancelled"
+                    dataKey="cancelled"
+                    stackId="1"
+                    stroke="hsl(var(--destructive))"
+                    fill="url(#gCancelled)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
+
         {/* Cases by status */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -1075,14 +1200,10 @@ function ReportsPage() {
                 No driver-assigned runs in this selection.
               </p>
             ) : (
-              <ul className="divide-y">
-                {perDriver.map((r) => (
-                  <li key={r.driverId} className="flex items-center justify-between py-2 text-sm">
-                    <span className="font-medium">{r.name}</span>
-                    <span className="tabular-nums text-muted-foreground">{r.count}</span>
-                  </li>
-                ))}
-              </ul>
+              <HBarChart
+                data={perDriver.slice(0, 10).map((r) => ({ name: r.name, count: r.count }))}
+                color="hsl(var(--primary))"
+              />
             )}
           </CardContent>
         </Card>
@@ -1104,14 +1225,10 @@ function ReportsPage() {
                 No pickup facilities recorded in this selection.
               </p>
             ) : (
-              <ul className="divide-y">
-                {perPickupFacility.map((r) => (
-                  <li key={r.facilityId} className="flex items-center justify-between py-2 text-sm">
-                    <span className="font-medium">{r.name}</span>
-                    <span className="tabular-nums text-muted-foreground">{r.count}</span>
-                  </li>
-                ))}
-              </ul>
+              <HBarChart
+                data={perPickupFacility.slice(0, 10).map((r) => ({ name: r.name, count: r.count }))}
+                color="hsl(142 70% 45%)"
+              />
             )}
           </CardContent>
         </Card>
@@ -1225,6 +1342,51 @@ function Mini({ label, value }: { label: string; value: number | string }) {
     <div className="rounded-md border bg-muted/30 p-2">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="text-lg font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function HBarChart({
+  data,
+  color,
+}: {
+  data: Array<{ name: string; count: number }>;
+  color: string;
+}) {
+  const height = Math.max(180, data.length * 32 + 24);
+  return (
+    <div style={{ height }} className="w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{ left: 8, right: 24, top: 4, bottom: 4 }}
+        >
+          <CartesianGrid horizontal={false} strokeDasharray="3 3" className="opacity-30" />
+          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={140}
+            tick={{ fontSize: 11 }}
+            interval={0}
+          />
+          <Tooltip
+            cursor={{ fill: "hsl(var(--muted) / 0.4)" }}
+            contentStyle={{
+              background: "hsl(var(--popover))",
+              border: "1px solid hsl(var(--border))",
+              borderRadius: 6,
+              fontSize: 12,
+            }}
+          />
+          <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]}>
+            {data.map((_, i) => (
+              <Cell key={i} fill={color} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
