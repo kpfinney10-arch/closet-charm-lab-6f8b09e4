@@ -409,6 +409,22 @@ function AuditLogPage() {
         </div>
       </div>
 
+      {isExporting && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="space-y-1.5 rounded-md border bg-muted/40 p-3"
+        >
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">{exportStatus}</span>
+            <span className="font-mono tabular-nums text-muted-foreground">
+              {Math.round(exportProgress)}%
+            </span>
+          </div>
+          <Progress value={exportProgress} className="h-1.5" />
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
