@@ -1373,8 +1373,67 @@ function ReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={drillDown !== null} onOpenChange={(o) => !o && setDrillDown(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{drillDown?.title ?? "Cases"}</DialogTitle>
+            <DialogDescription>
+              {drillDown
+                ? `${drillDown.cases.length} case${drillDown.cases.length === 1 ? "" : "s"}${drillDown.subtitle ? ` · ${drillDown.subtitle}` : ""}`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          {drillDown && (
+            <div className="max-h-[60vh] overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-background text-xs text-muted-foreground">
+                  <tr className="border-b">
+                    <th className="px-2 py-2 text-left font-medium">Case #</th>
+                    <th className="px-2 py-2 text-left font-medium">Decedent</th>
+                    <th className="px-2 py-2 text-left font-medium">Status</th>
+                    <th className="px-2 py-2 text-left font-medium">Created</th>
+                    <th className="px-2 py-2 text-left font-medium">Pickup</th>
+                    <th className="px-2 py-2 text-left font-medium">Driver</th>
+                    <th className="px-2 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {drillDown.cases.map((c) => (
+                    <tr key={c.id} className="hover:bg-muted/40">
+                      <td className="px-2 py-2 font-mono text-xs">{c.caseNumber}</td>
+                      <td className="px-2 py-2">{c.decedentName}</td>
+                      <td className="px-2 py-2">{STATUS_LABEL[c.status] ?? c.status}</td>
+                      <td className="px-2 py-2 whitespace-nowrap">{fmtDateTime(c.createdAt)}</td>
+                      <td className="px-2 py-2">
+                        {facilityById.get(c.pickupFacilityId ?? "") || "—"}
+                      </td>
+                      <td className="px-2 py-2">
+                        {driverById.get(c.primaryDriverId ?? "") || "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setDrillDown(null);
+                            navigate({ to: "/cases/$caseId", params: { caseId: c.id } });
+                          }}
+                        >
+                          Open
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
 }
 
 function Stat({
