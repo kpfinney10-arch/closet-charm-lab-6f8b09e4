@@ -409,6 +409,7 @@ function ReportsPage() {
     if (cases.length === 0) return;
     setDrillDown({ title, subtitle, cases });
     setDrillVisible(DRILL_PAGE_SIZE);
+    setDrillQuery("");
   };
 
   const DRILL_PAGE_SIZE = 50;
