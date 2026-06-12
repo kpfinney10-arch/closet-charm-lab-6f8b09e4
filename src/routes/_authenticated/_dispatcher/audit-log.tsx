@@ -148,6 +148,7 @@ function AuditLogPage() {
 
   const handleExport = async () => {
     setIsExporting(true);
+    const toastId = toast.loading("Preparing CSV export…");
     try {
       const result = await exportLogs({
         data: {
@@ -159,18 +160,19 @@ function AuditLogPage() {
         },
       });
       if (!result.rows.length) {
-        toast.info("No matching audit entries to export.");
+        toast.info("No matching audit entries to export.", { id: toastId });
         return;
       }
       downloadCsv(result.rows as unknown as Array<Record<string, unknown>>);
       toast.success(
         result.truncated
-          ? `Exported ${result.rows.length.toLocaleString()} rows (capped at ${result.cap.toLocaleString()}). Narrow filters for more.`
-          : `Exported ${result.rows.length.toLocaleString()} row${result.rows.length === 1 ? "" : "s"}.`,
+          ? `Download started — ${result.rows.length.toLocaleString()} rows (capped at ${result.cap.toLocaleString()}). Narrow filters for more.`
+          : `Download started — ${result.rows.length.toLocaleString()} row${result.rows.length === 1 ? "" : "s"}.`,
+        { id: toastId },
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Export failed";
-      toast.error(msg);
+      toast.error(msg, { id: toastId });
     } finally {
       setIsExporting(false);
     }
