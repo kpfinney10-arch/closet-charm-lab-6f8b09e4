@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
@@ -145,10 +146,20 @@ function AuditLogPage() {
   const fetchLogs = useServerFn(listAdminAuditLogs);
   const exportLogs = useServerFn(exportAdminAuditLogs);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportStatus, setExportStatus] = useState("");
 
   const handleExport = async () => {
     setIsExporting(true);
-    const toastId = toast.loading("Preparing CSV export…");
+    setExportProgress(8);
+    setExportStatus("Querying audit log…");
+    const toastId = toast.loading("Querying audit log…");
+
+    // Indeterminate creep while the server query runs — caps at 70%.
+    const creep = window.setInterval(() => {
+      setExportProgress((p) => (p < 70 ? p + Math.max(1, (70 - p) * 0.08) : p));
+    }, 200);
+
     try {
       const result = await exportLogs({
         data: {
@@ -159,11 +170,25 @@ function AuditLogPage() {
           to: toIso,
         },
       });
+      window.clearInterval(creep);
+
+      setExportProgress(80);
+      setExportStatus("Building CSV…");
+      toast.loading(`Building CSV (${result.rows.length.toLocaleString()} rows)…`, {
+        id: toastId,
+      });
+
       if (!result.rows.length) {
+        setExportProgress(100);
         toast.info("No matching audit entries to export.", { id: toastId });
         return;
       }
+
+      // Yield a frame so the "Building CSV" state can paint before blocking work.
+      await new Promise((r) => setTimeout(r, 30));
       downloadCsv(result.rows as unknown as Array<Record<string, unknown>>);
+      setExportProgress(100);
+      setExportStatus("Download started");
       toast.success(
         result.truncated
           ? `Download started — ${result.rows.length.toLocaleString()} rows (capped at ${result.cap.toLocaleString()}). Narrow filters for more.`
@@ -171,10 +196,18 @@ function AuditLogPage() {
         { id: toastId },
       );
     } catch (err) {
+      window.clearInterval(creep);
       const msg = err instanceof Error ? err.message : "Export failed";
+      setExportStatus("Export failed");
       toast.error(msg, { id: toastId });
     } finally {
-      setIsExporting(false);
+      window.clearInterval(creep);
+      // Let the completed bar linger briefly before resetting.
+      window.setTimeout(() => {
+        setIsExporting(false);
+        setExportProgress(0);
+        setExportStatus("");
+      }, 600);
     }
   };
 
@@ -375,6 +408,22 @@ function AuditLogPage() {
           </Button>
         </div>
       </div>
+
+      {isExporting && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="space-y-1.5 rounded-md border bg-muted/40 p-3"
+        >
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">{exportStatus}</span>
+            <span className="font-mono tabular-nums text-muted-foreground">
+              {Math.round(exportProgress)}%
+            </span>
+          </div>
+          <Progress value={exportProgress} className="h-1.5" />
+        </div>
+      )}
 
       <Card>
         <CardHeader>
