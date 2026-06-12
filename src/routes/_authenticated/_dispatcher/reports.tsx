@@ -1289,8 +1289,13 @@ function ReportsPage() {
               </p>
             ) : (
               <HBarChart
-                data={perPickupFacility.slice(0, 10).map((r) => ({ name: r.name, count: r.count }))}
+                data={perPickupFacility.slice(0, 10).map((r) => ({
+                  id: r.facilityId,
+                  name: r.name,
+                  count: r.count,
+                }))}
                 color="hsl(142 70% 45%)"
+                onBarClick={(d) => drillByFacility(d.id, d.name)}
               />
             )}
           </CardContent>
