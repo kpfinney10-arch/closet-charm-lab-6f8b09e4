@@ -1225,14 +1225,10 @@ function ReportsPage() {
                 No pickup facilities recorded in this selection.
               </p>
             ) : (
-              <ul className="divide-y">
-                {perPickupFacility.map((r) => (
-                  <li key={r.facilityId} className="flex items-center justify-between py-2 text-sm">
-                    <span className="font-medium">{r.name}</span>
-                    <span className="tabular-nums text-muted-foreground">{r.count}</span>
-                  </li>
-                ))}
-              </ul>
+              <HBarChart
+                data={perPickupFacility.slice(0, 10).map((r) => ({ name: r.name, count: r.count }))}
+                color="hsl(142 70% 45%)"
+              />
             )}
           </CardContent>
         </Card>
