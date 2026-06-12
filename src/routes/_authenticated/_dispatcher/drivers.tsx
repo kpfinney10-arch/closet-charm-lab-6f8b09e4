@@ -31,7 +31,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, Users, MapPin, Phone, Truck, Gauge, AlertTriangle, ExternalLink, Search, X } from "lucide-react";
+import { Loader2, Users, MapPin, Phone, Truck, Gauge, AlertTriangle, ExternalLink, Search, X, ArrowDown, ArrowUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
@@ -512,6 +512,49 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+type SortKey =
+  | "scheduledAt"
+  | "deliveredAt"
+  | "lateByMinutes"
+  | "totalMin"
+  | "caseNumber"
+  | "decedentName";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "scheduledAt", label: "Scheduled time" },
+  { value: "deliveredAt", label: "Delivered time" },
+  { value: "lateByMinutes", label: "Lateness" },
+  { value: "totalMin", label: "Total duration" },
+  { value: "caseNumber", label: "Case number" },
+  { value: "decedentName", label: "Decedent name" },
+];
+
+function sortCases(
+  rows: DriverCaseTimeline[],
+  key: SortKey,
+  dir: "asc" | "desc",
+): DriverCaseTimeline[] {
+  const mult = dir === "asc" ? 1 : -1;
+  const cmp = (a: DriverCaseTimeline, b: DriverCaseTimeline) => {
+    const av = a[key];
+    const bv = b[key];
+    // Nulls always sort to the bottom regardless of direction.
+    const aNull = av == null || av === "";
+    const bNull = bv == null || bv === "";
+    if (aNull && bNull) return 0;
+    if (aNull) return 1;
+    if (bNull) return -1;
+    if (typeof av === "number" && typeof bv === "number") {
+      return (av - bv) * mult;
+    }
+    if (key === "scheduledAt" || key === "deliveredAt") {
+      return (new Date(av as string).getTime() - new Date(bv as string).getTime()) * mult;
+    }
+    return String(av).localeCompare(String(bv)) * mult;
+  };
+  return [...rows].sort(cmp);
+}
+
 function DriverDrillDownDialog({
   driver,
   range,
@@ -527,6 +570,8 @@ function DriverDrillDownDialog({
   const [tab, setTab] = useState<"all" | "late">("all");
   const [filter, setFilter] = useState("");
   const [debouncedFilter, setDebouncedFilter] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("scheduledAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedFilter(filter), 200);
@@ -557,13 +602,18 @@ function DriverDrillDownDialog({
   const lateCases = cases.filter((c) => c.isLate);
   const base = tab === "late" ? lateCases : cases;
   const q = debouncedFilter.trim().toLowerCase();
-  const visible = q
+  const filtered = q
     ? base.filter(
         (c) =>
           c.caseNumber?.toLowerCase().includes(q) ||
           c.decedentName?.toLowerCase().includes(q),
       )
     : base;
+  const visible = useMemo(
+    () => sortCases(filtered, sortKey, sortDir),
+    [filtered, sortKey, sortDir],
+  );
+
 
   return (
     <Dialog
@@ -602,25 +652,56 @@ function DriverDrillDownDialog({
           </TabsList>
 
           <TabsContent value={tab} className="mt-3 space-y-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder="Filter by case number or decedent name…"
-                className="pl-8 pr-8"
-                aria-label="Filter cases"
-              />
-              {filter && (
-                <button
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  placeholder="Filter by case number or decedent name…"
+                  className="pl-8 pr-8"
+                  aria-label="Filter cases"
+                />
+                {filter && (
+                  <button
+                    type="button"
+                    onClick={() => setFilter("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Clear filter"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+                  <SelectTrigger className="w-[170px]" aria-label="Sort by">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SORT_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
                   type="button"
-                  onClick={() => setFilter("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  aria-label="Clear filter"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                  aria-label={`Sort direction: ${sortDir === "asc" ? "ascending" : "descending"}`}
+                  title={sortDir === "asc" ? "Ascending" : "Descending"}
                 >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
+                  {sortDir === "asc" ? (
+                    <ArrowUp className="h-4 w-4" />
+                  ) : (
+                    <ArrowDown className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
             {drillQ.isLoading ? (
               <div className="flex h-40 items-center justify-center">
