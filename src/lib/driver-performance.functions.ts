@@ -206,3 +206,141 @@ export const getDriverPerformance = createServerFn({ method: "GET" })
       drivers,
     };
   });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Driver drill-down: per-case timelines for one driver within a date range.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const drillInput = z.object({
+  driverId: z.string().uuid(),
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+  onTimeGraceMinutes: z.number().int().min(0).max(240).default(15),
+});
+
+export type DriverCaseTimeline = {
+  id: string;
+  caseNumber: string;
+  status: string;
+  decedentName: string;
+  role: "primary" | "secondary";
+  scheduledAt: string | null;
+  assignedAt: string | null;
+  enRoutePickupAt: string | null;
+  onSceneAt: string | null;
+  inCustodyAt: string | null;
+  enRouteDropoffAt: string | null;
+  deliveredAt: string | null;
+  /** Minutes on-scene was late vs scheduled_at + grace (null when not measurable). */
+  lateByMinutes: number | null;
+  isLate: boolean;
+  /** Minutes from in_custody → delivered, when both present. */
+  transportMin: number | null;
+  /** Minutes from assignment → delivered, when both present. */
+  totalMin: number | null;
+};
+
+export type DriverDrillDownResponse = {
+  driverId: string;
+  range: { from: string; to: string };
+  graceMinutes: number;
+  cases: DriverCaseTimeline[];
+};
+
+export const getDriverDrillDown = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => drillInput.parse(d))
+  .handler(async ({ data, context }): Promise<DriverDrillDownResponse> => {
+    const { supabase } = context;
+
+    const casesRes = await supabase
+      .from("cases")
+      .select(
+        "id, case_number, status, scheduled_at, primary_driver_id, secondary_driver_id, decedent_first_name, decedent_last_name, created_at",
+      )
+      .gte("created_at", data.from)
+      .lte("created_at", data.to)
+      .or(
+        `primary_driver_id.eq.${data.driverId},secondary_driver_id.eq.${data.driverId}`,
+      )
+      .order("created_at", { ascending: false });
+    if (casesRes.error) throw new Error(casesRes.error.message);
+
+    const cases = (casesRes.data ?? []) as Array<{
+      id: string;
+      case_number: string;
+      status: string;
+      scheduled_at: string | null;
+      primary_driver_id: string | null;
+      secondary_driver_id: string | null;
+      decedent_first_name: string | null;
+      decedent_last_name: string | null;
+      created_at: string;
+    }>;
+
+    const ids = cases.map((c) => c.id);
+    let events: Array<{ case_id: string; to_status: string | null; created_at: string }> = [];
+    if (ids.length) {
+      const ev = await supabase
+        .from("case_events")
+        .select("case_id, to_status, created_at")
+        .in("case_id", ids)
+        .order("created_at", { ascending: true });
+      if (ev.error) throw new Error(ev.error.message);
+      events = (ev.data ?? []) as typeof events;
+    }
+
+    const firstByCaseStatus = new Map<string, Record<string, string>>();
+    for (const e of events) {
+      if (!e.to_status) continue;
+      const b = firstByCaseStatus.get(e.case_id) ?? {};
+      if (!(e.to_status in b)) b[e.to_status] = e.created_at;
+      firstByCaseStatus.set(e.case_id, b);
+    }
+
+    const rows: DriverCaseTimeline[] = cases.map((c) => {
+      const ev = firstByCaseStatus.get(c.id) ?? {};
+      const assignedAt = ev.assigned ?? ev.en_route_pickup ?? c.created_at ?? null;
+      const onSceneAt = ev.on_scene ?? null;
+      const inCustodyAt = ev.in_custody ?? null;
+      const deliveredAt = ev.delivered ?? null;
+
+      let lateByMinutes: number | null = null;
+      let isLate = false;
+      if (c.scheduled_at && onSceneAt) {
+        const diffMs =
+          new Date(onSceneAt).getTime() -
+          new Date(c.scheduled_at).getTime() -
+          data.onTimeGraceMinutes * 60_000;
+        lateByMinutes = diffMs / 60_000;
+        isLate = diffMs > 0;
+      }
+
+      return {
+        id: c.id,
+        caseNumber: c.case_number,
+        status: c.status,
+        decedentName:
+          [c.decedent_first_name, c.decedent_last_name].filter(Boolean).join(" ") || "—",
+        role: c.primary_driver_id === data.driverId ? "primary" : "secondary",
+        scheduledAt: c.scheduled_at,
+        assignedAt,
+        enRoutePickupAt: ev.en_route_pickup ?? null,
+        onSceneAt,
+        inCustodyAt,
+        enRouteDropoffAt: ev.en_route_dropoff ?? null,
+        deliveredAt,
+        lateByMinutes,
+        isLate,
+        transportMin: minutesBetween(inCustodyAt, deliveredAt),
+        totalMin: minutesBetween(assignedAt, deliveredAt),
+      };
+    });
+
+    return {
+      driverId: data.driverId,
+      range: { from: data.from, to: data.to },
+      graceMinutes: data.onTimeGraceMinutes,
+      cases: rows,
+    };
+  });
