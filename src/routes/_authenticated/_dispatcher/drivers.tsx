@@ -512,6 +512,49 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+type SortKey =
+  | "scheduledAt"
+  | "deliveredAt"
+  | "lateByMinutes"
+  | "totalMin"
+  | "caseNumber"
+  | "decedentName";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "scheduledAt", label: "Scheduled time" },
+  { value: "deliveredAt", label: "Delivered time" },
+  { value: "lateByMinutes", label: "Lateness" },
+  { value: "totalMin", label: "Total duration" },
+  { value: "caseNumber", label: "Case number" },
+  { value: "decedentName", label: "Decedent name" },
+];
+
+function sortCases(
+  rows: DriverCaseTimeline[],
+  key: SortKey,
+  dir: "asc" | "desc",
+): DriverCaseTimeline[] {
+  const mult = dir === "asc" ? 1 : -1;
+  const cmp = (a: DriverCaseTimeline, b: DriverCaseTimeline) => {
+    const av = a[key];
+    const bv = b[key];
+    // Nulls always sort to the bottom regardless of direction.
+    const aNull = av == null || av === "";
+    const bNull = bv == null || bv === "";
+    if (aNull && bNull) return 0;
+    if (aNull) return 1;
+    if (bNull) return -1;
+    if (typeof av === "number" && typeof bv === "number") {
+      return (av - bv) * mult;
+    }
+    if (key === "scheduledAt" || key === "deliveredAt") {
+      return (new Date(av as string).getTime() - new Date(bv as string).getTime()) * mult;
+    }
+    return String(av).localeCompare(String(bv)) * mult;
+  };
+  return [...rows].sort(cmp);
+}
+
 function DriverDrillDownDialog({
   driver,
   range,
