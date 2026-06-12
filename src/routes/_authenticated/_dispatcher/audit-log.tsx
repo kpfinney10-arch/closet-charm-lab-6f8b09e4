@@ -184,6 +184,7 @@ function AuditLogPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
+  const [exportLimit, setExportLimit] = useState<string>("10000");
   const [exportError, setExportError] = useState<{
     message: string;
     detail?: string;
