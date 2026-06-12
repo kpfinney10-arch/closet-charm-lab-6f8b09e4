@@ -738,13 +738,7 @@ function DriverDrillDownDialog({
   return (
     <Dialog
       open={!!driver}
-      onOpenChange={(open) => {
-        if (!open) {
-          setFilter("");
-          setDebouncedFilter("");
-        }
-        onOpenChange(open);
-      }}
+      onOpenChange={onOpenChange}
     >
       <DialogContent className="max-w-5xl">
         <DialogHeader>
