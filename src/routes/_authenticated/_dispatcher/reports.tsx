@@ -18,6 +18,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   Loader2,
   Download,
   ClipboardList,
@@ -383,6 +390,46 @@ function ReportsPage() {
         .sort((a, b) => (b.deliveredAt ?? "").localeCompare(a.deliveredAt ?? "")),
     [filteredCases],
   );
+
+  // ---- Drill-down modal ----
+  const [drillDown, setDrillDown] = useState<{
+    title: string;
+    subtitle?: string;
+    cases: DispatchCaseRow[];
+  } | null>(null);
+
+  const openDrillDown = (
+    title: string,
+    predicate: (c: DispatchCaseRow) => boolean,
+    subtitle?: string,
+  ) => {
+    const cases = filteredCases
+      .filter(predicate)
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+    if (cases.length === 0) return;
+    setDrillDown({ title, subtitle, cases });
+  };
+
+  const drillByStatus = (status: string) =>
+    openDrillDown(
+      `${STATUS_LABEL[status] ?? status} — cases`,
+      (c) => c.status === status,
+    );
+  const drillByDay = (day: string) =>
+    openDrillDown(
+      `Cases on ${day}`,
+      (c) => (c.createdAt ?? "").slice(0, 10) === day,
+    );
+  const drillByDriver = (driverId: string, name: string) =>
+    openDrillDown(
+      `${name} — cases`,
+      (c) => c.primaryDriverId === driverId || c.secondaryDriverId === driverId,
+    );
+  const drillByFacility = (facilityId: string, name: string) =>
+    openDrillDown(
+      `${name} — pickups`,
+      (c) => c.pickupFacilityId === facilityId,
+    );
 
   const [exportOpts, setExportOpts] = useState<ExportOptions>({
     format: "csv",
@@ -1036,6 +1083,11 @@ function ReportsPage() {
                 <AreaChart
                   data={dailyCounts}
                   margin={{ left: -16, right: 8, top: 8, bottom: 0 }}
+                  onClick={(e: any) => {
+                    const day = e?.activePayload?.[0]?.payload?.day;
+                    if (day) drillByDay(day);
+                  }}
+                  style={{ cursor: "pointer" }}
                 >
                   <defs>
                     <linearGradient id="gDelivered" x1="0" y1="0" x2="0" y2="1">
@@ -1126,7 +1178,13 @@ function ReportsPage() {
                         fontSize: 12,
                       }}
                     />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar
+                      dataKey="count"
+                      fill="hsl(var(--primary))"
+                      radius={[4, 4, 0, 0]}
+                      cursor="pointer"
+                      onClick={(d: any) => d?.status && drillByStatus(d.status)}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1201,8 +1259,13 @@ function ReportsPage() {
               </p>
             ) : (
               <HBarChart
-                data={perDriver.slice(0, 10).map((r) => ({ name: r.name, count: r.count }))}
+                data={perDriver.slice(0, 10).map((r) => ({
+                  id: r.driverId,
+                  name: r.name,
+                  count: r.count,
+                }))}
                 color="hsl(var(--primary))"
+                onBarClick={(d) => drillByDriver(d.id, d.name)}
               />
             )}
           </CardContent>
@@ -1226,8 +1289,13 @@ function ReportsPage() {
               </p>
             ) : (
               <HBarChart
-                data={perPickupFacility.slice(0, 10).map((r) => ({ name: r.name, count: r.count }))}
+                data={perPickupFacility.slice(0, 10).map((r) => ({
+                  id: r.facilityId,
+                  name: r.name,
+                  count: r.count,
+                }))}
                 color="hsl(142 70% 45%)"
+                onBarClick={(d) => drillByFacility(d.id, d.name)}
               />
             )}
           </CardContent>
@@ -1305,8 +1373,67 @@ function ReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={drillDown !== null} onOpenChange={(o) => !o && setDrillDown(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{drillDown?.title ?? "Cases"}</DialogTitle>
+            <DialogDescription>
+              {drillDown
+                ? `${drillDown.cases.length} case${drillDown.cases.length === 1 ? "" : "s"}${drillDown.subtitle ? ` · ${drillDown.subtitle}` : ""}`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          {drillDown && (
+            <div className="max-h-[60vh] overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-background text-xs text-muted-foreground">
+                  <tr className="border-b">
+                    <th className="px-2 py-2 text-left font-medium">Case #</th>
+                    <th className="px-2 py-2 text-left font-medium">Decedent</th>
+                    <th className="px-2 py-2 text-left font-medium">Status</th>
+                    <th className="px-2 py-2 text-left font-medium">Created</th>
+                    <th className="px-2 py-2 text-left font-medium">Pickup</th>
+                    <th className="px-2 py-2 text-left font-medium">Driver</th>
+                    <th className="px-2 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {drillDown.cases.map((c) => (
+                    <tr key={c.id} className="hover:bg-muted/40">
+                      <td className="px-2 py-2 font-mono text-xs">{c.caseNumber}</td>
+                      <td className="px-2 py-2">{c.decedentName}</td>
+                      <td className="px-2 py-2">{STATUS_LABEL[c.status] ?? c.status}</td>
+                      <td className="px-2 py-2 whitespace-nowrap">{fmtDateTime(c.createdAt)}</td>
+                      <td className="px-2 py-2">
+                        {facilityById.get(c.pickupFacilityId ?? "") || "—"}
+                      </td>
+                      <td className="px-2 py-2">
+                        {driverById.get(c.primaryDriverId ?? "") || "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setDrillDown(null);
+                            navigate({ to: "/cases/$caseId", params: { caseId: c.id } });
+                          }}
+                        >
+                          Open
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
 }
 
 function Stat({
@@ -1346,12 +1473,15 @@ function Mini({ label, value }: { label: string; value: number | string }) {
   );
 }
 
+type HBarDatum = { id: string; name: string; count: number };
 function HBarChart({
   data,
   color,
+  onBarClick,
 }: {
-  data: Array<{ name: string; count: number }>;
+  data: HBarDatum[];
   color: string;
+  onBarClick?: (d: HBarDatum) => void;
 }) {
   const height = Math.max(180, data.length * 32 + 24);
   return (
@@ -1380,7 +1510,13 @@ function HBarChart({
               fontSize: 12,
             }}
           />
-          <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]}>
+          <Bar
+            dataKey="count"
+            fill={color}
+            radius={[0, 4, 4, 0]}
+            cursor={onBarClick ? "pointer" : undefined}
+            onClick={(d: any) => onBarClick?.(d as HBarDatum)}
+          >
             {data.map((_, i) => (
               <Cell key={i} fill={color} />
             ))}
@@ -1390,3 +1526,4 @@ function HBarChart({
     </div>
   );
 }
+
