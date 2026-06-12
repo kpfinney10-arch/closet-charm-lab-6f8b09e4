@@ -606,6 +606,47 @@ function saveDriverSort(
   }
 }
 
+const VIEW_STORAGE_KEY = "driverDrillDownView:v1";
+
+type DrillTab = "all" | "late";
+type DrillView = { tab: DrillTab; filter: string };
+
+function readViewMap(): Record<string, DrillView> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function loadDriverView(driverId: string | undefined): DrillView {
+  const fallback: DrillView = { tab: "all", filter: "" };
+  if (!driverId) return fallback;
+  const map = readViewMap();
+  const entry = map[driverId];
+  if (!entry) return fallback;
+  return {
+    tab: entry.tab === "late" ? "late" : "all",
+    filter: typeof entry.filter === "string" ? entry.filter : "",
+  };
+}
+
+function saveDriverView(driverId: string, value: DrillView) {
+  if (typeof window === "undefined") return;
+  try {
+    const map = readViewMap();
+    map[driverId] = value;
+    window.localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore quota / serialization errors
+  }
+}
+
+
 
 function DriverDrillDownDialog({
   driver,
