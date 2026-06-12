@@ -113,6 +113,35 @@ export const deleteExportPreset = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+// Build up to `limit` candidate names derived from `base`.
+// If base ends with " (N)", increment from N+1; otherwise start at " (2)".
+function buildNameCandidates(base: string, limit = 50): string[] {
+  const m = base.match(/^(.*?)(?:\s\((\d+)\))?$/);
+  const stem = (m?.[1] ?? base).trim() || base;
+  const startN = m?.[2] ? parseInt(m[2], 10) + 1 : 2;
+  const out: string[] = [];
+  for (let i = 0; i < limit; i++) {
+    const candidate = `${stem} (${startN + i})`;
+    if (candidate.length <= 60) out.push(candidate);
+  }
+  return out;
+}
+
+export class PresetNameTakenError extends Error {
+  code = "name_taken" as const;
+  suggestion: string | null;
+  constructor(name: string, suggestion: string | null) {
+    super(
+      JSON.stringify({
+        code: "name_taken",
+        message: `A preset named "${name}" already exists`,
+        suggestion,
+      }),
+    );
+    this.suggestion = suggestion;
+  }
+}
+
 export const renameExportPreset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string; name: string }) =>
@@ -134,7 +163,20 @@ export const renameExportPreset = createServerFn({ method: "POST" })
       .neq("id", data.id)
       .maybeSingle();
     if (clashErr) throw new Error(clashErr.message);
-    if (clash) throw new Error(`A preset named "${data.name}" already exists`);
+    if (clash) {
+      const candidates = buildNameCandidates(data.name);
+      let suggestion: string | null = null;
+      if (candidates.length) {
+        const { data: taken, error: takenErr } = await supabase
+          .from("report_export_presets")
+          .select("name")
+          .in("name", candidates);
+        if (takenErr) throw new Error(takenErr.message);
+        const takenSet = new Set((taken ?? []).map((r: any) => r.name));
+        suggestion = candidates.find((c) => !takenSet.has(c)) ?? null;
+      }
+      throw new PresetNameTakenError(data.name, suggestion);
+    }
 
     const { data: updated, error } = await supabase
       .from("report_export_presets")
