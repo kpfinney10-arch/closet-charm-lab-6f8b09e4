@@ -1401,12 +1401,12 @@ function ReportsPage() {
             <DialogTitle>{drillDown?.title ?? "Cases"}</DialogTitle>
             <DialogDescription>
               {drillDown
-                ? `${drillDown.cases.length} case${drillDown.cases.length === 1 ? "" : "s"}${drillDown.subtitle ? ` · ${drillDown.subtitle}` : ""}`
+                ? `Showing ${Math.min(drillVisible, drillDown.cases.length)} of ${drillDown.cases.length} case${drillDown.cases.length === 1 ? "" : "s"}${drillDown.subtitle ? ` · ${drillDown.subtitle}` : ""}`
                 : null}
             </DialogDescription>
           </DialogHeader>
           {drillDown && (
-            <div className="max-h-[60vh] overflow-auto">
+            <div data-drill-scroll className="max-h-[60vh] overflow-auto">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-background text-xs text-muted-foreground">
                   <tr className="border-b">
@@ -1420,7 +1420,7 @@ function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {drillDown.cases.map((c) => (
+                  {drillDown.cases.slice(0, drillVisible).map((c) => (
                     <tr key={c.id} className="hover:bg-muted/40">
                       <td className="px-2 py-2 font-mono text-xs">{c.caseNumber}</td>
                       <td className="px-2 py-2">{c.decedentName}</td>
@@ -1448,6 +1448,27 @@ function ReportsPage() {
                   ))}
                 </tbody>
               </table>
+              {drillVisible < drillDown.cases.length && (
+                <div
+                  ref={drillSentinelRef}
+                  className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground"
+                >
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading more…
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="ml-2 h-7 text-xs"
+                    onClick={() =>
+                      setDrillVisible((n) =>
+                        Math.min(n + DRILL_PAGE_SIZE, drillDown.cases.length),
+                      )
+                    }
+                  >
+                    Load more
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
