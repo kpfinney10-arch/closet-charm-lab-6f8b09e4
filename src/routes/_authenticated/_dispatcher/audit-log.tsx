@@ -148,8 +148,15 @@ function AuditLogPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
+  const [exportError, setExportError] = useState<{
+    message: string;
+    detail?: string;
+    status?: number;
+    at: string;
+  } | null>(null);
 
   const handleExport = async () => {
+    setExportError(null);
     setIsExporting(true);
     setExportProgress(8);
     setExportStatus("Querying audit log…");
@@ -186,7 +193,15 @@ function AuditLogPage() {
 
       // Yield a frame so the "Building CSV" state can paint before blocking work.
       await new Promise((r) => setTimeout(r, 30));
-      downloadCsv(result.rows as unknown as Array<Record<string, unknown>>);
+      try {
+        downloadCsv(result.rows as unknown as Array<Record<string, unknown>>);
+      } catch (downloadErr) {
+        throw new Error(
+          downloadErr instanceof Error
+            ? `Couldn't trigger download: ${downloadErr.message}`
+            : "Couldn't trigger download in this browser.",
+        );
+      }
       setExportProgress(100);
       setExportStatus("Download started");
       toast.success(
@@ -197,9 +212,15 @@ function AuditLogPage() {
       );
     } catch (err) {
       window.clearInterval(creep);
-      const msg = err instanceof Error ? err.message : "Export failed";
+      const parsed = parseExportError(err);
       setExportStatus("Export failed");
-      toast.error(msg, { id: toastId });
+      setExportError({ ...parsed, at: new Date().toLocaleTimeString() });
+      toast.error(parsed.message, {
+        id: toastId,
+        description: parsed.detail,
+        duration: 8000,
+        action: { label: "Retry", onClick: () => handleExport() },
+      });
     } finally {
       window.clearInterval(creep);
       // Let the completed bar linger briefly before resetting.
