@@ -391,6 +391,46 @@ function ReportsPage() {
     [filteredCases],
   );
 
+  // ---- Drill-down modal ----
+  const [drillDown, setDrillDown] = useState<{
+    title: string;
+    subtitle?: string;
+    cases: DispatchCaseRow[];
+  } | null>(null);
+
+  const openDrillDown = (
+    title: string,
+    predicate: (c: DispatchCaseRow) => boolean,
+    subtitle?: string,
+  ) => {
+    const cases = filteredCases
+      .filter(predicate)
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+    if (cases.length === 0) return;
+    setDrillDown({ title, subtitle, cases });
+  };
+
+  const drillByStatus = (status: string) =>
+    openDrillDown(
+      `${STATUS_LABEL[status] ?? status} — cases`,
+      (c) => c.status === status,
+    );
+  const drillByDay = (day: string) =>
+    openDrillDown(
+      `Cases on ${day}`,
+      (c) => (c.createdAt ?? "").slice(0, 10) === day,
+    );
+  const drillByDriver = (driverId: string, name: string) =>
+    openDrillDown(
+      `${name} — cases`,
+      (c) => c.primaryDriverId === driverId || c.secondaryDriverId === driverId,
+    );
+  const drillByFacility = (facilityId: string, name: string) =>
+    openDrillDown(
+      `${name} — pickups`,
+      (c) => c.pickupFacilityId === facilityId,
+    );
+
   const [exportOpts, setExportOpts] = useState<ExportOptions>({
     format: "csv",
     includeHeader: true,
