@@ -606,6 +606,47 @@ function saveDriverSort(
   }
 }
 
+const VIEW_STORAGE_KEY = "driverDrillDownView:v1";
+
+type DrillTab = "all" | "late";
+type DrillView = { tab: DrillTab; filter: string };
+
+function readViewMap(): Record<string, DrillView> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function loadDriverView(driverId: string | undefined): DrillView {
+  const fallback: DrillView = { tab: "all", filter: "" };
+  if (!driverId) return fallback;
+  const map = readViewMap();
+  const entry = map[driverId];
+  if (!entry) return fallback;
+  return {
+    tab: entry.tab === "late" ? "late" : "all",
+    filter: typeof entry.filter === "string" ? entry.filter : "",
+  };
+}
+
+function saveDriverView(driverId: string, value: DrillView) {
+  if (typeof window === "undefined") return;
+  try {
+    const map = readViewMap();
+    map[driverId] = value;
+    window.localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore quota / serialization errors
+  }
+}
+
+
 
 function DriverDrillDownDialog({
   driver,
@@ -619,9 +660,9 @@ function DriverDrillDownDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const fetchDrill = useServerFn(getDriverDrillDown);
-  const [tab, setTab] = useState<"all" | "late">("all");
-  const [filter, setFilter] = useState("");
-  const [debouncedFilter, setDebouncedFilter] = useState("");
+  const [tab, setTab] = useState<DrillTab>(() => loadDriverView(driver?.driverId).tab);
+  const [filter, setFilter] = useState(() => loadDriverView(driver?.driverId).filter);
+  const [debouncedFilter, setDebouncedFilter] = useState(filter);
   const [sortKey, setSortKey] = useState<SortKey>(
     () => loadDriverSort(driver?.driverId).key,
   );
@@ -629,19 +670,28 @@ function DriverDrillDownDialog({
     () => loadDriverSort(driver?.driverId).dir,
   );
 
-  // Load saved sort whenever the active driver changes.
+  // Load saved sort + view whenever the active driver changes.
   useEffect(() => {
     if (!driver?.driverId) return;
-    const saved = loadDriverSort(driver.driverId);
-    setSortKey(saved.key);
-    setSortDir(saved.dir);
+    const sort = loadDriverSort(driver.driverId);
+    const view = loadDriverView(driver.driverId);
+    setSortKey(sort.key);
+    setSortDir(sort.dir);
+    setTab(view.tab);
+    setFilter(view.filter);
+    setDebouncedFilter(view.filter);
   }, [driver?.driverId]);
 
-  // Persist changes for the current driver.
+  // Persist sort + view for the current driver.
   useEffect(() => {
     if (!driver?.driverId) return;
     saveDriverSort(driver.driverId, { key: sortKey, dir: sortDir });
   }, [driver?.driverId, sortKey, sortDir]);
+
+  useEffect(() => {
+    if (!driver?.driverId) return;
+    saveDriverView(driver.driverId, { tab, filter });
+  }, [driver?.driverId, tab, filter]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedFilter(filter), 200);
@@ -688,13 +738,7 @@ function DriverDrillDownDialog({
   return (
     <Dialog
       open={!!driver}
-      onOpenChange={(open) => {
-        if (!open) {
-          setFilter("");
-          setDebouncedFilter("");
-        }
-        onOpenChange(open);
-      }}
+      onOpenChange={onOpenChange}
     >
       <DialogContent className="max-w-5xl">
         <DialogHeader>
@@ -712,7 +756,7 @@ function DriverDrillDownDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "all" | "late")}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as DrillTab)}>
           <TabsList>
             <TabsTrigger value="all">All runs ({cases.length})</TabsTrigger>
             <TabsTrigger value="late">
