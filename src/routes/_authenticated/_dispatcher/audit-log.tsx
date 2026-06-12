@@ -2,7 +2,8 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { listAdminAuditLogs } from "@/lib/admin-users.functions";
+import { exportAdminAuditLogs, listAdminAuditLogs } from "@/lib/admin-users.functions";
+import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -142,6 +143,38 @@ function AuditLogPage() {
   }, [range?.to, range?.from]);
 
   const fetchLogs = useServerFn(listAdminAuditLogs);
+  const exportLogs = useServerFn(exportAdminAuditLogs);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportLogs({
+        data: {
+          action: filter === "all" ? null : filter,
+          search: debouncedSearch.trim() || null,
+          actor: debouncedActor.trim() || null,
+          from: fromIso,
+          to: toIso,
+        },
+      });
+      if (!result.rows.length) {
+        toast.info("No matching audit entries to export.");
+        return;
+      }
+      downloadCsv(result.rows as unknown as Array<Record<string, unknown>>);
+      toast.success(
+        result.truncated
+          ? `Exported ${result.rows.length.toLocaleString()} rows (capped at ${result.cap.toLocaleString()}). Narrow filters for more.`
+          : `Exported ${result.rows.length.toLocaleString()} row${result.rows.length === 1 ? "" : "s"}.`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Export failed";
+      toast.error(msg);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const queryKey = [
     "admin-audit-logs",
@@ -328,10 +361,15 @@ function AuditLogPage() {
           )}
           <Button
             variant="outline"
-            onClick={() => downloadCsv(rows as unknown as Array<Record<string, unknown>>)}
-            disabled={rows.length === 0}
+            onClick={handleExport}
+            disabled={isExporting || total === 0}
           >
-            <Download className="mr-2 h-4 w-4" /> Export CSV
+            {isExporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Export CSV{total > 0 ? ` (${total.toLocaleString()})` : ""}
           </Button>
         </div>
       </div>

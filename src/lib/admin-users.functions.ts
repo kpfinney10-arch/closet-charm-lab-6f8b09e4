@@ -328,6 +328,49 @@ export const listAdminAuditLogs = createServerFn({ method: "POST" })
     return { rows: rows ?? [], total: count ?? 0, limit, offset };
   });
 
+const auditExportSchema = auditQuerySchema
+  .omit({ limit: true, offset: true })
+  .extend({ max: z.number().int().min(1).max(10000).optional() });
+
+export const exportAdminAuditLogs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => auditExportSchema.parse(d ?? {}))
+  .handler(async ({ data, context }) => {
+    const admin = getAdmin();
+    await assertAdmin(admin, context.userId);
+    const max = data.max ?? 10000;
+    let q = admin
+      .from("admin_audit_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(max);
+    if (data.action) q = q.eq("action", data.action);
+    if (data.from) q = q.gte("created_at", data.from);
+    if (data.to) q = q.lte("created_at", data.to);
+    const sanitize = (s: string) => s.replace(/[,*()]/g, " ").trim();
+    if (data.actor) {
+      const a = sanitize(data.actor);
+      if (a) q = q.or(`actor_email.ilike.%${a}%,actor_id.eq.${a}`);
+    }
+    if (data.search) {
+      const s = sanitize(data.search);
+      if (s) {
+        q = q.or(
+          [
+            `target_email.ilike.%${s}%`,
+            `actor_email.ilike.%${s}%`,
+            `action.ilike.%${s}%`,
+          ].join(","),
+        );
+      }
+    }
+    const { data: rows, error } = await q;
+    if (error) throw new Response(error.message, { status: 500 });
+    return { rows: rows ?? [], cap: max, truncated: (rows?.length ?? 0) >= max };
+  });
+
+
+
 
 export const approveAdminUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
