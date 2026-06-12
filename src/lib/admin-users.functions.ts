@@ -330,7 +330,7 @@ export const listAdminAuditLogs = createServerFn({ method: "POST" })
 
 const auditExportSchema = auditQuerySchema
   .omit({ limit: true, offset: true })
-  .extend({ max: z.number().int().min(1).max(10000).optional() });
+  .extend({ max: z.number().int().min(1).max(100000).optional() });
 
 export const exportAdminAuditLogs = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
