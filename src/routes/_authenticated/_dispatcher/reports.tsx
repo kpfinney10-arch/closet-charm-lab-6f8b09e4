@@ -1259,8 +1259,13 @@ function ReportsPage() {
               </p>
             ) : (
               <HBarChart
-                data={perDriver.slice(0, 10).map((r) => ({ name: r.name, count: r.count }))}
+                data={perDriver.slice(0, 10).map((r) => ({
+                  id: r.driverId,
+                  name: r.name,
+                  count: r.count,
+                }))}
                 color="hsl(var(--primary))"
+                onBarClick={(d) => drillByDriver(d.id, d.name)}
               />
             )}
           </CardContent>
