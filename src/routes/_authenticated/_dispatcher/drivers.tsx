@@ -619,9 +619,11 @@ function DriverDrillDownDialog({
               </div>
             ) : visible.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">
-                {tab === "late"
-                  ? "No late legs in this range."
-                  : "No runs in this range."}
+                {q
+                  ? "No matching cases."
+                  : tab === "late"
+                    ? "No late legs in this range."
+                    : "No runs in this range."}
               </div>
             ) : (
               <div className="max-h-[60vh] overflow-auto">
