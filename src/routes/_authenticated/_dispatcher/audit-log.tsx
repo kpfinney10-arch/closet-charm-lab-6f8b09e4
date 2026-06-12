@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { listAdminAuditLogs } from "@/lib/admin-users.functions";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ScrollText, Download, Search, CalendarIcon, X } from "lucide-react";
+import {
+  Loader2,
+  ScrollText,
+  Download,
+  Search,
+  CalendarIcon,
+  X,
+  User,
+} from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -54,10 +62,14 @@ const ACTIONS = [
   "user_disabled",
   "user_enabled",
   "user_deleted",
+  "user_approved",
+  "user_unapproved",
   "role_changed",
   "password_reset",
 ] as const;
 type ActionFilter = (typeof ACTIONS)[number] | "all";
+
+const PAGE_SIZE = 50;
 
 function actionLabel(a: string) {
   switch (a) {
@@ -65,6 +77,8 @@ function actionLabel(a: string) {
     case "user_disabled": return "User disabled";
     case "user_enabled": return "User enabled";
     case "user_deleted": return "User deleted";
+    case "user_approved": return "User approved";
+    case "user_unapproved": return "Approval revoked";
     case "role_changed": return "Role changed";
     case "password_reset": return "Password reset";
     default: return a;
@@ -72,8 +86,8 @@ function actionLabel(a: string) {
 }
 
 function actionVariant(a: string): "default" | "secondary" | "destructive" | "outline" {
-  if (a === "user_deleted" || a === "user_disabled") return "destructive";
-  if (a === "user_created" || a === "user_enabled") return "default";
+  if (a === "user_deleted" || a === "user_disabled" || a === "user_unapproved") return "destructive";
+  if (a === "user_created" || a === "user_enabled" || a === "user_approved") return "default";
   return "secondary";
 }
 
@@ -100,42 +114,81 @@ function downloadCsv(rows: Array<Record<string, unknown>>) {
   URL.revokeObjectURL(url);
 }
 
+function useDebounced<T>(value: T, ms = 250): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
 function AuditLogPage() {
   const [filter, setFilter] = useState<ActionFilter>("all");
   const [search, setSearch] = useState("");
+  const [actor, setActor] = useState("");
   const [range, setRange] = useState<DateRange | undefined>(undefined);
+
+  const debouncedSearch = useDebounced(search);
+  const debouncedActor = useDebounced(actor);
+
+  const fromIso = useMemo(
+    () => (range?.from ? new Date(new Date(range.from).setHours(0, 0, 0, 0)).toISOString() : null),
+    [range?.from],
+  );
+  const toIso = useMemo(() => {
+    const end = range?.to ?? range?.from;
+    return end ? new Date(new Date(end).setHours(23, 59, 59, 999)).toISOString() : null;
+  }, [range?.to, range?.from]);
+
   const fetchLogs = useServerFn(listAdminAuditLogs);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["admin-audit-logs", filter],
-    queryFn: () =>
-      fetchLogs({ data: { action: filter === "all" ? null : filter, limit: 200 } }),
+  const queryKey = [
+    "admin-audit-logs",
+    filter,
+    debouncedSearch.trim(),
+    debouncedActor.trim(),
+    fromIso,
+    toIso,
+  ] as const;
+
+  const {
+    data,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetching,
+  } = useInfiniteQuery({
+    queryKey,
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      fetchLogs({
+        data: {
+          action: filter === "all" ? null : filter,
+          search: debouncedSearch.trim() || null,
+          actor: debouncedActor.trim() || null,
+          from: fromIso,
+          to: toIso,
+          limit: PAGE_SIZE,
+          offset: pageParam,
+        },
+      }),
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((n, p) => n + (p?.rows?.length ?? 0), 0);
+      return loaded < (lastPage?.total ?? 0) ? loaded : undefined;
+    },
   });
 
-  const fromTs = range?.from ? new Date(range.from).setHours(0, 0, 0, 0) : null;
-  const toTs = range?.to
-    ? new Date(range.to).setHours(23, 59, 59, 999)
-    : range?.from
-    ? new Date(range.from).setHours(23, 59, 59, 999)
-    : null;
+  const rows = useMemo(
+    () => (data?.pages ?? []).flatMap((p) => p?.rows ?? []),
+    [data],
+  );
+  const total = data?.pages?.[0]?.total ?? 0;
 
-  const filtered = (data ?? []).filter((row) => {
-    const ts = new Date(row.created_at).getTime();
-    if (fromTs !== null && ts < fromTs) return false;
-    if (toTs !== null && ts > toTs) return false;
-    if (!search.trim()) return true;
-    const q = search.trim().toLowerCase();
-    return [
-      row.target_email,
-      row.target_user_id,
-      row.actor_email,
-      row.actor_id,
-      row.action,
-      row.details ? JSON.stringify(row.details) : "",
-    ]
-      .filter(Boolean)
-      .some((v) => String(v).toLowerCase().includes(q));
-  });
+  const hasAnyFilter =
+    filter !== "all" || !!debouncedSearch.trim() || !!debouncedActor.trim() || !!range;
 
   return (
     <div className="container mx-auto max-w-6xl space-y-6 p-6">
@@ -152,10 +205,19 @@ function AuditLogPage() {
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search email, user, details…"
-              className="w-[260px] pl-8"
+              placeholder="Search email or action…"
+              className="w-[240px] pl-8"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="relative">
+            <User className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Actor email or id"
+              className="w-[200px] pl-8"
+              value={actor}
+              onChange={(e) => setActor(e.target.value)}
             />
           </div>
           <Popover>
@@ -164,7 +226,7 @@ function AuditLogPage() {
                 variant="outline"
                 className={cn(
                   "justify-start text-left font-normal",
-                  !range && "text-muted-foreground"
+                  !range && "text-muted-foreground",
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
@@ -194,52 +256,39 @@ function AuditLogPage() {
             <PopoverContent className="w-auto p-0" align="end">
               <div className="flex flex-wrap gap-1 border-b p-2">
                 {[
-                  {
-                    label: "Today",
-                    get: () => {
-                      const d = new Date();
-                      return { from: d, to: d };
-                    },
-                  },
-                  {
-                    label: "Last 7 days",
-                    get: () => {
-                      const to = new Date();
-                      const from = new Date();
-                      from.setDate(to.getDate() - 6);
-                      return { from, to };
-                    },
-                  },
-                  {
-                    label: "Last 30 days",
-                    get: () => {
-                      const to = new Date();
-                      const from = new Date();
-                      from.setDate(to.getDate() - 29);
-                      return { from, to };
-                    },
-                  },
-                  {
-                    label: "This month",
-                    get: () => {
-                      const now = new Date();
-                      return {
-                        from: new Date(now.getFullYear(), now.getMonth(), 1),
-                        to: now,
-                      };
-                    },
-                  },
+                  { label: "Today", days: 0 },
+                  { label: "Last 7 days", days: 6 },
+                  { label: "Last 30 days", days: 29 },
                 ].map((p) => (
                   <Button
                     key={p.label}
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2 text-xs"
-                    onClick={() => setRange(p.get())}
+                    onClick={() => {
+                      const to = new Date();
+                      const from = new Date();
+                      from.setDate(to.getDate() - p.days);
+                      setRange({ from, to });
+                    }}
                   >
                     {p.label}
                   </Button>
                 ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => {
+                    const now = new Date();
+                    setRange({
+                      from: new Date(now.getFullYear(), now.getMonth(), 1),
+                      to: now,
+                    });
+                  }}
+                >
+                  This month
+                </Button>
               </div>
               <Calendar
                 mode="range"
@@ -264,10 +313,23 @@ function AuditLogPage() {
               ))}
             </SelectContent>
           </Select>
+          {hasAnyFilter && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setFilter("all");
+                setSearch("");
+                setActor("");
+                setRange(undefined);
+              }}
+            >
+              Clear
+            </Button>
+          )}
           <Button
             variant="outline"
-            onClick={() => downloadCsv(filtered as unknown as Array<Record<string, unknown>>)}
-            disabled={filtered.length === 0}
+            onClick={() => downloadCsv(rows as unknown as Array<Record<string, unknown>>)}
+            disabled={rows.length === 0}
           >
             <Download className="mr-2 h-4 w-4" /> Export CSV
           </Button>
@@ -278,9 +340,9 @@ function AuditLogPage() {
         <CardHeader>
           <CardTitle className="text-base">
             Recent activity
-            {!isLoading && data ? (
+            {!isLoading ? (
               <span className="ml-2 text-xs font-normal text-muted-foreground">
-                ({filtered.length}{filtered.length !== data.length ? ` of ${data.length}` : ""})
+                ({rows.length.toLocaleString()} of {total.toLocaleString()})
               </span>
             ) : null}
           </CardTitle>
@@ -292,57 +354,75 @@ function AuditLogPage() {
             </div>
           ) : error ? (
             <p className="text-sm text-destructive">Failed to load audit log.</p>
-          ) : !data || data.length === 0 ? (
+          ) : rows.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No audit entries yet.
-            </p>
-          ) : filtered.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No entries match your search.
+              {hasAnyFilter
+                ? "No entries match your filters."
+                : "No audit entries yet."}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>When</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Target</TableHead>
-                    <TableHead>By</TableHead>
-                    <TableHead>Details</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {new Date(row.created_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={actionVariant(row.action)}>
-                          {actionLabel(row.action)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {row.target_email ?? row.target_user_id ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {row.actor_email ?? row.actor_id}
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        {row.details && Object.keys(row.details).length > 0 ? (
-                          <code className="block truncate text-xs text-muted-foreground">
-                            {JSON.stringify(row.details)}
-                          </code>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>When</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Target</TableHead>
+                      <TableHead>By</TableHead>
+                      <TableHead>Details</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {new Date(row.created_at).toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={actionVariant(row.action)}>
+                            {actionLabel(row.action)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {row.target_email ?? row.target_user_id ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {row.actor_email ?? row.actor_id}
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          {row.details && Object.keys(row.details).length > 0 ? (
+                            <code className="block truncate text-xs text-muted-foreground">
+                              {JSON.stringify(row.details)}
+                            </code>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="mt-4 flex items-center justify-center">
+                {hasNextPage ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                  >
+                    {isFetchingNextPage ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Load more
+                  </Button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    {isFetching ? "Refreshing…" : "End of results"}
+                  </span>
+                )}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

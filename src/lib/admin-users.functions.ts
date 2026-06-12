@@ -268,21 +268,25 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const AUDIT_ACTIONS = [
+  "user_created",
+  "user_disabled",
+  "user_enabled",
+  "user_deleted",
+  "role_changed",
+  "password_reset",
+  "user_approved",
+  "user_unapproved",
+] as const;
+
 const auditQuerySchema = z.object({
-  limit: z.number().int().min(1).max(500).optional(),
-  action: z
-    .enum([
-      "user_created",
-      "user_disabled",
-      "user_enabled",
-      "user_deleted",
-      "role_changed",
-      "password_reset",
-      "user_approved",
-      "user_unapproved",
-    ])
-    .optional()
-    .nullable(),
+  limit: z.number().int().min(1).max(200).optional(),
+  offset: z.number().int().min(0).max(100000).optional(),
+  action: z.enum(AUDIT_ACTIONS).optional().nullable(),
+  search: z.string().trim().max(255).optional().nullable(),
+  actor: z.string().trim().max(255).optional().nullable(),
+  from: z.string().datetime().optional().nullable(),
+  to: z.string().datetime().optional().nullable(),
 });
 
 export const listAdminAuditLogs = createServerFn({ method: "POST" })
@@ -291,16 +295,39 @@ export const listAdminAuditLogs = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const admin = getAdmin();
     await assertAdmin(admin, context.userId);
+    const limit = data.limit ?? 50;
+    const offset = data.offset ?? 0;
     let q = admin
       .from("admin_audit_logs")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
-      .limit(data.limit ?? 200);
+      .range(offset, offset + limit - 1);
     if (data.action) q = q.eq("action", data.action);
-    const { data: rows, error } = await q;
+    if (data.from) q = q.gte("created_at", data.from);
+    if (data.to) q = q.lte("created_at", data.to);
+    // Escape PostgREST OR special chars: ',' splits filters and '*' is a wildcard.
+    const sanitize = (s: string) => s.replace(/[,*()]/g, " ").trim();
+    if (data.actor) {
+      const a = sanitize(data.actor);
+      if (a) q = q.or(`actor_email.ilike.%${a}%,actor_id.eq.${a}`);
+    }
+    if (data.search) {
+      const s = sanitize(data.search);
+      if (s) {
+        q = q.or(
+          [
+            `target_email.ilike.%${s}%`,
+            `actor_email.ilike.%${s}%`,
+            `action.ilike.%${s}%`,
+          ].join(","),
+        );
+      }
+    }
+    const { data: rows, count, error } = await q;
     if (error) throw new Response(error.message, { status: 500 });
-    return rows ?? [];
+    return { rows: rows ?? [], total: count ?? 0, limit, offset };
   });
+
 
 export const approveAdminUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
