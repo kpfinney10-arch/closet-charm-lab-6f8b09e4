@@ -646,6 +646,17 @@ function saveDriverView(driverId: string, value: DrillView) {
   }
 }
 
+function clearDriverView(driverId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const map = readViewMap();
+    delete map[driverId];
+    window.localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore quota / serialization errors
+  }
+}
+
 
 
 function DriverDrillDownDialog({
