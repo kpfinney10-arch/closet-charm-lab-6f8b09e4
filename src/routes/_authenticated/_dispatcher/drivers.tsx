@@ -622,8 +622,26 @@ function DriverDrillDownDialog({
   const [tab, setTab] = useState<"all" | "late">("all");
   const [filter, setFilter] = useState("");
   const [debouncedFilter, setDebouncedFilter] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("scheduledAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortKey, setSortKey] = useState<SortKey>(
+    () => loadDriverSort(driver?.driverId).key,
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    () => loadDriverSort(driver?.driverId).dir,
+  );
+
+  // Load saved sort whenever the active driver changes.
+  useEffect(() => {
+    if (!driver?.driverId) return;
+    const saved = loadDriverSort(driver.driverId);
+    setSortKey(saved.key);
+    setSortDir(saved.dir);
+  }, [driver?.driverId]);
+
+  // Persist changes for the current driver.
+  useEffect(() => {
+    if (!driver?.driverId) return;
+    saveDriverSort(driver.driverId, { key: sortKey, dir: sortDir });
+  }, [driver?.driverId, sortKey, sortDir]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedFilter(filter), 200);
