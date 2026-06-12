@@ -549,7 +549,15 @@ function DriverDrillDownDialog({
 
   const cases = drillQ.data?.cases ?? [];
   const lateCases = cases.filter((c) => c.isLate);
-  const visible = tab === "late" ? lateCases : cases;
+  const base = tab === "late" ? lateCases : cases;
+  const q = filter.trim().toLowerCase();
+  const visible = q
+    ? base.filter(
+        (c) =>
+          c.caseNumber?.toLowerCase().includes(q) ||
+          c.decedentName?.toLowerCase().includes(q),
+      )
+    : base;
 
   return (
     <Dialog open={!!driver} onOpenChange={onOpenChange}>
