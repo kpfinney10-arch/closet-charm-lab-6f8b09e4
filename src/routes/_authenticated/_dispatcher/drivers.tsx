@@ -327,6 +327,7 @@ const GRACE_OPTIONS = [
 function PerformanceTab() {
   const [days, setDays] = useState("30");
   const [grace, setGrace] = useState("15");
+  const [drillDriver, setDrillDriver] = useState<DriverPerf | null>(null);
   const range = useMemo(() => {
     const to = new Date();
     const from = new Date(to.getTime() - Number(days) * 86400_000);
@@ -396,8 +397,7 @@ function PerformanceTab() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Per-driver performance</CardTitle>
           <p className="text-xs text-muted-foreground">
-            On-time pickup compares first on-scene event to <span className="font-mono">scheduled_at</span> + grace.
-            Medians use only legs with the relevant milestones recorded.
+            Click any row to see that driver&rsquo;s case list, late legs, and per-leg timelines for the selected range.
           </p>
         </CardHeader>
         <CardContent className="p-0">
@@ -426,20 +426,41 @@ function PerformanceTab() {
               </TableHeader>
               <TableBody>
                 {drivers.map((d) => (
-                  <DriverPerfRow key={d.driverId} d={d} />
+                  <DriverPerfRow
+                    key={d.driverId}
+                    d={d}
+                    onClick={() => setDrillDriver(d)}
+                  />
                 ))}
               </TableBody>
             </Table>
           )}
         </CardContent>
       </Card>
+
+      <DriverDrillDownDialog
+        driver={drillDriver}
+        range={range}
+        graceMinutes={Number(grace)}
+        onOpenChange={(o) => !o && setDrillDriver(null)}
+      />
     </div>
   );
 }
 
-function DriverPerfRow({ d }: { d: DriverPerf }) {
+function DriverPerfRow({ d, onClick }: { d: DriverPerf; onClick: () => void }) {
   return (
-    <TableRow>
+    <TableRow
+      className="cursor-pointer hover:bg-muted/40"
+      onClick={onClick}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
       <TableCell className="font-medium">{d.name}</TableCell>
       <TableCell className="text-right tabular-nums">{d.runs}</TableCell>
       <TableCell className="text-right tabular-nums">{d.completed}</TableCell>
@@ -478,10 +499,223 @@ function DriverPerfRow({ d }: { d: DriverPerf }) {
   );
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  new: "New",
+  assigned: "Assigned",
+  en_route_pickup: "En route pickup",
+  on_scene: "On scene",
+  in_custody: "In custody",
+  en_route_dropoff: "En route dropoff",
+  delivered: "Delivered",
+  released: "Released",
+  cancelled: "Cancelled",
+};
+
+function DriverDrillDownDialog({
+  driver,
+  range,
+  graceMinutes,
+  onOpenChange,
+}: {
+  driver: DriverPerf | null;
+  range: { from: string; to: string };
+  graceMinutes: number;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const fetchDrill = useServerFn(getDriverDrillDown);
+  const [tab, setTab] = useState<"all" | "late">("all");
+
+  const drillQ = useQuery({
+    enabled: !!driver,
+    queryKey: [
+      "driver-drilldown",
+      driver?.driverId,
+      range.from,
+      range.to,
+      graceMinutes,
+    ],
+    queryFn: () =>
+      fetchDrill({
+        data: {
+          driverId: driver!.driverId,
+          from: range.from,
+          to: range.to,
+          onTimeGraceMinutes: graceMinutes,
+        },
+      }),
+  });
+
+  const cases = drillQ.data?.cases ?? [];
+  const lateCases = cases.filter((c) => c.isLate);
+  const visible = tab === "late" ? lateCases : cases;
+
+  return (
+    <Dialog open={!!driver} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>{driver?.name ?? "Driver"} — performance detail</DialogTitle>
+          <DialogDescription>
+            {new Date(range.from).toLocaleDateString()} → {new Date(range.to).toLocaleDateString()}
+            {" · "}
+            {cases.length} run{cases.length === 1 ? "" : "s"}
+            {lateCases.length > 0 && (
+              <span className="ml-1 text-destructive">
+                · {lateCases.length} late
+              </span>
+            )}
+            {" · "}grace {graceMinutes}m
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "all" | "late")}>
+          <TabsList>
+            <TabsTrigger value="all">All runs ({cases.length})</TabsTrigger>
+            <TabsTrigger value="late">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Late legs ({lateCases.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={tab} className="mt-3">
+            {drillQ.isLoading ? (
+              <div className="flex h-40 items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : visible.length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                {tab === "late"
+                  ? "No late legs in this range."
+                  : "No runs in this range."}
+              </div>
+            ) : (
+              <div className="max-h-[60vh] overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Case</TableHead>
+                      <TableHead>Decedent</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Late by</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead className="w-10"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visible.map((c) => (
+                      <DrillCaseRow key={c.id} c={c} onNavigate={() => onOpenChange(false)} />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DrillCaseRow({
+  c,
+  onNavigate,
+}: {
+  c: DriverCaseTimeline;
+  onNavigate: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <TableRow
+        className="cursor-pointer hover:bg-muted/40"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <TableCell className="font-mono text-xs">{c.caseNumber}</TableCell>
+        <TableCell>{c.decedentName}</TableCell>
+        <TableCell className="text-sm">{STATUS_LABEL[c.status] ?? c.status}</TableCell>
+        <TableCell>
+          <Badge variant={c.role === "primary" ? "default" : "outline"}>
+            {c.role}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          {c.isLate && c.lateByMinutes != null ? (
+            <Badge variant="destructive" className="font-mono">
+              +{fmtMin(c.lateByMinutes)}
+            </Badge>
+          ) : c.lateByMinutes != null ? (
+            <span className="text-xs text-emerald-600 dark:text-emerald-400">on time</span>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </TableCell>
+        <TableCell className="text-sm tabular-nums">{fmtMin(c.totalMin)}</TableCell>
+        <TableCell className="text-right">
+          <Button
+            asChild
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2"
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigate();
+            }}
+          >
+            <Link to="/cases/$caseId" params={{ caseId: c.id }}>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </TableCell>
+      </TableRow>
+      {open && (
+        <TableRow className="bg-muted/30">
+          <TableCell colSpan={7} className="py-3">
+            <Timeline c={c} />
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  );
+}
+
+function Timeline({ c }: { c: DriverCaseTimeline }) {
+  const steps: Array<{ label: string; at: string | null; emphasize?: boolean }> = [
+    { label: "Scheduled", at: c.scheduledAt, emphasize: true },
+    { label: "Assigned", at: c.assignedAt },
+    { label: "En route pickup", at: c.enRoutePickupAt },
+    { label: "On scene", at: c.onSceneAt, emphasize: true },
+    { label: "In custody", at: c.inCustodyAt },
+    { label: "En route dropoff", at: c.enRouteDropoffAt },
+    { label: "Delivered", at: c.deliveredAt, emphasize: true },
+  ];
+  return (
+    <ol className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs md:grid-cols-4 lg:grid-cols-7">
+      {steps.map((s, i) => (
+        <li key={i} className="flex flex-col">
+          <span className={s.emphasize ? "font-medium" : "text-muted-foreground"}>
+            {s.label}
+          </span>
+          <span
+            className={
+              s.at
+                ? "tabular-nums"
+                : "text-muted-foreground/60"
+            }
+          >
+            {s.at ? new Date(s.at).toLocaleString() : "—"}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function fmtMin(m: number | null): string {
   if (m == null) return "—";
-  if (m < 60) return `${Math.round(m)}m`;
-  const h = Math.floor(m / 60);
-  const rem = Math.round(m % 60);
-  return rem === 0 ? `${h}h` : `${h}h ${rem}m`;
+  const abs = Math.abs(m);
+  if (abs < 60) return `${Math.round(m)}m`;
+  const h = Math.floor(abs / 60);
+  const rem = Math.round(abs % 60);
+  const sign = m < 0 ? "-" : "";
+  return rem === 0 ? `${sign}${h}h` : `${sign}${h}h ${rem}m`;
 }
