@@ -1083,6 +1083,11 @@ function ReportsPage() {
                 <AreaChart
                   data={dailyCounts}
                   margin={{ left: -16, right: 8, top: 8, bottom: 0 }}
+                  onClick={(e: any) => {
+                    const day = e?.activePayload?.[0]?.payload?.day;
+                    if (day) drillByDay(day);
+                  }}
+                  style={{ cursor: "pointer" }}
                 >
                   <defs>
                     <linearGradient id="gDelivered" x1="0" y1="0" x2="0" y2="1">
