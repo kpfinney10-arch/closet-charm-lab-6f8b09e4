@@ -569,7 +569,10 @@ function DriverDrillDownDialog({
     <Dialog
       open={!!driver}
       onOpenChange={(open) => {
-        if (!open) setFilter("");
+        if (!open) {
+          setFilter("");
+          setDebouncedFilter("");
+        }
         onOpenChange(open);
       }}
     >
