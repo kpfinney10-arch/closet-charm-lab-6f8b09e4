@@ -398,6 +398,8 @@ function ReportsPage() {
     cases: DispatchCaseRow[];
   } | null>(null);
 
+  const drillTriggerRef = useRef<HTMLElement | null>(null);
+
   const openDrillDown = (
     title: string,
     predicate: (c: DispatchCaseRow) => boolean,
@@ -407,6 +409,9 @@ function ReportsPage() {
       .filter(predicate)
       .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
     if (cases.length === 0) return;
+    const active = document.activeElement as HTMLElement | null;
+    drillTriggerRef.current =
+      active && active !== document.body ? active : null;
     setDrillDown({ title, subtitle, cases });
     setDrillVisible(DRILL_PAGE_SIZE);
     setDrillQuery("");
