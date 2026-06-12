@@ -1414,12 +1414,15 @@ function Mini({ label, value }: { label: string; value: number | string }) {
   );
 }
 
+type HBarDatum = { id: string; name: string; count: number };
 function HBarChart({
   data,
   color,
+  onBarClick,
 }: {
-  data: Array<{ name: string; count: number }>;
+  data: HBarDatum[];
   color: string;
+  onBarClick?: (d: HBarDatum) => void;
 }) {
   const height = Math.max(180, data.length * 32 + 24);
   return (
@@ -1448,7 +1451,13 @@ function HBarChart({
               fontSize: 12,
             }}
           />
-          <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]}>
+          <Bar
+            dataKey="count"
+            fill={color}
+            radius={[0, 4, 4, 0]}
+            cursor={onBarClick ? "pointer" : undefined}
+            onClick={(d: any) => onBarClick?.(d as HBarDatum)}
+          >
             {data.map((_, i) => (
               <Cell key={i} fill={color} />
             ))}
@@ -1458,3 +1467,4 @@ function HBarChart({
     </div>
   );
 }
+
