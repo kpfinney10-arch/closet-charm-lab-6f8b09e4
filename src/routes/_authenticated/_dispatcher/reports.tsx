@@ -398,6 +398,25 @@ function ReportsPage() {
     cases: DispatchCaseRow[];
   } | null>(null);
 
+  const drillTriggerRef = useRef<HTMLElement | null>(null);
+  const lastPointerTargetRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      // Prefer a focusable ancestor (button, card, etc.) for restore.
+      const focusable =
+        (t.closest(
+          'button, [role="button"], a, [tabindex]:not([tabindex="-1"])',
+        ) as HTMLElement | null) ??
+        (t.closest(".recharts-wrapper") as HTMLElement | null) ??
+        t;
+      lastPointerTargetRef.current = focusable;
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, []);
+
   const openDrillDown = (
     title: string,
     predicate: (c: DispatchCaseRow) => boolean,
@@ -407,6 +426,10 @@ function ReportsPage() {
       .filter(predicate)
       .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
     if (cases.length === 0) return;
+    const active = document.activeElement as HTMLElement | null;
+    drillTriggerRef.current =
+      lastPointerTargetRef.current ??
+      (active && active !== document.body ? active : null);
     setDrillDown({ title, subtitle, cases });
     setDrillVisible(DRILL_PAGE_SIZE);
     setDrillQuery("");
@@ -1433,7 +1456,24 @@ function ReportsPage() {
       </Card>
 
       <Dialog open={drillDown !== null} onOpenChange={(o) => !o && setDrillDown(null)}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent
+          className="max-w-4xl"
+          onCloseAutoFocus={(e) => {
+            const target = drillTriggerRef.current;
+            if (target && document.contains(target)) {
+              e.preventDefault();
+              // If the element isn't natively focusable, give it tabindex temporarily.
+              const hadTabIndex = target.hasAttribute("tabindex");
+              if (!hadTabIndex) target.setAttribute("tabindex", "-1");
+              target.focus({ preventScroll: false });
+              if (!hadTabIndex) {
+                const cleanup = () => target.removeAttribute("tabindex");
+                target.addEventListener("blur", cleanup, { once: true });
+              }
+            }
+            drillTriggerRef.current = null;
+          }}
+        >
           <DialogHeader>
             <DialogTitle>{drillDown?.title ?? "Cases"}</DialogTitle>
             <DialogDescription>
