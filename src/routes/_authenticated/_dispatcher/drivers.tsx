@@ -646,6 +646,17 @@ function saveDriverView(driverId: string, value: DrillView) {
   }
 }
 
+function clearDriverView(driverId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const map = readViewMap();
+    delete map[driverId];
+    window.localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore quota / serialization errors
+  }
+}
+
 
 
 function DriverDrillDownDialog({
@@ -814,6 +825,21 @@ function DriverDrillDownDialog({
                   ) : (
                     <ArrowDown className="h-4 w-4" />
                   )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-9"
+                  disabled={tab === "all" && filter === ""}
+                  onClick={() => {
+                    setTab("all");
+                    setFilter("");
+                    setDebouncedFilter("");
+                    if (driver?.driverId) clearDriverView(driver.driverId);
+                  }}
+                >
+                  Reset filters
                 </Button>
               </div>
             </div>
