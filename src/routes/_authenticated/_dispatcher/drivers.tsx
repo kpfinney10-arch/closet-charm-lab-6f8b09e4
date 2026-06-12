@@ -525,6 +525,7 @@ function DriverDrillDownDialog({
 }) {
   const fetchDrill = useServerFn(getDriverDrillDown);
   const [tab, setTab] = useState<"all" | "late">("all");
+  const [filter, setFilter] = useState("");
 
   const drillQ = useQuery({
     enabled: !!driver,
