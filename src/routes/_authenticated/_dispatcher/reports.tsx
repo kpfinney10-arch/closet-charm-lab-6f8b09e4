@@ -1178,7 +1178,13 @@ function ReportsPage() {
                         fontSize: 12,
                       }}
                     />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar
+                      dataKey="count"
+                      fill="hsl(var(--primary))"
+                      radius={[4, 4, 0, 0]}
+                      cursor="pointer"
+                      onClick={(d: any) => d?.status && drillByStatus(d.status)}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
