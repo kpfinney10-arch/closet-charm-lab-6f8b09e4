@@ -826,6 +826,21 @@ function DriverDrillDownDialog({
                     <ArrowDown className="h-4 w-4" />
                   )}
                 </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-9"
+                  disabled={tab === "all" && filter === ""}
+                  onClick={() => {
+                    setTab("all");
+                    setFilter("");
+                    setDebouncedFilter("");
+                    if (driver?.driverId) clearDriverView(driver.driverId);
+                  }}
+                >
+                  Reset filters
+                </Button>
               </div>
             </div>
             {drillQ.isLoading ? (
