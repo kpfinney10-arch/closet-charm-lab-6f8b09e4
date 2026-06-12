@@ -453,6 +453,19 @@ function AuditLogPage() {
               Clear
             </Button>
           )}
+          <Select value={exportLimit} onValueChange={setExportLimit} disabled={isExporting}>
+            <SelectTrigger className="w-[140px]" aria-label="CSV row limit">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1000">Up to 1,000 rows</SelectItem>
+              <SelectItem value="5000">Up to 5,000 rows</SelectItem>
+              <SelectItem value="10000">Up to 10,000 rows</SelectItem>
+              <SelectItem value="25000">Up to 25,000 rows</SelectItem>
+              <SelectItem value="50000">Up to 50,000 rows</SelectItem>
+              <SelectItem value="100000">Up to 100,000 rows</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             variant="outline"
             onClick={handleExport}
@@ -467,6 +480,7 @@ function AuditLogPage() {
           </Button>
         </div>
       </div>
+
 
       {isExporting && (
         <div
