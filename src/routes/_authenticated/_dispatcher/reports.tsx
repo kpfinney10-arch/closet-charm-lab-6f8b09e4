@@ -429,6 +429,28 @@ function ReportsPage() {
     setDrillVisible(DRILL_PAGE_SIZE);
   }, [drillQuery]);
   const drillSentinelRef = useRef<HTMLDivElement | null>(null);
+  const drillSearchRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (!drillDown) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        drillSearchRef.current?.focus();
+        drillSearchRef.current?.select();
+        return;
+      }
+      if (e.key === "Enter" && document.activeElement === drillSearchRef.current) {
+        const first = drillFilteredCases[0];
+        if (first) {
+          e.preventDefault();
+          setDrillDown(null);
+          navigate({ to: "/cases/$caseId", params: { caseId: first.id } });
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drillDown, drillFilteredCases, navigate]);
   useEffect(() => {
     const el = drillSentinelRef.current;
     if (!el || !drillDown) return;
