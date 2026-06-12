@@ -1200,14 +1200,10 @@ function ReportsPage() {
                 No driver-assigned runs in this selection.
               </p>
             ) : (
-              <ul className="divide-y">
-                {perDriver.map((r) => (
-                  <li key={r.driverId} className="flex items-center justify-between py-2 text-sm">
-                    <span className="font-medium">{r.name}</span>
-                    <span className="tabular-nums text-muted-foreground">{r.count}</span>
-                  </li>
-                ))}
-              </ul>
+              <HBarChart
+                data={perDriver.slice(0, 10).map((r) => ({ name: r.name, count: r.count }))}
+                color="hsl(var(--primary))"
+              />
             )}
           </CardContent>
         </Card>
