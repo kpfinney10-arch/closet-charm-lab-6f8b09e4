@@ -31,7 +31,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, Users, MapPin, Phone, Truck, Gauge, AlertTriangle, ExternalLink, Search, X } from "lucide-react";
+import { Loader2, Users, MapPin, Phone, Truck, Gauge, AlertTriangle, ExternalLink, Search, X, ArrowDown, ArrowUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
