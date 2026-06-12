@@ -527,6 +527,8 @@ function DriverDrillDownDialog({
   const [tab, setTab] = useState<"all" | "late">("all");
   const [filter, setFilter] = useState("");
   const [debouncedFilter, setDebouncedFilter] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("scheduledAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedFilter(filter), 200);
