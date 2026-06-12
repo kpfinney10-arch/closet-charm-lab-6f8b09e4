@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -526,6 +526,12 @@ function DriverDrillDownDialog({
   const fetchDrill = useServerFn(getDriverDrillDown);
   const [tab, setTab] = useState<"all" | "late">("all");
   const [filter, setFilter] = useState("");
+  const [debouncedFilter, setDebouncedFilter] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedFilter(filter), 200);
+    return () => clearTimeout(t);
+  }, [filter]);
 
   const drillQ = useQuery({
     enabled: !!driver,
@@ -550,7 +556,7 @@ function DriverDrillDownDialog({
   const cases = drillQ.data?.cases ?? [];
   const lateCases = cases.filter((c) => c.isLate);
   const base = tab === "late" ? lateCases : cases;
-  const q = filter.trim().toLowerCase();
+  const q = debouncedFilter.trim().toLowerCase();
   const visible = q
     ? base.filter(
         (c) =>
@@ -563,7 +569,10 @@ function DriverDrillDownDialog({
     <Dialog
       open={!!driver}
       onOpenChange={(open) => {
-        if (!open) setFilter("");
+        if (!open) {
+          setFilter("");
+          setDebouncedFilter("");
+        }
         onOpenChange(open);
       }}
     >
