@@ -24,11 +24,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Users, MapPin, Phone, Truck, Gauge } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Loader2, Users, MapPin, Phone, Truck, Gauge, AlertTriangle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import {
   getDriverPerformance,
+  getDriverDrillDown,
   type DriverPerf,
+  type DriverCaseTimeline,
 } from "@/lib/driver-performance.functions";
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/drivers")({
