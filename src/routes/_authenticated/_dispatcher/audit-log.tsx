@@ -143,6 +143,38 @@ function AuditLogPage() {
   }, [range?.to, range?.from]);
 
   const fetchLogs = useServerFn(listAdminAuditLogs);
+  const exportLogs = useServerFn(exportAdminAuditLogs);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportLogs({
+        data: {
+          action: filter === "all" ? null : filter,
+          search: debouncedSearch.trim() || null,
+          actor: debouncedActor.trim() || null,
+          from: fromIso,
+          to: toIso,
+        },
+      });
+      if (!result.rows.length) {
+        toast.info("No matching audit entries to export.");
+        return;
+      }
+      downloadCsv(result.rows as unknown as Array<Record<string, unknown>>);
+      toast.success(
+        result.truncated
+          ? `Exported ${result.rows.length.toLocaleString()} rows (capped at ${result.cap.toLocaleString()}). Narrow filters for more.`
+          : `Exported ${result.rows.length.toLocaleString()} row${result.rows.length === 1 ? "" : "s"}.`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Export failed";
+      toast.error(msg);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const queryKey = [
     "admin-audit-logs",
