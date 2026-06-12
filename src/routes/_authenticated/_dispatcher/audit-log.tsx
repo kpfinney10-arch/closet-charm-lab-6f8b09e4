@@ -116,6 +116,40 @@ function downloadCsv(rows: Array<Record<string, unknown>>) {
   URL.revokeObjectURL(url);
 }
 
+function parseExportError(err: unknown): {
+  message: string;
+  detail?: string;
+  status?: number;
+} {
+  // TanStack server fns reject with a Response when handlers throw `new Response(...)`.
+  if (err instanceof Response) {
+    const status = err.status;
+    const friendly =
+      status === 401 || status === 403
+        ? "You don't have permission to export the audit log."
+        : status === 429
+          ? "Too many export requests — wait a moment and try again."
+          : status >= 500
+            ? "The server failed to build the export."
+            : "The export request was rejected.";
+    return {
+      message: friendly,
+      detail: `HTTP ${status}${err.statusText ? ` ${err.statusText}` : ""}`,
+      status,
+    };
+  }
+  if (err instanceof TypeError && /fetch|network/i.test(err.message)) {
+    return {
+      message: "Network error — check your connection and try again.",
+      detail: err.message,
+    };
+  }
+  if (err instanceof Error) {
+    return { message: "Export failed", detail: err.message };
+  }
+  return { message: "Export failed", detail: String(err) };
+}
+
 function useDebounced<T>(value: T, ms = 250): T {
   const [v, setV] = useState(value);
   useEffect(() => {
