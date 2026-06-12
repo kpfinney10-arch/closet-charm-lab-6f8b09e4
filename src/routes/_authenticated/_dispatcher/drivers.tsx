@@ -660,9 +660,9 @@ function DriverDrillDownDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const fetchDrill = useServerFn(getDriverDrillDown);
-  const [tab, setTab] = useState<"all" | "late">("all");
-  const [filter, setFilter] = useState("");
-  const [debouncedFilter, setDebouncedFilter] = useState("");
+  const [tab, setTab] = useState<DrillTab>(() => loadDriverView(driver?.driverId).tab);
+  const [filter, setFilter] = useState(() => loadDriverView(driver?.driverId).filter);
+  const [debouncedFilter, setDebouncedFilter] = useState(filter);
   const [sortKey, setSortKey] = useState<SortKey>(
     () => loadDriverSort(driver?.driverId).key,
   );
@@ -670,19 +670,28 @@ function DriverDrillDownDialog({
     () => loadDriverSort(driver?.driverId).dir,
   );
 
-  // Load saved sort whenever the active driver changes.
+  // Load saved sort + view whenever the active driver changes.
   useEffect(() => {
     if (!driver?.driverId) return;
-    const saved = loadDriverSort(driver.driverId);
-    setSortKey(saved.key);
-    setSortDir(saved.dir);
+    const sort = loadDriverSort(driver.driverId);
+    const view = loadDriverView(driver.driverId);
+    setSortKey(sort.key);
+    setSortDir(sort.dir);
+    setTab(view.tab);
+    setFilter(view.filter);
+    setDebouncedFilter(view.filter);
   }, [driver?.driverId]);
 
-  // Persist changes for the current driver.
+  // Persist sort + view for the current driver.
   useEffect(() => {
     if (!driver?.driverId) return;
     saveDriverSort(driver.driverId, { key: sortKey, dir: sortDir });
   }, [driver?.driverId, sortKey, sortDir]);
+
+  useEffect(() => {
+    if (!driver?.driverId) return;
+    saveDriverView(driver.driverId, { tab, filter });
+  }, [driver?.driverId, tab, filter]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedFilter(filter), 200);
