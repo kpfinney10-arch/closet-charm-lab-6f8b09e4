@@ -592,7 +592,27 @@ function DriverDrillDownDialog({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value={tab} className="mt-3">
+          <TabsContent value={tab} className="mt-3 space-y-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Filter by case number or decedent name…"
+                className="pl-8 pr-8"
+                aria-label="Filter cases"
+              />
+              {filter && (
+                <button
+                  type="button"
+                  onClick={() => setFilter("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  aria-label="Clear filter"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
             {drillQ.isLoading ? (
               <div className="flex h-40 items-center justify-center">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
