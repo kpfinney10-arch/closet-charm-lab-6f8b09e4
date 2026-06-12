@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   listExportPresets,
@@ -408,7 +408,28 @@ function ReportsPage() {
       .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
     if (cases.length === 0) return;
     setDrillDown({ title, subtitle, cases });
+    setDrillVisible(DRILL_PAGE_SIZE);
   };
+
+  const DRILL_PAGE_SIZE = 50;
+  const [drillVisible, setDrillVisible] = useState(DRILL_PAGE_SIZE);
+  const drillSentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = drillSentinelRef.current;
+    if (!el || !drillDown) return;
+    const total = drillDown.cases.length;
+    if (drillVisible >= total) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setDrillVisible((n) => Math.min(n + DRILL_PAGE_SIZE, total));
+        }
+      },
+      { root: el.closest("[data-drill-scroll]"), rootMargin: "120px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [drillDown, drillVisible]);
 
   const drillByStatus = (status: string) =>
     openDrillDown(
@@ -1380,12 +1401,12 @@ function ReportsPage() {
             <DialogTitle>{drillDown?.title ?? "Cases"}</DialogTitle>
             <DialogDescription>
               {drillDown
-                ? `${drillDown.cases.length} case${drillDown.cases.length === 1 ? "" : "s"}${drillDown.subtitle ? ` · ${drillDown.subtitle}` : ""}`
+                ? `Showing ${Math.min(drillVisible, drillDown.cases.length)} of ${drillDown.cases.length} case${drillDown.cases.length === 1 ? "" : "s"}${drillDown.subtitle ? ` · ${drillDown.subtitle}` : ""}`
                 : null}
             </DialogDescription>
           </DialogHeader>
           {drillDown && (
-            <div className="max-h-[60vh] overflow-auto">
+            <div data-drill-scroll className="max-h-[60vh] overflow-auto">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-background text-xs text-muted-foreground">
                   <tr className="border-b">
@@ -1399,7 +1420,7 @@ function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {drillDown.cases.map((c) => (
+                  {drillDown.cases.slice(0, drillVisible).map((c) => (
                     <tr key={c.id} className="hover:bg-muted/40">
                       <td className="px-2 py-2 font-mono text-xs">{c.caseNumber}</td>
                       <td className="px-2 py-2">{c.decedentName}</td>
@@ -1427,6 +1448,27 @@ function ReportsPage() {
                   ))}
                 </tbody>
               </table>
+              {drillVisible < drillDown.cases.length && (
+                <div
+                  ref={drillSentinelRef}
+                  className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground"
+                >
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading more…
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="ml-2 h-7 text-xs"
+                    onClick={() =>
+                      setDrillVisible((n) =>
+                        Math.min(n + DRILL_PAGE_SIZE, drillDown.cases.length),
+                      )
+                    }
+                  >
+                    Load more
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
