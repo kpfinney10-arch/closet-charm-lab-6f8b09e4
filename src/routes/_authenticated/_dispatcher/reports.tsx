@@ -414,6 +414,20 @@ function ReportsPage() {
 
   const DRILL_PAGE_SIZE = 50;
   const [drillVisible, setDrillVisible] = useState(DRILL_PAGE_SIZE);
+  const [drillQuery, setDrillQuery] = useState("");
+  const drillFilteredCases = useMemo(() => {
+    if (!drillDown) return [];
+    const needle = drillQuery.trim().toLowerCase();
+    if (!needle) return drillDown.cases;
+    return drillDown.cases.filter((c) =>
+      [c.caseNumber, c.decedentName, c.releasedBy].some((v) =>
+        (v ?? "").toLowerCase().includes(needle),
+      ),
+    );
+  }, [drillDown, drillQuery]);
+  useEffect(() => {
+    setDrillVisible(DRILL_PAGE_SIZE);
+  }, [drillQuery]);
   const drillSentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = drillSentinelRef.current;
