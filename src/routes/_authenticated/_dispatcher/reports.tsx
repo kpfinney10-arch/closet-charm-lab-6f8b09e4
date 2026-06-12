@@ -432,7 +432,7 @@ function ReportsPage() {
   useEffect(() => {
     const el = drillSentinelRef.current;
     if (!el || !drillDown) return;
-    const total = drillDown.cases.length;
+    const total = drillFilteredCases.length;
     if (drillVisible >= total) return;
     const io = new IntersectionObserver(
       (entries) => {
@@ -444,7 +444,7 @@ function ReportsPage() {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [drillDown, drillVisible]);
+  }, [drillDown, drillVisible, drillFilteredCases.length]);
 
   const drillByStatus = (status: string) =>
     openDrillDown(
