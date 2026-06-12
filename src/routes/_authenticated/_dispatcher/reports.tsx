@@ -1345,3 +1345,48 @@ function Mini({ label, value }: { label: string; value: number | string }) {
     </div>
   );
 }
+
+function HBarChart({
+  data,
+  color,
+}: {
+  data: Array<{ name: string; count: number }>;
+  color: string;
+}) {
+  const height = Math.max(180, data.length * 32 + 24);
+  return (
+    <div style={{ height }} className="w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{ left: 8, right: 24, top: 4, bottom: 4 }}
+        >
+          <CartesianGrid horizontal={false} strokeDasharray="3 3" className="opacity-30" />
+          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={140}
+            tick={{ fontSize: 11 }}
+            interval={0}
+          />
+          <Tooltip
+            cursor={{ fill: "hsl(var(--muted) / 0.4)" }}
+            contentStyle={{
+              background: "hsl(var(--popover))",
+              border: "1px solid hsl(var(--border))",
+              borderRadius: 6,
+              fontSize: 12,
+            }}
+          />
+          <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]}>
+            {data.map((_, i) => (
+              <Cell key={i} fill={color} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
