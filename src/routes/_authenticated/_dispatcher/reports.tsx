@@ -409,15 +409,30 @@ function ReportsPage() {
     if (cases.length === 0) return;
     setDrillDown({ title, subtitle, cases });
     setDrillVisible(DRILL_PAGE_SIZE);
+    setDrillQuery("");
   };
 
   const DRILL_PAGE_SIZE = 50;
   const [drillVisible, setDrillVisible] = useState(DRILL_PAGE_SIZE);
+  const [drillQuery, setDrillQuery] = useState("");
+  const drillFilteredCases = useMemo(() => {
+    if (!drillDown) return [];
+    const needle = drillQuery.trim().toLowerCase();
+    if (!needle) return drillDown.cases;
+    return drillDown.cases.filter((c) =>
+      [c.caseNumber, c.decedentName, c.releasedBy].some((v) =>
+        (v ?? "").toLowerCase().includes(needle),
+      ),
+    );
+  }, [drillDown, drillQuery]);
+  useEffect(() => {
+    setDrillVisible(DRILL_PAGE_SIZE);
+  }, [drillQuery]);
   const drillSentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = drillSentinelRef.current;
     if (!el || !drillDown) return;
-    const total = drillDown.cases.length;
+    const total = drillFilteredCases.length;
     if (drillVisible >= total) return;
     const io = new IntersectionObserver(
       (entries) => {
@@ -429,7 +444,7 @@ function ReportsPage() {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [drillDown, drillVisible]);
+  }, [drillDown, drillVisible, drillFilteredCases.length]);
 
   const drillByStatus = (status: string) =>
     openDrillDown(
@@ -1401,75 +1416,106 @@ function ReportsPage() {
             <DialogTitle>{drillDown?.title ?? "Cases"}</DialogTitle>
             <DialogDescription>
               {drillDown
-                ? `Showing ${Math.min(drillVisible, drillDown.cases.length)} of ${drillDown.cases.length} case${drillDown.cases.length === 1 ? "" : "s"}${drillDown.subtitle ? ` · ${drillDown.subtitle}` : ""}`
+                ? `Showing ${Math.min(drillVisible, drillFilteredCases.length)} of ${drillFilteredCases.length}${
+                    drillQuery.trim()
+                      ? ` (filtered from ${drillDown.cases.length})`
+                      : ` case${drillDown.cases.length === 1 ? "" : "s"}`
+                  }${drillDown.subtitle ? ` · ${drillDown.subtitle}` : ""}`
                 : null}
             </DialogDescription>
           </DialogHeader>
           {drillDown && (
-            <div data-drill-scroll className="max-h-[60vh] overflow-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-background text-xs text-muted-foreground">
-                  <tr className="border-b">
-                    <th className="px-2 py-2 text-left font-medium">Case #</th>
-                    <th className="px-2 py-2 text-left font-medium">Decedent</th>
-                    <th className="px-2 py-2 text-left font-medium">Status</th>
-                    <th className="px-2 py-2 text-left font-medium">Created</th>
-                    <th className="px-2 py-2 text-left font-medium">Pickup</th>
-                    <th className="px-2 py-2 text-left font-medium">Driver</th>
-                    <th className="px-2 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {drillDown.cases.slice(0, drillVisible).map((c) => (
-                    <tr key={c.id} className="hover:bg-muted/40">
-                      <td className="px-2 py-2 font-mono text-xs">{c.caseNumber}</td>
-                      <td className="px-2 py-2">{c.decedentName}</td>
-                      <td className="px-2 py-2">{STATUS_LABEL[c.status] ?? c.status}</td>
-                      <td className="px-2 py-2 whitespace-nowrap">{fmtDateTime(c.createdAt)}</td>
-                      <td className="px-2 py-2">
-                        {facilityById.get(c.pickupFacilityId ?? "") || "—"}
-                      </td>
-                      <td className="px-2 py-2">
-                        {driverById.get(c.primaryDriverId ?? "") || "—"}
-                      </td>
-                      <td className="px-2 py-2 text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setDrillDown(null);
-                            navigate({ to: "/cases/$caseId", params: { caseId: c.id } });
-                          }}
-                        >
-                          Open
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {drillVisible < drillDown.cases.length && (
-                <div
-                  ref={drillSentinelRef}
-                  className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground"
-                >
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Loading more…
+            <>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={drillQuery}
+                  onChange={(e) => setDrillQuery(e.target.value)}
+                  placeholder="Filter by case # or decedent name…"
+                  className="h-8 text-sm"
+                  autoFocus
+                />
+                {drillQuery && (
                   <Button
+                    type="button"
                     size="sm"
                     variant="ghost"
-                    className="ml-2 h-7 text-xs"
-                    onClick={() =>
-                      setDrillVisible((n) =>
-                        Math.min(n + DRILL_PAGE_SIZE, drillDown.cases.length),
-                      )
-                    }
+                    className="h-8"
+                    onClick={() => setDrillQuery("")}
                   >
-                    Load more
+                    Clear
                   </Button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+              <div data-drill-scroll className="max-h-[60vh] overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-background text-xs text-muted-foreground">
+                    <tr className="border-b">
+                      <th className="px-2 py-2 text-left font-medium">Case #</th>
+                      <th className="px-2 py-2 text-left font-medium">Decedent</th>
+                      <th className="px-2 py-2 text-left font-medium">Status</th>
+                      <th className="px-2 py-2 text-left font-medium">Created</th>
+                      <th className="px-2 py-2 text-left font-medium">Pickup</th>
+                      <th className="px-2 py-2 text-left font-medium">Driver</th>
+                      <th className="px-2 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {drillFilteredCases.slice(0, drillVisible).map((c) => (
+                      <tr key={c.id} className="hover:bg-muted/40">
+                        <td className="px-2 py-2 font-mono text-xs">{c.caseNumber}</td>
+                        <td className="px-2 py-2">{c.decedentName}</td>
+                        <td className="px-2 py-2">{STATUS_LABEL[c.status] ?? c.status}</td>
+                        <td className="px-2 py-2 whitespace-nowrap">{fmtDateTime(c.createdAt)}</td>
+                        <td className="px-2 py-2">
+                          {facilityById.get(c.pickupFacilityId ?? "") || "—"}
+                        </td>
+                        <td className="px-2 py-2">
+                          {driverById.get(c.primaryDriverId ?? "") || "—"}
+                        </td>
+                        <td className="px-2 py-2 text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setDrillDown(null);
+                              navigate({ to: "/cases/$caseId", params: { caseId: c.id } });
+                            }}
+                          >
+                            Open
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {drillFilteredCases.length === 0 && (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    No cases match “{drillQuery}”.
+                  </p>
+                )}
+                {drillVisible < drillFilteredCases.length && (
+                  <div
+                    ref={drillSentinelRef}
+                    className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground"
+                  >
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading more…
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="ml-2 h-7 text-xs"
+                      onClick={() =>
+                        setDrillVisible((n) =>
+                          Math.min(n + DRILL_PAGE_SIZE, drillFilteredCases.length),
+                        )
+                      }
+                    >
+                      Load more
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
