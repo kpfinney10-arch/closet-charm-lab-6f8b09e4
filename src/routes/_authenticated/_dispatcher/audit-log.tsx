@@ -212,6 +212,7 @@ function AuditLogPage() {
           actor: debouncedActor.trim() || null,
           from: fromIso,
           to: toIso,
+          max: Number(exportLimit),
         },
       });
       window.clearInterval(creep);
