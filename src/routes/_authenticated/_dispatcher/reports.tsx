@@ -1456,7 +1456,24 @@ function ReportsPage() {
       </Card>
 
       <Dialog open={drillDown !== null} onOpenChange={(o) => !o && setDrillDown(null)}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent
+          className="max-w-4xl"
+          onCloseAutoFocus={(e) => {
+            const target = drillTriggerRef.current;
+            if (target && document.contains(target)) {
+              e.preventDefault();
+              // If the element isn't natively focusable, give it tabindex temporarily.
+              const hadTabIndex = target.hasAttribute("tabindex");
+              if (!hadTabIndex) target.setAttribute("tabindex", "-1");
+              target.focus({ preventScroll: false });
+              if (!hadTabIndex) {
+                const cleanup = () => target.removeAttribute("tabindex");
+                target.addEventListener("blur", cleanup, { once: true });
+              }
+            }
+            drillTriggerRef.current = null;
+          }}
+        >
           <DialogHeader>
             <DialogTitle>{drillDown?.title ?? "Cases"}</DialogTitle>
             <DialogDescription>
