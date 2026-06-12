@@ -1450,9 +1450,10 @@ function ReportsPage() {
             <>
               <div className="flex items-center gap-2">
                 <Input
+                  ref={drillSearchRef}
                   value={drillQuery}
                   onChange={(e) => setDrillQuery(e.target.value)}
-                  placeholder="Filter by case # or decedent name…"
+                  placeholder="Filter by case # or decedent name…  (Ctrl+F to focus, Enter to open first)"
                   className="h-8 text-sm"
                   autoFocus
                 />
