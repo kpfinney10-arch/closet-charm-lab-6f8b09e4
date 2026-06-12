@@ -399,6 +399,23 @@ function ReportsPage() {
   } | null>(null);
 
   const drillTriggerRef = useRef<HTMLElement | null>(null);
+  const lastPointerTargetRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      // Prefer a focusable ancestor (button, card, etc.) for restore.
+      const focusable =
+        (t.closest(
+          'button, [role="button"], a, [tabindex]:not([tabindex="-1"])',
+        ) as HTMLElement | null) ??
+        (t.closest(".recharts-wrapper") as HTMLElement | null) ??
+        t;
+      lastPointerTargetRef.current = focusable;
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, []);
 
   const openDrillDown = (
     title: string,
@@ -411,7 +428,8 @@ function ReportsPage() {
     if (cases.length === 0) return;
     const active = document.activeElement as HTMLElement | null;
     drillTriggerRef.current =
-      active && active !== document.body ? active : null;
+      lastPointerTargetRef.current ??
+      (active && active !== document.body ? active : null);
     setDrillDown({ title, subtitle, cases });
     setDrillVisible(DRILL_PAGE_SIZE);
     setDrillQuery("");
