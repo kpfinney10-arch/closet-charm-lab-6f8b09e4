@@ -756,7 +756,7 @@ function DriverDrillDownDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "all" | "late")}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as DrillTab)}>
           <TabsList>
             <TabsTrigger value="all">All runs ({cases.length})</TabsTrigger>
             <TabsTrigger value="late">
