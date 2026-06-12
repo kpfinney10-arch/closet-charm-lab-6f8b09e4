@@ -33,6 +33,9 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  AreaChart,
+  Area,
+  Cell,
 } from "recharts";
 import {
   getDispatchReports,
