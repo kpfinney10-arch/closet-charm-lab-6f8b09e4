@@ -1015,7 +1015,86 @@ function ReportsPage() {
         <Stat icon={XCircle} label="Cancelled" value={totals.cancelled} loading={loading} />
       </div>
 
+      {/* Cases over time */}
+      <Card>
+        <CardHeader className="space-y-0">
+          <CardTitle className="text-base">Cases over time</CardTitle>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Daily case volume by outcome across the selected range.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          ) : dailyCounts.every((d) => d.total === 0) ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              No cases match the current selection.
+            </p>
+          ) : (
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={dailyCounts}
+                  margin={{ left: -16, right: 8, top: 8, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="gDelivered" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(142 70% 45%)" stopOpacity={0.55} />
+                      <stop offset="100%" stopColor="hsl(142 70% 45%)" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="gInProgress" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.55} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="gCancelled" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.45} />
+                      <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={20} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 6,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    name="Delivered"
+                    dataKey="delivered"
+                    stackId="1"
+                    stroke="hsl(142 70% 45%)"
+                    fill="url(#gDelivered)"
+                  />
+                  <Area
+                    type="monotone"
+                    name="In progress"
+                    dataKey="inProgress"
+                    stackId="1"
+                    stroke="hsl(var(--primary))"
+                    fill="url(#gInProgress)"
+                  />
+                  <Area
+                    type="monotone"
+                    name="Cancelled"
+                    dataKey="cancelled"
+                    stackId="1"
+                    stroke="hsl(var(--destructive))"
+                    fill="url(#gCancelled)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
+
         {/* Cases by status */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
