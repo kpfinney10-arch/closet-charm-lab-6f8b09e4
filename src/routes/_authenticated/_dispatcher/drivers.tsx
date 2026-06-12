@@ -559,13 +559,18 @@ function DriverDrillDownDialog({
   const lateCases = cases.filter((c) => c.isLate);
   const base = tab === "late" ? lateCases : cases;
   const q = debouncedFilter.trim().toLowerCase();
-  const visible = q
+  const filtered = q
     ? base.filter(
         (c) =>
           c.caseNumber?.toLowerCase().includes(q) ||
           c.decedentName?.toLowerCase().includes(q),
       )
     : base;
+  const visible = useMemo(
+    () => sortCases(filtered, sortKey, sortDir),
+    [filtered, sortKey, sortDir],
+  );
+
 
   return (
     <Dialog
