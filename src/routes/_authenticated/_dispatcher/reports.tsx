@@ -408,7 +408,28 @@ function ReportsPage() {
       .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
     if (cases.length === 0) return;
     setDrillDown({ title, subtitle, cases });
+    setDrillVisible(DRILL_PAGE_SIZE);
   };
+
+  const DRILL_PAGE_SIZE = 50;
+  const [drillVisible, setDrillVisible] = useState(DRILL_PAGE_SIZE);
+  const drillSentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = drillSentinelRef.current;
+    if (!el || !drillDown) return;
+    const total = drillDown.cases.length;
+    if (drillVisible >= total) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setDrillVisible((n) => Math.min(n + DRILL_PAGE_SIZE, total));
+        }
+      },
+      { root: el.closest("[data-drill-scroll]"), rootMargin: "120px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [drillDown, drillVisible]);
 
   const drillByStatus = (status: string) =>
     openDrillDown(
