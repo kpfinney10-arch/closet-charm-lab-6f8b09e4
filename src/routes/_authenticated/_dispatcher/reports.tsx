@@ -442,8 +442,6 @@ function ReportsPage() {
       toast.success(`Renamed preset to "${p.name}"`);
       queryClient.invalidateQueries({ queryKey: ["report-export-presets"] });
     },
-    onError: (e: unknown) =>
-      toast.error(e instanceof Error ? e.message : "Could not rename preset"),
   });
 
   const saveCurrentAsPreset = () => {
@@ -468,6 +466,52 @@ function ReportsPage() {
 
   const deleteSavedPreset = (id: string) => deleteMut.mutate(id);
 
+  // Parse the server's structured "name_taken" error, if present.
+  const parseNameTaken = (
+    e: unknown,
+  ): { message: string; suggestion: string | null } | null => {
+    const raw = e instanceof Error ? e.message : "";
+    if (!raw.includes('"name_taken"')) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.code === "name_taken") {
+        return {
+          message: typeof parsed.message === "string" ? parsed.message : "Name already taken",
+          suggestion:
+            typeof parsed.suggestion === "string" ? parsed.suggestion : null,
+        };
+      }
+    } catch {
+      // fall through
+    }
+    return null;
+  };
+
+  const attemptRename = async (id: string, name: string) => {
+    try {
+      await renameMut.mutateAsync({ id, name });
+    } catch (e) {
+      const taken = parseNameTaken(e);
+      if (taken) {
+        if (taken.suggestion && typeof window !== "undefined") {
+          const ok = window.confirm(
+            `${taken.message}. Use "${taken.suggestion}" instead?`,
+          );
+          if (ok) {
+            await attemptRename(id, taken.suggestion);
+            return;
+          }
+        } else {
+          toast.error(
+            `${taken.message}. Try a different name.`,
+          );
+        }
+        return;
+      }
+      toast.error(e instanceof Error ? e.message : "Could not rename preset");
+    }
+  };
+
   const renameSavedPreset = (p: ExportPreset) => {
     const next = typeof window !== "undefined"
       ? window.prompt(`Rename preset "${p.name}" to:`, p.name)
@@ -479,7 +523,7 @@ function ReportsPage() {
       toast.error("Preset name must be 60 characters or fewer");
       return;
     }
-    renameMut.mutate({ id: p.id, name: trimmed });
+    void attemptRename(p.id, trimmed);
   };
 
   const activeSavedPreset = savedPresets.find(
