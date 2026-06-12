@@ -263,6 +263,49 @@ function ReportsPage() {
     }));
   }, [filteredCases]);
 
+  // Daily case volume across the selected range, segmented by outcome
+  const dailyCounts = useMemo(() => {
+    const start = new Date(`${from}T00:00:00`);
+    const end = new Date(`${to}T00:00:00`);
+    const days: Array<{
+      day: string;
+      label: string;
+      total: number;
+      delivered: number;
+      cancelled: number;
+      inProgress: number;
+    }> = [];
+    const map = new Map<string, { delivered: number; cancelled: number; inProgress: number }>();
+    for (const c of filteredCases) {
+      const key = (c.createdAt ?? "").slice(0, 10);
+      if (!key) continue;
+      const bucket = map.get(key) ?? { delivered: 0, cancelled: 0, inProgress: 0 };
+      if (c.status === "delivered" || c.status === "closed") bucket.delivered++;
+      else if (c.status === "cancelled") bucket.cancelled++;
+      else bucket.inProgress++;
+      map.set(key, bucket);
+    }
+    const cursor = new Date(start);
+    // Cap to ~120 buckets to keep chart legible
+    const maxDays = 120;
+    let count = 0;
+    while (cursor <= end && count < maxDays) {
+      const key = ymd(cursor);
+      const b = map.get(key) ?? { delivered: 0, cancelled: 0, inProgress: 0 };
+      const total = b.delivered + b.cancelled + b.inProgress;
+      days.push({
+        day: key,
+        label: cursor.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        total,
+        ...b,
+      });
+      cursor.setDate(cursor.getDate() + 1);
+      count++;
+    }
+    return days;
+  }, [filteredCases, from, to]);
+
+
   // Runs per driver
   const perDriver = useMemo(() => {
     const map = new Map<string, number>();
