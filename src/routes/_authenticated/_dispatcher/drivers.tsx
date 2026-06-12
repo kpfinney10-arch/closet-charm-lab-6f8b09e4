@@ -555,6 +555,58 @@ function sortCases(
   return [...rows].sort(cmp);
 }
 
+const SORT_STORAGE_KEY = "driverDrillDownSort:v1";
+const VALID_SORT_KEYS = new Set<SortKey>([
+  "scheduledAt",
+  "deliveredAt",
+  "lateByMinutes",
+  "totalMin",
+  "caseNumber",
+  "decedentName",
+]);
+
+function readSortMap(): Record<string, { key: SortKey; dir: "asc" | "desc" }> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(SORT_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function loadDriverSort(driverId: string | undefined): {
+  key: SortKey;
+  dir: "asc" | "desc";
+} {
+  const fallback = { key: "scheduledAt" as SortKey, dir: "desc" as const };
+  if (!driverId) return fallback;
+  const map = readSortMap();
+  const entry = map[driverId];
+  if (!entry || !VALID_SORT_KEYS.has(entry.key)) return fallback;
+  return {
+    key: entry.key,
+    dir: entry.dir === "asc" ? "asc" : "desc",
+  };
+}
+
+function saveDriverSort(
+  driverId: string,
+  value: { key: SortKey; dir: "asc" | "desc" },
+) {
+  if (typeof window === "undefined") return;
+  try {
+    const map = readSortMap();
+    map[driverId] = value;
+    window.localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore quota / serialization errors
+  }
+}
+
+
 function DriverDrillDownDialog({
   driver,
   range,
