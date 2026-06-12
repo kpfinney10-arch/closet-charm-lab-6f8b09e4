@@ -560,7 +560,13 @@ function DriverDrillDownDialog({
     : base;
 
   return (
-    <Dialog open={!!driver} onOpenChange={onOpenChange}>
+    <Dialog
+      open={!!driver}
+      onOpenChange={(open) => {
+        if (!open) setFilter("");
+        onOpenChange(open);
+      }}
+    >
       <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>{driver?.name ?? "Driver"} — performance detail</DialogTitle>
