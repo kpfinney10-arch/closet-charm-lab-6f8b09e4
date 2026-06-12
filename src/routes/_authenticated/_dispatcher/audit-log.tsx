@@ -480,6 +480,48 @@ function AuditLogPage() {
         </div>
       )}
 
+      {!isExporting && exportError && (
+        <Alert
+          variant="destructive"
+          role="alert"
+          aria-live="assertive"
+          className="flex items-start gap-3"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="flex-1 space-y-1">
+            <AlertTitle>CSV export failed</AlertTitle>
+            <AlertDescription className="space-y-1">
+              <p>{exportError.message}</p>
+              {exportError.detail && (
+                <p className="font-mono text-xs opacity-80">
+                  {exportError.status ? `[${exportError.status}] ` : ""}
+                  {exportError.detail}
+                </p>
+              )}
+              <p className="text-xs opacity-70">Failed at {exportError.at}</p>
+            </AlertDescription>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExport}
+              disabled={isExporting}
+            >
+              Retry
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setExportError(null)}
+              aria-label="Dismiss error"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
