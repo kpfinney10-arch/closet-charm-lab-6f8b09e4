@@ -556,7 +556,7 @@ function DriverDrillDownDialog({
   const cases = drillQ.data?.cases ?? [];
   const lateCases = cases.filter((c) => c.isLate);
   const base = tab === "late" ? lateCases : cases;
-  const q = filter.trim().toLowerCase();
+  const q = debouncedFilter.trim().toLowerCase();
   const visible = q
     ? base.filter(
         (c) =>
