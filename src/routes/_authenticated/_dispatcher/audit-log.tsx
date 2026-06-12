@@ -361,10 +361,15 @@ function AuditLogPage() {
           )}
           <Button
             variant="outline"
-            onClick={() => downloadCsv(rows as unknown as Array<Record<string, unknown>>)}
-            disabled={rows.length === 0}
+            onClick={handleExport}
+            disabled={isExporting || total === 0}
           >
-            <Download className="mr-2 h-4 w-4" /> Export CSV
+            {isExporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            Export CSV{total > 0 ? ` (${total.toLocaleString()})` : ""}
           </Button>
         </div>
       </div>
