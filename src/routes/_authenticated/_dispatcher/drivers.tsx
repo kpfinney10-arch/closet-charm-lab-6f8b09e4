@@ -837,6 +837,7 @@ function DriverDrillDownDialog({
                     setFilter("");
                     setDebouncedFilter("");
                     if (driver?.driverId) clearDriverView(driver.driverId);
+                    toast.success("Filters reset");
                   }}
                 >
                   Reset filters
