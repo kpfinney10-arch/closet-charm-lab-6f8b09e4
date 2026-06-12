@@ -32,10 +32,12 @@ import {
   CalendarIcon,
   X,
   User,
+  AlertTriangle,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
@@ -116,6 +118,40 @@ function downloadCsv(rows: Array<Record<string, unknown>>) {
   URL.revokeObjectURL(url);
 }
 
+function parseExportError(err: unknown): {
+  message: string;
+  detail?: string;
+  status?: number;
+} {
+  // TanStack server fns reject with a Response when handlers throw `new Response(...)`.
+  if (err instanceof Response) {
+    const status = err.status;
+    const friendly =
+      status === 401 || status === 403
+        ? "You don't have permission to export the audit log."
+        : status === 429
+          ? "Too many export requests — wait a moment and try again."
+          : status >= 500
+            ? "The server failed to build the export."
+            : "The export request was rejected.";
+    return {
+      message: friendly,
+      detail: `HTTP ${status}${err.statusText ? ` ${err.statusText}` : ""}`,
+      status,
+    };
+  }
+  if (err instanceof TypeError && /fetch|network/i.test(err.message)) {
+    return {
+      message: "Network error — check your connection and try again.",
+      detail: err.message,
+    };
+  }
+  if (err instanceof Error) {
+    return { message: "Export failed", detail: err.message };
+  }
+  return { message: "Export failed", detail: String(err) };
+}
+
 function useDebounced<T>(value: T, ms = 250): T {
   const [v, setV] = useState(value);
   useEffect(() => {
@@ -148,8 +184,15 @@ function AuditLogPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStatus, setExportStatus] = useState("");
+  const [exportError, setExportError] = useState<{
+    message: string;
+    detail?: string;
+    status?: number;
+    at: string;
+  } | null>(null);
 
   const handleExport = async () => {
+    setExportError(null);
     setIsExporting(true);
     setExportProgress(8);
     setExportStatus("Querying audit log…");
@@ -186,7 +229,15 @@ function AuditLogPage() {
 
       // Yield a frame so the "Building CSV" state can paint before blocking work.
       await new Promise((r) => setTimeout(r, 30));
-      downloadCsv(result.rows as unknown as Array<Record<string, unknown>>);
+      try {
+        downloadCsv(result.rows as unknown as Array<Record<string, unknown>>);
+      } catch (downloadErr) {
+        throw new Error(
+          downloadErr instanceof Error
+            ? `Couldn't trigger download: ${downloadErr.message}`
+            : "Couldn't trigger download in this browser.",
+        );
+      }
       setExportProgress(100);
       setExportStatus("Download started");
       toast.success(
@@ -197,9 +248,15 @@ function AuditLogPage() {
       );
     } catch (err) {
       window.clearInterval(creep);
-      const msg = err instanceof Error ? err.message : "Export failed";
+      const parsed = parseExportError(err);
       setExportStatus("Export failed");
-      toast.error(msg, { id: toastId });
+      setExportError({ ...parsed, at: new Date().toLocaleTimeString() });
+      toast.error(parsed.message, {
+        id: toastId,
+        description: parsed.detail,
+        duration: 8000,
+        action: { label: "Retry", onClick: () => handleExport() },
+      });
     } finally {
       window.clearInterval(creep);
       // Let the completed bar linger briefly before resetting.
@@ -423,6 +480,48 @@ function AuditLogPage() {
           </div>
           <Progress value={exportProgress} className="h-1.5" />
         </div>
+      )}
+
+      {!isExporting && exportError && (
+        <Alert
+          variant="destructive"
+          role="alert"
+          aria-live="assertive"
+          className="flex items-start gap-3"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="flex-1 space-y-1">
+            <AlertTitle>CSV export failed</AlertTitle>
+            <AlertDescription className="space-y-1">
+              <p>{exportError.message}</p>
+              {exportError.detail && (
+                <p className="font-mono text-xs opacity-80">
+                  {exportError.status ? `[${exportError.status}] ` : ""}
+                  {exportError.detail}
+                </p>
+              )}
+              <p className="text-xs opacity-70">Failed at {exportError.at}</p>
+            </AlertDescription>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExport}
+              disabled={isExporting}
+            >
+              Retry
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setExportError(null)}
+              aria-label="Dismiss error"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </Alert>
       )}
 
       <Card>
