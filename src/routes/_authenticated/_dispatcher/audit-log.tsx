@@ -758,7 +758,7 @@ function AuditLogPage() {
                                 setRenameDraft("");
                               }
                             }}
-                            aria-invalid={duplicate}
+                            aria-invalid={duplicate || !trimmed}
                             className="h-8"
                           />
                           {duplicate ? (
