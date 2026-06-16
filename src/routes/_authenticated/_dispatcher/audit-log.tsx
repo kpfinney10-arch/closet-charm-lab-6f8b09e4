@@ -97,7 +97,7 @@ export const Route = createFileRoute("/_authenticated/_dispatcher/audit-log")({
 const ACTIONS = ACTION_VALUES;
 type ActionFilter = (typeof ACTIONS)[number] | "all";
 
-const PAGE_SIZE = 50;
+
 
 type AuditRow = {
   id: string;
