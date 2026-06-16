@@ -438,6 +438,113 @@ function AuditLogPage() {
     setTargetPages(1);
   };
 
+  // Saved views
+  const queryClient = useQueryClient();
+  const listViewsFn = useServerFn(listAuditViews);
+  const saveViewFn = useServerFn(saveAuditView);
+  const deleteViewFn = useServerFn(deleteAuditView);
+
+  const viewsQuery = useQuery({
+    queryKey: ["audit-log-views"],
+    queryFn: () => listViewsFn(),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (name: string) =>
+      saveViewFn({
+        data: {
+          name,
+          filters: {
+            action: filter,
+            q: debouncedSearch.trim(),
+            actor: debouncedActor.trim(),
+            from: range?.from ? range.from.toISOString().slice(0, 10) : "",
+            to: (range?.to ?? range?.from)
+              ? (range?.to ?? range?.from)!.toISOString().slice(0, 10)
+              : "",
+            size: pageSize,
+          },
+        },
+      }),
+    onSuccess: (_, name) => {
+      queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
+      toast.success(`Saved view "${name}"`);
+    },
+    onError: (err) =>
+      toast.error("Couldn't save view", {
+        description: err instanceof Error ? err.message : String(err),
+      }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteViewFn({ data: { id } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
+      toast.success("View deleted");
+    },
+    onError: (err) =>
+      toast.error("Couldn't delete view", {
+        description: err instanceof Error ? err.message : String(err),
+      }),
+  });
+
+  const applyView = (filters: Record<string, unknown>) => {
+    const f = filters ?? {};
+    const action = typeof f.action === "string" ? f.action : "all";
+    setFilter((ACTION_VALUES as readonly string[]).includes(action) || action === "all"
+      ? (action as ActionFilter)
+      : "all");
+    setSearch(typeof f.q === "string" ? f.q : "");
+    setActor(typeof f.actor === "string" ? f.actor : "");
+    const fromStr = typeof f.from === "string" && f.from ? f.from : null;
+    const toStr = typeof f.to === "string" && f.to ? f.to : null;
+    setRange(
+      fromStr || toStr
+        ? {
+            from: fromStr ? new Date(fromStr) : undefined,
+            to: toStr ? new Date(toStr) : undefined,
+          }
+        : undefined,
+    );
+    setPageSize(typeof f.size === "number" ? f.size : 50);
+    setTargetPages(1);
+  };
+
+  // Detect which saved view (if any) matches current filters.
+  const currentMatchId = useMemo(() => {
+    const current = {
+      action: filter,
+      q: debouncedSearch.trim(),
+      actor: debouncedActor.trim(),
+      from: range?.from ? range.from.toISOString().slice(0, 10) : "",
+      to: (range?.to ?? range?.from)
+        ? (range?.to ?? range?.from)!.toISOString().slice(0, 10)
+        : "",
+      size: pageSize,
+    };
+    return (viewsQuery.data ?? []).find((v) => {
+      const f = (v.filters ?? {}) as Record<string, unknown>;
+      return (
+        (f.action ?? "all") === current.action &&
+        (f.q ?? "") === current.q &&
+        (f.actor ?? "") === current.actor &&
+        (f.from ?? "") === current.from &&
+        (f.to ?? "") === current.to &&
+        (f.size ?? 50) === current.size
+      );
+    })?.id ?? null;
+  }, [viewsQuery.data, filter, debouncedSearch, debouncedActor, range, pageSize]);
+
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [newViewName, setNewViewName] = useState("");
+
+  const handleSave = () => {
+    const name = newViewName.trim();
+    if (!name) return;
+    saveMutation.mutate(name, { onSettled: () => { setSaveOpen(false); setNewViewName(""); } });
+  };
+
+
   return (
     <div className="container mx-auto max-w-6xl space-y-6 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
