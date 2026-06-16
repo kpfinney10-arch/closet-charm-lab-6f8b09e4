@@ -445,6 +445,25 @@ function AuditLogPage() {
   const listViewsFn = useServerFn(listAuditViews);
   const saveViewFn = useServerFn(saveAuditView);
   const deleteViewFn = useServerFn(deleteAuditView);
+  const renameViewFn = useServerFn(renameAuditView);
+
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+
+  const renameMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      renameViewFn({ data: { id, name } }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
+      toast.success(`Renamed to "${vars.name}"`);
+      setRenamingId(null);
+      setRenameDraft("");
+    },
+    onError: (err) =>
+      toast.error("Couldn't rename view", {
+        description: err instanceof Error ? err.message : String(err),
+      }),
+  });
 
   const viewsQuery = useQuery({
     queryKey: ["audit-log-views"],
