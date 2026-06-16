@@ -718,51 +718,74 @@ function AuditLogPage() {
               ) : (
                 (viewsQuery.data ?? []).map((v) =>
                   renamingId === v.id ? (
-                    <div key={v.id} className="space-y-1.5 px-2 py-1.5">
-                      <Input
-                        autoFocus
-                        value={renameDraft}
-                        onChange={(e) => setRenameDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            const name = renameDraft.trim();
-                            if (name && name !== v.name) {
-                              renameMutation.mutate({ id: v.id, name });
-                            } else {
-                              setRenamingId(null);
-                            }
-                          }
-                          if (e.key === "Escape") {
-                            setRenamingId(null);
-                            setRenameDraft("");
-                          }
-                        }}
-                        className="h-8"
-                      />
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => { setRenamingId(null); setRenameDraft(""); }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            const name = renameDraft.trim();
-                            if (name && name !== v.name) {
-                              renameMutation.mutate({ id: v.id, name });
-                            } else {
-                              setRenamingId(null);
-                            }
-                          }}
-                          disabled={!renameDraft.trim() || renameMutation.isPending}
-                        >
-                          Save
-                        </Button>
-                      </div>
-                    </div>
+                    (() => {
+                      const trimmed = renameDraft.trim();
+                      const duplicate =
+                        trimmed.length > 0 &&
+                        trimmed.toLowerCase() !== v.name.toLowerCase() &&
+                        (viewsQuery.data ?? []).some(
+                          (o) =>
+                            o.id !== v.id &&
+                            o.name.toLowerCase() === trimmed.toLowerCase(),
+                        );
+                      const canSave =
+                        !!trimmed &&
+                        trimmed !== v.name &&
+                        !duplicate &&
+                        !renameMutation.isPending;
+                      const commit = () => {
+                        if (!trimmed) return;
+                        if (trimmed === v.name) {
+                          setRenamingId(null);
+                          return;
+                        }
+                        if (duplicate) return;
+                        renameMutation.mutate({ id: v.id, name: trimmed });
+                      };
+                      return (
+                        <div key={v.id} className="space-y-1.5 px-2 py-1.5">
+                          <Input
+                            autoFocus
+                            value={renameDraft}
+                            onChange={(e) => setRenameDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                commit();
+                              }
+                              if (e.key === "Escape") {
+                                setRenamingId(null);
+                                setRenameDraft("");
+                              }
+                            }}
+                            aria-invalid={duplicate}
+                            className="h-8"
+                          />
+                          {duplicate && (
+                            <p className="text-xs text-destructive">
+                              A view with that name already exists.
+                            </p>
+                          )}
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => { setRenamingId(null); setRenameDraft(""); }}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={commit}
+                              disabled={!canSave}
+                            >
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })()
+
                   ) : (
                     <DropdownMenuItem
                       key={v.id}
