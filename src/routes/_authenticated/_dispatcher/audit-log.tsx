@@ -923,7 +923,7 @@ function AuditLogPage() {
                           className="opacity-0 transition hover:text-destructive group-hover:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate(v.id);
+                            if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate({ id: v.id, name: v.name });
                           }}
                           aria-label={`Delete view ${v.name}`}
                         >
