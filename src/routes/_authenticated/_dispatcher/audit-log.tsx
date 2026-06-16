@@ -64,7 +64,7 @@ const ACTION_VALUES = [
 ] as const;
 
 const searchSchema = z.object({
-  action: fallback(z.enum(["all", ...ACTION_VALUES]), "all").default("all"),
+  action: fallback(z.enum(["all", "user_created", "user_disabled", "user_enabled", "user_deleted", "user_approved", "user_unapproved", "role_changed", "password_reset"]), "all").default("all"),
   q: fallback(z.string(), "").default(""),
   actor: fallback(z.string(), "").default(""),
   from: fallback(z.string(), "").default(""),
