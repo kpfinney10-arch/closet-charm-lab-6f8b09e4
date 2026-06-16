@@ -898,6 +898,7 @@ function AuditLogPage() {
                   ) : (
                     <DropdownMenuItem
                       key={v.id}
+                      ref={setViewItemRef(v.id)}
                       onSelect={(e) => {
                         e.preventDefault();
                         applyView((v.filters ?? {}) as Record<string, unknown>);
