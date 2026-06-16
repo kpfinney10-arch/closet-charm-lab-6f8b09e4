@@ -343,6 +343,7 @@ function AuditLogPage() {
     debouncedActor.trim(),
     fromIso,
     toIso,
+    pageSize,
   ] as const;
 
   const {
@@ -364,7 +365,7 @@ function AuditLogPage() {
           actor: debouncedActor.trim() || null,
           from: fromIso,
           to: toIso,
-          limit: PAGE_SIZE,
+          limit: pageSize,
           offset: pageParam,
         },
       }),
@@ -373,6 +374,32 @@ function AuditLogPage() {
       return loaded < (lastPage?.total ?? 0) ? loaded : undefined;
     },
   });
+
+  const loadedPages = data?.pages?.length ?? 0;
+
+  // Restore paginated state on refresh: keep loading next pages until we hit
+  // the target page count from the URL (or run out of results).
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !isFetchingNextPage &&
+      hasNextPage &&
+      loadedPages > 0 &&
+      loadedPages < targetPages
+    ) {
+      fetchNextPage();
+    }
+  }, [isLoading, isFetchingNextPage, hasNextPage, loadedPages, targetPages, fetchNextPage]);
+
+  // Keep targetPages in sync as the user loads more, and reset to 1 when
+  // filters or page size change.
+  useEffect(() => {
+    setTargetPages(1);
+  }, [filter, debouncedSearch, debouncedActor, fromIso, toIso, pageSize]);
+
+  useEffect(() => {
+    if (loadedPages > targetPages) setTargetPages(loadedPages);
+  }, [loadedPages, targetPages]);
 
   const rows = useMemo(
     () => (data?.pages ?? []).flatMap((p) => p?.rows ?? []),
