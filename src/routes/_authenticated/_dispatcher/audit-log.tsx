@@ -543,17 +543,10 @@ function AuditLogPage() {
               ))}
             </SelectContent>
           </Select>
-          {hasAnyFilter && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setFilter("all");
-                setSearch("");
-                setActor("");
-                setRange(undefined);
-              }}
-            >
-              Clear
+          {isNonDefault && (
+            <Button variant="ghost" onClick={resetAll} title="Reset filters, page, and page size">
+              <X className="mr-1.5 h-3.5 w-3.5" />
+              Reset
             </Button>
           )}
           <Select value={exportLimit} onValueChange={setExportLimit} disabled={isExporting}>
