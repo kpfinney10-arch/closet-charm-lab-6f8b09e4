@@ -3,6 +3,12 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { exportAdminAuditLogs, listAdminAuditLogs } from "@/lib/admin-users.functions";
+import {
+  deleteAuditView,
+  listAuditViews,
+  saveAuditView,
+} from "@/lib/audit-views.functions";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
@@ -35,7 +41,19 @@ import {
   X,
   User,
   AlertTriangle,
+  Bookmark,
+  Trash2,
+  Check,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
@@ -420,6 +438,113 @@ function AuditLogPage() {
     setTargetPages(1);
   };
 
+  // Saved views
+  const queryClient = useQueryClient();
+  const listViewsFn = useServerFn(listAuditViews);
+  const saveViewFn = useServerFn(saveAuditView);
+  const deleteViewFn = useServerFn(deleteAuditView);
+
+  const viewsQuery = useQuery({
+    queryKey: ["audit-log-views"],
+    queryFn: () => listViewsFn(),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (name: string) =>
+      saveViewFn({
+        data: {
+          name,
+          filters: {
+            action: filter,
+            q: debouncedSearch.trim(),
+            actor: debouncedActor.trim(),
+            from: range?.from ? range.from.toISOString().slice(0, 10) : "",
+            to: (range?.to ?? range?.from)
+              ? (range?.to ?? range?.from)!.toISOString().slice(0, 10)
+              : "",
+            size: pageSize,
+          },
+        },
+      }),
+    onSuccess: (_, name) => {
+      queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
+      toast.success(`Saved view "${name}"`);
+    },
+    onError: (err) =>
+      toast.error("Couldn't save view", {
+        description: err instanceof Error ? err.message : String(err),
+      }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteViewFn({ data: { id } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
+      toast.success("View deleted");
+    },
+    onError: (err) =>
+      toast.error("Couldn't delete view", {
+        description: err instanceof Error ? err.message : String(err),
+      }),
+  });
+
+  const applyView = (filters: Record<string, unknown>) => {
+    const f = filters ?? {};
+    const action = typeof f.action === "string" ? f.action : "all";
+    setFilter((ACTION_VALUES as readonly string[]).includes(action) || action === "all"
+      ? (action as ActionFilter)
+      : "all");
+    setSearch(typeof f.q === "string" ? f.q : "");
+    setActor(typeof f.actor === "string" ? f.actor : "");
+    const fromStr = typeof f.from === "string" && f.from ? f.from : null;
+    const toStr = typeof f.to === "string" && f.to ? f.to : null;
+    setRange(
+      fromStr || toStr
+        ? {
+            from: fromStr ? new Date(fromStr) : undefined,
+            to: toStr ? new Date(toStr) : undefined,
+          }
+        : undefined,
+    );
+    setPageSize(typeof f.size === "number" ? f.size : 50);
+    setTargetPages(1);
+  };
+
+  // Detect which saved view (if any) matches current filters.
+  const currentMatchId = useMemo(() => {
+    const current = {
+      action: filter,
+      q: debouncedSearch.trim(),
+      actor: debouncedActor.trim(),
+      from: range?.from ? range.from.toISOString().slice(0, 10) : "",
+      to: (range?.to ?? range?.from)
+        ? (range?.to ?? range?.from)!.toISOString().slice(0, 10)
+        : "",
+      size: pageSize,
+    };
+    return (viewsQuery.data ?? []).find((v) => {
+      const f = (v.filters ?? {}) as Record<string, unknown>;
+      return (
+        (f.action ?? "all") === current.action &&
+        (f.q ?? "") === current.q &&
+        (f.actor ?? "") === current.actor &&
+        (f.from ?? "") === current.from &&
+        (f.to ?? "") === current.to &&
+        (f.size ?? 50) === current.size
+      );
+    })?.id ?? null;
+  }, [viewsQuery.data, filter, debouncedSearch, debouncedActor, range, pageSize]);
+
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [newViewName, setNewViewName] = useState("");
+
+  const handleSave = () => {
+    const name = newViewName.trim();
+    if (!name) return;
+    saveMutation.mutate(name, { onSettled: () => { setSaveOpen(false); setNewViewName(""); } });
+  };
+
+
   return (
     <div className="container mx-auto max-w-6xl space-y-6 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -549,6 +674,113 @@ function AuditLogPage() {
               Reset
             </Button>
           )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-1.5">
+                <Bookmark className="h-4 w-4" />
+                {currentMatchId
+                  ? (viewsQuery.data ?? []).find((v) => v.id === currentMatchId)?.name
+                  : "Saved views"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Your saved views
+              </DropdownMenuLabel>
+              {viewsQuery.isLoading ? (
+                <div className="px-2 py-3 text-xs text-muted-foreground">Loading…</div>
+              ) : (viewsQuery.data ?? []).length === 0 ? (
+                <div className="px-2 py-3 text-xs text-muted-foreground">
+                  No saved views yet.
+                </div>
+              ) : (
+                (viewsQuery.data ?? []).map((v) => (
+                  <DropdownMenuItem
+                    key={v.id}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      applyView((v.filters ?? {}) as Record<string, unknown>);
+                    }}
+                    className="group flex items-center justify-between gap-2"
+                  >
+                    <span className="flex items-center gap-2 truncate">
+                      {currentMatchId === v.id ? (
+                        <Check className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <span className="w-3.5" />
+                      )}
+                      <span className="truncate">{v.name}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="opacity-0 transition group-hover:opacity-100 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate(v.id);
+                      }}
+                      aria-label={`Delete view ${v.name}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </DropdownMenuItem>
+                ))
+              )}
+              <DropdownMenuSeparator />
+              <div className="space-y-2 px-2 py-2">
+                {saveOpen ? (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="view-name" className="text-xs">
+                      View name
+                    </Label>
+                    <Input
+                      id="view-name"
+                      autoFocus
+                      placeholder="e.g. Role changes last 7 days"
+                      value={newViewName}
+                      onChange={(e) => setNewViewName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSave();
+                        if (e.key === "Escape") {
+                          setSaveOpen(false);
+                          setNewViewName("");
+                        }
+                      }}
+                      className="h-8"
+                    />
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => { setSaveOpen(false); setNewViewName(""); }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSave}
+                        disabled={!newViewName.trim() || saveMutation.isPending}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => setSaveOpen(true)}
+                    disabled={!isNonDefault}
+                  >
+                    <Bookmark className="mr-2 h-3.5 w-3.5" />
+                    Save current filters…
+                  </Button>
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Select value={exportLimit} onValueChange={setExportLimit} disabled={isExporting}>
             <SelectTrigger className="w-[140px]" aria-label="CSV row limit">
               <SelectValue />
