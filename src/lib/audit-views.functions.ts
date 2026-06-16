@@ -101,3 +101,31 @@ export const deleteAuditView = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const setDefaultSchema = z.object({
+  id: z.string().uuid(),
+  isDefault: z.boolean(),
+});
+
+export const setDefaultAuditView = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => setDefaultSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    if (data.isDefault) {
+      // Clear any existing default for this user (RLS scopes to user_id).
+      const { error: clearErr } = await context.supabase
+        .from("audit_log_views")
+        .update({ is_default: false })
+        .eq("user_id", context.userId)
+        .eq("is_default", true)
+        .neq("id", data.id);
+      if (clearErr) throw new Response(clearErr.message, { status: 500 });
+    }
+    const { error } = await context.supabase
+      .from("audit_log_views")
+      .update({ is_default: data.isDefault })
+      .eq("id", data.id);
+    if (error) throw new Response(error.message, { status: 500 });
+    return { ok: true };
+  });
+
+
