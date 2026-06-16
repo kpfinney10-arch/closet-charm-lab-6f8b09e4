@@ -559,7 +559,9 @@ function AuditLogPage() {
   const setDefaultMutation = useMutation({
     mutationFn: ({ id, isDefault }: { id: string; isDefault: boolean; name: string }) =>
       setDefaultViewFn({ data: { id, isDefault } }),
-    onMutate: ({ isDefault, name }) => {
+    onMutate: ({ id, isDefault, name }) => {
+      // Keep focus on the same item after the list re-renders.
+      pendingFocusIdRef.current = id;
       const toastId = toast.loading(
         isDefault ? `Setting "${name}" as default…` : `Clearing default on "${name}"…`,
       );
