@@ -8,6 +8,7 @@ import {
   listAuditViews,
   renameAuditView,
   saveAuditView,
+  setDefaultAuditView,
 } from "@/lib/audit-views.functions";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
