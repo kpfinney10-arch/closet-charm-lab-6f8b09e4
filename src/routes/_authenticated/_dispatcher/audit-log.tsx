@@ -502,29 +502,52 @@ function AuditLogPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteViewFn({ data: { id } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
-      toast.success("View deleted");
+    mutationFn: ({ id }: { id: string; name: string }) => deleteViewFn({ data: { id } }),
+    onMutate: ({ name }) => {
+      const toastId = toast.loading(`Deleting "${name}"…`);
+      return { toastId };
     },
-    onError: (err) =>
-      toast.error("Couldn't delete view", {
+    onSuccess: (_data, vars, ctx) => {
+      queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
+      toast.success(`Deleted view "${vars.name}"`, { id: ctx?.toastId });
+    },
+    onError: (err, vars, ctx) =>
+      toast.error(`Couldn't delete "${vars.name}"`, {
+        id: ctx?.toastId,
         description: err instanceof Error ? err.message : String(err),
       }),
   });
 
   const setDefaultMutation = useMutation({
-    mutationFn: ({ id, isDefault }: { id: string; isDefault: boolean }) =>
+    mutationFn: ({ id, isDefault }: { id: string; isDefault: boolean; name: string }) =>
       setDefaultViewFn({ data: { id, isDefault } }),
-    onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
-      toast.success(vars.isDefault ? "Set as default view" : "Cleared default view");
+    onMutate: ({ isDefault, name }) => {
+      const toastId = toast.loading(
+        isDefault ? `Setting "${name}" as default…` : `Clearing default on "${name}"…`,
+      );
+      return { toastId };
     },
-    onError: (err) =>
-      toast.error("Couldn't update default", {
-        description: err instanceof Error ? err.message : String(err),
-      }),
+    onSuccess: (_data, vars, ctx) => {
+      queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
+      toast.success(
+        vars.isDefault
+          ? `"${vars.name}" is now your default view`
+          : `Cleared default on "${vars.name}"`,
+        { id: ctx?.toastId },
+      );
+    },
+    onError: (err, vars, ctx) =>
+      toast.error(
+        vars.isDefault
+          ? `Couldn't set "${vars.name}" as default`
+          : `Couldn't clear default on "${vars.name}"`,
+        {
+          id: ctx?.toastId,
+          description: err instanceof Error ? err.message : String(err),
+        },
+      ),
   });
+
 
 
   const applyView = (filters: Record<string, unknown>) => {
@@ -868,7 +891,7 @@ function AuditLogPage() {
                           )}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setDefaultMutation.mutate({ id: v.id, isDefault: !v.is_default });
+                            setDefaultMutation.mutate({ id: v.id, isDefault: !v.is_default, name: v.name });
                           }}
                           aria-label={
                             v.is_default
@@ -900,7 +923,7 @@ function AuditLogPage() {
                           className="opacity-0 transition hover:text-destructive group-hover:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate(v.id);
+                            if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate({ id: v.id, name: v.name });
                           }}
                           aria-label={`Delete view ${v.name}`}
                         >
