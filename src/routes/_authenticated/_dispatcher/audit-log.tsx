@@ -891,7 +891,7 @@ function AuditLogPage() {
                       }}
                       aria-keyshortcuts="Enter S R Delete"
                       title="Enter: apply  ·  S: set default  ·  R: rename  ·  Delete: remove"
-                      className="group flex items-center justify-between gap-2 focus-visible:ring-2 focus-visible:ring-ring"
+                      className="group flex items-center justify-between gap-2 rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
                     >
                       <span className="flex items-center gap-2 truncate">
                         {currentMatchId === v.id ? (
