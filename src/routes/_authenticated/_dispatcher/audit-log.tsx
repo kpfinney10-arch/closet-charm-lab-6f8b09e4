@@ -210,6 +210,8 @@ function AuditLogPage() {
     return { from, to };
   });
   const [selectedRow, setSelectedRow] = useState<AuditRow | null>(null);
+  const [pageSize, setPageSize] = useState<number>(urlSearch.size);
+  const [targetPages, setTargetPages] = useState<number>(urlSearch.pages);
 
   const debouncedSearch = useDebounced(search);
   const debouncedActor = useDebounced(actor);
