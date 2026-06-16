@@ -47,6 +47,7 @@ import {
   Trash2,
   Pencil,
   Check,
+  Star,
 } from "lucide-react";
 import {
   DropdownMenu,
