@@ -653,6 +653,116 @@ function AuditLogPage() {
           )}
         </CardContent>
       </Card>
+
+      <AuditDetailSheet
+        row={selectedRow}
+        onClose={() => setSelectedRow(null)}
+      />
+    </div>
+  );
+}
+
+function AuditDetailSheet({
+  row,
+  onClose,
+}: {
+  row: AuditRow | null;
+  onClose: () => void;
+}) {
+  const open = !!row;
+  const detailEntries =
+    row?.details && typeof row.details === "object"
+      ? Object.entries(row.details as Record<string, unknown>)
+      : [];
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+        {row && (
+          <>
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                <Badge variant={actionVariant(row.action)}>
+                  {actionLabel(row.action)}
+                </Badge>
+                <span className="text-sm font-normal text-muted-foreground">
+                  {new Date(row.created_at).toLocaleString()}
+                </span>
+              </SheetTitle>
+              <SheetDescription>
+                Entry ID <code className="font-mono text-xs">{row.id}</code>
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="mt-6 space-y-5 text-sm">
+              <DetailField label="Target">
+                <div className="space-y-0.5">
+                  <div>{row.target_email ?? "—"}</div>
+                  {row.target_user_id && (
+                    <code className="block break-all font-mono text-xs text-muted-foreground">
+                      {row.target_user_id}
+                    </code>
+                  )}
+                </div>
+              </DetailField>
+
+              <DetailField label="Performed by">
+                <div className="space-y-0.5">
+                  <div>{row.actor_email ?? "—"}</div>
+                  <code className="block break-all font-mono text-xs text-muted-foreground">
+                    {row.actor_id}
+                  </code>
+                </div>
+              </DetailField>
+
+              <DetailField label="Details">
+                {detailEntries.length === 0 ? (
+                  <span className="text-muted-foreground">No additional details.</span>
+                ) : (
+                  <dl className="divide-y rounded-md border bg-muted/30">
+                    {detailEntries.map(([k, v]) => (
+                      <div
+                        key={k}
+                        className="grid grid-cols-[120px_1fr] gap-3 px-3 py-2"
+                      >
+                        <dt className="font-mono text-xs text-muted-foreground">
+                          {k}
+                        </dt>
+                        <dd className="break-words font-mono text-xs">
+                          {typeof v === "string" ? v : JSON.stringify(v)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </DetailField>
+
+              <DetailField label="Raw JSON">
+                <pre className="max-h-64 overflow-auto rounded-md border bg-muted/30 p-3 font-mono text-xs">
+                  {JSON.stringify(row, null, 2)}
+                </pre>
+              </DetailField>
+            </div>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function DetailField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      {children}
     </div>
   );
 }
