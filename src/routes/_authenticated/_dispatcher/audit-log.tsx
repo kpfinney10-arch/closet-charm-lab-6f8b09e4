@@ -891,7 +891,7 @@ function AuditLogPage() {
                       }}
                       aria-keyshortcuts="Enter S R Delete"
                       title="Enter: apply  ·  S: set default  ·  R: rename  ·  Delete: remove"
-                      className="group flex items-center justify-between gap-2 focus-visible:ring-2 focus-visible:ring-ring"
+                      className="group flex items-center justify-between gap-2 rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
                     >
                       <span className="flex items-center gap-2 truncate">
                         {currentMatchId === v.id ? (
@@ -916,7 +916,7 @@ function AuditLogPage() {
                           tabIndex={-1}
                           disabled={v.is_default || setDefaultMutation.isPending}
                           className={cn(
-                            "rounded-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            "inline-flex h-6 w-6 items-center justify-center rounded-sm transition-colors hover:bg-amber-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 dark:hover:bg-amber-500/10",
                             v.is_default
                               ? "cursor-default text-amber-500 opacity-100"
                               : "opacity-0 hover:text-amber-500 group-hover:opacity-100 group-focus-visible:opacity-100",
@@ -948,7 +948,7 @@ function AuditLogPage() {
                         <button
                           type="button"
                           tabIndex={-1}
-                          className="rounded-sm opacity-0 transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 group-focus-visible:opacity-100"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-sm opacity-0 transition-colors hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 group-hover:opacity-100 group-focus-visible:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             setRenamingId(v.id);
@@ -962,7 +962,7 @@ function AuditLogPage() {
                         <button
                           type="button"
                           tabIndex={-1}
-                          className="rounded-sm opacity-0 transition hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 group-focus-visible:opacity-100"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-sm opacity-0 transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 group-hover:opacity-100 group-focus-visible:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate({ id: v.id, name: v.name });
