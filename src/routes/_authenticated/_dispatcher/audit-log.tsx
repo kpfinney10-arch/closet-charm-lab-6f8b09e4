@@ -52,7 +52,27 @@ import type { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
+const ACTION_VALUES = [
+  "user_created",
+  "user_disabled",
+  "user_enabled",
+  "user_deleted",
+  "user_approved",
+  "user_unapproved",
+  "role_changed",
+  "password_reset",
+] as const;
+
+const searchSchema = z.object({
+  action: fallback(z.enum(["all", ...ACTION_VALUES]), "all").default("all"),
+  q: fallback(z.string(), "").default(""),
+  actor: fallback(z.string(), "").default(""),
+  from: fallback(z.string(), "").default(""),
+  to: fallback(z.string(), "").default(""),
+});
+
 export const Route = createFileRoute("/_authenticated/_dispatcher/audit-log")({
+  validateSearch: zodValidator(searchSchema),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/login" });
@@ -70,16 +90,7 @@ export const Route = createFileRoute("/_authenticated/_dispatcher/audit-log")({
   }),
 });
 
-const ACTIONS = [
-  "user_created",
-  "user_disabled",
-  "user_enabled",
-  "user_deleted",
-  "user_approved",
-  "user_unapproved",
-  "role_changed",
-  "password_reset",
-] as const;
+const ACTIONS = ACTION_VALUES;
 type ActionFilter = (typeof ACTIONS)[number] | "all";
 
 const PAGE_SIZE = 50;
