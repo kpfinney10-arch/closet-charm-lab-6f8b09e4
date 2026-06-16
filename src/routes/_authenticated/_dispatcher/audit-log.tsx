@@ -948,7 +948,7 @@ function AuditLogPage() {
                         <button
                           type="button"
                           tabIndex={-1}
-                          className="rounded-sm opacity-0 transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 group-focus-visible:opacity-100"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-sm opacity-0 transition-colors hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 group-hover:opacity-100 group-focus-visible:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             setRenamingId(v.id);
