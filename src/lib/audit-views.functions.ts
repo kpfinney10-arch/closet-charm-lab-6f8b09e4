@@ -60,15 +60,32 @@ export const renameAuditView = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => renameSchema.parse(d))
   .handler(async ({ data, context }) => {
+    // Prevent rename to an existing view name (case-insensitive) for this user.
+    const { data: existing, error: checkError } = await context.supabase
+      .from("audit_log_views")
+      .select("id")
+      .eq("user_id", context.userId)
+      .ilike("name", data.name)
+      .neq("id", data.id)
+      .maybeSingle();
+    if (checkError) throw new Response(checkError.message, { status: 500 });
+    if (existing) {
+      throw new Response("A view with that name already exists.", { status: 409 });
+    }
     const { data: row, error } = await context.supabase
       .from("audit_log_views")
       .update({ name: data.name })
       .eq("id", data.id)
       .select("id, name, filters, updated_at")
       .single();
-    if (error) throw new Response(error.message, { status: 400 });
+    if (error) {
+      const status = error.code === "23505" ? 409 : 400;
+      const msg = status === 409 ? "A view with that name already exists." : error.message;
+      throw new Response(msg, { status });
+    }
     return row;
   });
+
 
 export const deleteAuditView = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
