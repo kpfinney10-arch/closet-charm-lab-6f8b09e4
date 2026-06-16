@@ -51,6 +51,25 @@ export const saveAuditView = createServerFn({ method: "POST" })
 
 const idSchema = z.object({ id: z.string().uuid() });
 
+const renameSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(80),
+});
+
+export const renameAuditView = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => renameSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("audit_log_views")
+      .update({ name: data.name })
+      .eq("id", data.id)
+      .select("id, name, filters, updated_at")
+      .single();
+    if (error) throw new Response(error.message, { status: 400 });
+    return row;
+  });
+
 export const deleteAuditView = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => idSchema.parse(d))
@@ -62,3 +81,4 @@ export const deleteAuditView = createServerFn({ method: "POST" })
     if (error) throw new Response(error.message, { status: 500 });
     return { ok: true };
   });
+
