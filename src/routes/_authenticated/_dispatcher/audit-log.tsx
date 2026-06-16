@@ -537,7 +537,8 @@ function AuditLogPage() {
 
   const deleteMutation = useMutation({
     mutationFn: ({ id }: { id: string; name: string }) => deleteViewFn({ data: { id } }),
-    onMutate: ({ name }) => {
+    onMutate: ({ id, name }) => {
+      pendingFocusIdRef.current = focusTargetAfterRemoval(id);
       const toastId = toast.loading(`Deleting "${name}"…`);
       return { toastId };
     },
@@ -545,12 +546,15 @@ function AuditLogPage() {
       queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
       toast.success(`Deleted view "${vars.name}"`, { id: ctx?.toastId });
     },
-    onError: (err, vars, ctx) =>
+    onError: (err, vars, ctx) => {
+      pendingFocusIdRef.current = null;
       toast.error(`Couldn't delete "${vars.name}"`, {
         id: ctx?.toastId,
         description: err instanceof Error ? err.message : String(err),
-      }),
+      });
+    },
   });
+
 
   const setDefaultMutation = useMutation({
     mutationFn: ({ id, isDefault }: { id: string; isDefault: boolean; name: string }) =>
