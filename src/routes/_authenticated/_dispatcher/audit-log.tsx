@@ -862,7 +862,36 @@ function AuditLogPage() {
                         e.preventDefault();
                         applyView((v.filters ?? {}) as Record<string, unknown>);
                       }}
-                      className="group flex items-center justify-between gap-2"
+                      onKeyDown={(e) => {
+                        // Keyboard shortcuts while the menu item is focused.
+                        // Radix's roving tabindex prevents tabbing into child
+                        // icon buttons, so we surface the actions here.
+                        if (e.key === "s" || e.key === "S") {
+                          e.preventDefault();
+                          if (!v.is_default && !setDefaultMutation.isPending) {
+                            setDefaultMutation.mutate({
+                              id: v.id,
+                              isDefault: true,
+                              name: v.name,
+                            });
+                          }
+                        } else if (
+                          e.key === "Delete" ||
+                          e.key === "Backspace"
+                        ) {
+                          e.preventDefault();
+                          if (confirm(`Delete view "${v.name}"?`)) {
+                            deleteMutation.mutate({ id: v.id, name: v.name });
+                          }
+                        } else if (e.key === "r" || e.key === "R") {
+                          e.preventDefault();
+                          setRenamingId(v.id);
+                          setRenameDraft(v.name);
+                        }
+                      }}
+                      aria-keyshortcuts="Enter S R Delete"
+                      title="Enter: apply  ·  S: set default  ·  R: rename  ·  Delete: remove"
+                      className="group flex items-center justify-between gap-2 focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <span className="flex items-center gap-2 truncate">
                         {currentMatchId === v.id ? (
@@ -884,12 +913,13 @@ function AuditLogPage() {
                       <span className="flex items-center gap-1">
                         <button
                           type="button"
+                          tabIndex={-1}
                           disabled={v.is_default || setDefaultMutation.isPending}
                           className={cn(
-                            "transition",
+                            "rounded-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             v.is_default
                               ? "cursor-default text-amber-500 opacity-100"
-                              : "opacity-0 hover:text-amber-500 group-hover:opacity-100",
+                              : "opacity-0 hover:text-amber-500 group-hover:opacity-100 group-focus-visible:opacity-100",
                             "disabled:cursor-default",
                           )}
                           onClick={(e) => {
@@ -900,13 +930,13 @@ function AuditLogPage() {
                           aria-label={
                             v.is_default
                               ? `${v.name} is the default view`
-                              : `Set view ${v.name} as default`
+                              : `Set view ${v.name} as default (shortcut: S)`
                           }
                           aria-pressed={v.is_default}
                           title={
                             v.is_default
                               ? "This is your default view"
-                              : "Set as default"
+                              : "Set as default (S)"
                           }
                         >
                           <Star
@@ -917,28 +947,33 @@ function AuditLogPage() {
 
                         <button
                           type="button"
-                          className="opacity-0 transition hover:text-primary group-hover:opacity-100"
+                          tabIndex={-1}
+                          className="rounded-sm opacity-0 transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 group-focus-visible:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             setRenamingId(v.id);
                             setRenameDraft(v.name);
                           }}
-                          aria-label={`Rename view ${v.name}`}
+                          aria-label={`Rename view ${v.name} (shortcut: R)`}
+                          title="Rename (R)"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
-                          className="opacity-0 transition hover:text-destructive group-hover:opacity-100"
+                          tabIndex={-1}
+                          className="rounded-sm opacity-0 transition hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 group-focus-visible:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate({ id: v.id, name: v.name });
                           }}
-                          aria-label={`Delete view ${v.name}`}
+                          aria-label={`Delete view ${v.name} (shortcut: Delete)`}
+                          title="Delete (Delete)"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </span>
+
 
                     </DropdownMenuItem>
                   ),
