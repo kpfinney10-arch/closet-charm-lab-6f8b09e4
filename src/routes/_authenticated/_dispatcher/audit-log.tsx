@@ -513,6 +513,20 @@ function AuditLogPage() {
       }),
   });
 
+  const setDefaultMutation = useMutation({
+    mutationFn: ({ id, isDefault }: { id: string; isDefault: boolean }) =>
+      setDefaultViewFn({ data: { id, isDefault } }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
+      toast.success(vars.isDefault ? "Set as default view" : "Cleared default view");
+    },
+    onError: (err) =>
+      toast.error("Couldn't update default", {
+        description: err instanceof Error ? err.message : String(err),
+      }),
+  });
+
+
   const applyView = (filters: Record<string, unknown>) => {
     const f = filters ?? {};
     const action = typeof f.action === "string" ? f.action : "all";
