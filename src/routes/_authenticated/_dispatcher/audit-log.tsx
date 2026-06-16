@@ -6,6 +6,7 @@ import { exportAdminAuditLogs, listAdminAuditLogs } from "@/lib/admin-users.func
 import {
   deleteAuditView,
   listAuditViews,
+  renameAuditView,
   saveAuditView,
 } from "@/lib/audit-views.functions";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
