@@ -758,14 +758,23 @@ function AuditLogPage() {
                                 setRenameDraft("");
                               }
                             }}
-                            aria-invalid={duplicate}
+                            aria-invalid={duplicate || !trimmed}
                             className="h-8"
                           />
-                          {duplicate && (
+                          {duplicate ? (
                             <p className="text-xs text-destructive">
                               A view with that name already exists.
                             </p>
+                          ) : !trimmed ? (
+                            <p className="text-xs text-destructive">
+                              Name can't be empty or just whitespace.
+                            </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              Name can't be empty or just whitespace.
+                            </p>
                           )}
+
                           <div className="flex justify-end gap-1">
                             <Button
                               size="sm"
