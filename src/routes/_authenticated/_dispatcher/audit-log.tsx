@@ -63,12 +63,16 @@ const ACTION_VALUES = [
   "password_reset",
 ] as const;
 
+const PAGE_SIZE_VALUES = [25, 50, 100, 200] as const;
+
 const searchSchema = z.object({
   action: fallback(z.enum(["all", "user_created", "user_disabled", "user_enabled", "user_deleted", "user_approved", "user_unapproved", "role_changed", "password_reset"]), "all").default("all"),
   q: fallback(z.string(), "").default(""),
   actor: fallback(z.string(), "").default(""),
   from: fallback(z.string(), "").default(""),
   to: fallback(z.string(), "").default(""),
+  size: fallback(z.coerce.number().int().refine((n) => (PAGE_SIZE_VALUES as readonly number[]).includes(n)), 50).default(50),
+  pages: fallback(z.coerce.number().int().min(1).max(50), 1).default(1),
 });
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/audit-log")({
