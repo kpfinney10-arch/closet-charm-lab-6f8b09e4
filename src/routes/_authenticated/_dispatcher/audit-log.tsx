@@ -409,6 +409,16 @@ function AuditLogPage() {
 
   const hasAnyFilter =
     filter !== "all" || !!debouncedSearch.trim() || !!debouncedActor.trim() || !!range;
+  const isNonDefault = hasAnyFilter || pageSize !== 50 || targetPages !== 1;
+
+  const resetAll = () => {
+    setFilter("all");
+    setSearch("");
+    setActor("");
+    setRange(undefined);
+    setPageSize(50);
+    setTargetPages(1);
+  };
 
   return (
     <div className="container mx-auto max-w-6xl space-y-6 p-6">
@@ -533,17 +543,10 @@ function AuditLogPage() {
               ))}
             </SelectContent>
           </Select>
-          {hasAnyFilter && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setFilter("all");
-                setSearch("");
-                setActor("");
-                setRange(undefined);
-              }}
-            >
-              Clear
+          {isNonDefault && (
+            <Button variant="ghost" onClick={resetAll} title="Reset filters, page, and page size">
+              <X className="mr-1.5 h-3.5 w-3.5" />
+              Reset
             </Button>
           )}
           <Select value={exportLimit} onValueChange={setExportLimit} disabled={isExporting}>
