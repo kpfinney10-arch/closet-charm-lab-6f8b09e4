@@ -193,14 +193,40 @@ function useDebounced<T>(value: T, ms = 250): T {
 }
 
 function AuditLogPage() {
-  const [filter, setFilter] = useState<ActionFilter>("all");
-  const [search, setSearch] = useState("");
-  const [actor, setActor] = useState("");
-  const [range, setRange] = useState<DateRange | undefined>(undefined);
+  const urlSearch = Route.useSearch();
+  const navigate = Route.useNavigate();
+
+  const [filter, setFilter] = useState<ActionFilter>(urlSearch.action as ActionFilter);
+  const [search, setSearch] = useState(urlSearch.q);
+  const [actor, setActor] = useState(urlSearch.actor);
+  const [range, setRange] = useState<DateRange | undefined>(() => {
+    const from = urlSearch.from ? new Date(urlSearch.from) : undefined;
+    const to = urlSearch.to ? new Date(urlSearch.to) : undefined;
+    if (!from && !to) return undefined;
+    return { from, to };
+  });
   const [selectedRow, setSelectedRow] = useState<AuditRow | null>(null);
 
   const debouncedSearch = useDebounced(search);
   const debouncedActor = useDebounced(actor);
+
+  // Persist filters in the URL so refresh/share preserves context.
+  useEffect(() => {
+    const next = {
+      action: filter,
+      q: debouncedSearch.trim(),
+      actor: debouncedActor.trim(),
+      from: range?.from ? range.from.toISOString().slice(0, 10) : "",
+      to: (range?.to ?? range?.from)
+        ? (range?.to ?? range?.from)!.toISOString().slice(0, 10)
+        : "",
+    };
+    navigate({
+      search: () => next,
+      replace: true,
+      resetScroll: false,
+    });
+  }, [filter, debouncedSearch, debouncedActor, range, navigate]);
 
   const fromIso = useMemo(
     () => (range?.from ? new Date(new Date(range.from).setHours(0, 0, 0, 0)).toISOString() : null),
