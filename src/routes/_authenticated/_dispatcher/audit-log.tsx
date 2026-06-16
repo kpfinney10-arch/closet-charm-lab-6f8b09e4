@@ -173,6 +173,7 @@ function AuditLogPage() {
   const [search, setSearch] = useState("");
   const [actor, setActor] = useState("");
   const [range, setRange] = useState<DateRange | undefined>(undefined);
+  const [selectedRow, setSelectedRow] = useState<AuditRow | null>(null);
 
   const debouncedSearch = useDebounced(search);
   const debouncedActor = useDebounced(actor);
