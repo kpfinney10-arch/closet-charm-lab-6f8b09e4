@@ -18,11 +18,12 @@ export const listAuditViews = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("audit_log_views")
-      .select("id, name, filters, updated_at")
+      .select("id, name, filters, updated_at, is_default")
       .order("name", { ascending: true });
     if (error) throw new Response(error.message, { status: 500 });
     return data ?? [];
   });
+
 
 const saveSchema = z.object({
   name: z.string().trim().min(1).max(80),
