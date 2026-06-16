@@ -216,7 +216,7 @@ function AuditLogPage() {
   const debouncedSearch = useDebounced(search);
   const debouncedActor = useDebounced(actor);
 
-  // Persist filters in the URL so refresh/share preserves context.
+  // Persist filters + pagination in the URL so refresh/share preserves context.
   useEffect(() => {
     const next = {
       action: filter,
@@ -226,13 +226,15 @@ function AuditLogPage() {
       to: (range?.to ?? range?.from)
         ? (range?.to ?? range?.from)!.toISOString().slice(0, 10)
         : "",
+      size: pageSize,
+      pages: targetPages,
     };
     navigate({
       search: () => next,
       replace: true,
       resetScroll: false,
     });
-  }, [filter, debouncedSearch, debouncedActor, range, navigate]);
+  }, [filter, debouncedSearch, debouncedActor, range, pageSize, targetPages, navigate]);
 
   const fromIso = useMemo(
     () => (range?.from ? new Date(new Date(range.from).setHours(0, 0, 0, 0)).toISOString() : null),
