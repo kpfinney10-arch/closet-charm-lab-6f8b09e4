@@ -598,7 +598,11 @@ function AuditLogPage() {
                   </TableHeader>
                   <TableBody>
                     {rows.map((row) => (
-                      <TableRow key={row.id}>
+                      <TableRow
+                        key={row.id}
+                        className="cursor-pointer"
+                        onClick={() => setSelectedRow(row as AuditRow)}
+                      >
                         <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                           {new Date(row.created_at).toLocaleString()}
                         </TableCell>
