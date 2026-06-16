@@ -848,11 +848,44 @@ function AuditLogPage() {
                           <span className="w-3.5" />
                         )}
                         <span className="truncate">{v.name}</span>
+                        {v.is_default && (
+                          <span
+                            className="ml-1 rounded-sm bg-muted px-1 py-px text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                            title="Default view — auto-applies on open"
+                          >
+                            Default
+                          </span>
+                        )}
                       </span>
-                      <span className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+                      <span className="flex items-center gap-1">
                         <button
                           type="button"
-                          className="hover:text-primary"
+                          className={cn(
+                            "transition",
+                            v.is_default
+                              ? "text-amber-500 hover:text-amber-600"
+                              : "opacity-0 hover:text-amber-500 group-hover:opacity-100",
+                          )}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDefaultMutation.mutate({ id: v.id, isDefault: !v.is_default });
+                          }}
+                          aria-label={
+                            v.is_default
+                              ? `Clear default for view ${v.name}`
+                              : `Set view ${v.name} as default`
+                          }
+                          aria-pressed={v.is_default}
+                          title={v.is_default ? "Default view" : "Set as default"}
+                        >
+                          <Star
+                            className="h-3.5 w-3.5"
+                            fill={v.is_default ? "currentColor" : "none"}
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          className="opacity-0 transition hover:text-primary group-hover:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             setRenamingId(v.id);
@@ -864,7 +897,7 @@ function AuditLogPage() {
                         </button>
                         <button
                           type="button"
-                          className="hover:text-destructive"
+                          className="opacity-0 transition hover:text-destructive group-hover:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate(v.id);
@@ -874,6 +907,7 @@ function AuditLogPage() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </span>
+
                     </DropdownMenuItem>
                   ),
                 )
