@@ -674,6 +674,113 @@ function AuditLogPage() {
               Reset
             </Button>
           )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-1.5">
+                <Bookmark className="h-4 w-4" />
+                {currentMatchId
+                  ? (viewsQuery.data ?? []).find((v) => v.id === currentMatchId)?.name
+                  : "Saved views"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Your saved views
+              </DropdownMenuLabel>
+              {viewsQuery.isLoading ? (
+                <div className="px-2 py-3 text-xs text-muted-foreground">Loading…</div>
+              ) : (viewsQuery.data ?? []).length === 0 ? (
+                <div className="px-2 py-3 text-xs text-muted-foreground">
+                  No saved views yet.
+                </div>
+              ) : (
+                (viewsQuery.data ?? []).map((v) => (
+                  <DropdownMenuItem
+                    key={v.id}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      applyView((v.filters ?? {}) as Record<string, unknown>);
+                    }}
+                    className="group flex items-center justify-between gap-2"
+                  >
+                    <span className="flex items-center gap-2 truncate">
+                      {currentMatchId === v.id ? (
+                        <Check className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <span className="w-3.5" />
+                      )}
+                      <span className="truncate">{v.name}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="opacity-0 transition group-hover:opacity-100 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate(v.id);
+                      }}
+                      aria-label={`Delete view ${v.name}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </DropdownMenuItem>
+                ))
+              )}
+              <DropdownMenuSeparator />
+              <div className="space-y-2 px-2 py-2">
+                {saveOpen ? (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="view-name" className="text-xs">
+                      View name
+                    </Label>
+                    <Input
+                      id="view-name"
+                      autoFocus
+                      placeholder="e.g. Role changes last 7 days"
+                      value={newViewName}
+                      onChange={(e) => setNewViewName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSave();
+                        if (e.key === "Escape") {
+                          setSaveOpen(false);
+                          setNewViewName("");
+                        }
+                      }}
+                      className="h-8"
+                    />
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => { setSaveOpen(false); setNewViewName(""); }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSave}
+                        disabled={!newViewName.trim() || saveMutation.isPending}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => setSaveOpen(true)}
+                    disabled={!isNonDefault}
+                  >
+                    <Bookmark className="mr-2 h-3.5 w-3.5" />
+                    Save current filters…
+                  </Button>
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Select value={exportLimit} onValueChange={setExportLimit} disabled={isExporting}>
             <SelectTrigger className="w-[140px]" aria-label="CSV row limit">
               <SelectValue />
