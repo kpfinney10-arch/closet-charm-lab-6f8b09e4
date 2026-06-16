@@ -60,18 +60,19 @@ export const renameAuditView = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => renameSchema.parse(d))
   .handler(async ({ data, context }) => {
-    // Prevent rename to an existing view name (case-insensitive) for this user.
-    const { data: existing, error: checkError } = await context.supabase
+    // Prevent rename to an existing view name (case-insensitive, trimmed) for this user.
+    // Use lower(name) equality to avoid ilike treating % and _ as wildcards.
+    const normalized = data.name.toLowerCase();
+    const { data: siblings, error: checkError } = await context.supabase
       .from("audit_log_views")
-      .select("id")
+      .select("id, name")
       .eq("user_id", context.userId)
-      .ilike("name", data.name)
-      .neq("id", data.id)
-      .maybeSingle();
+      .neq("id", data.id);
     if (checkError) throw new Response(checkError.message, { status: 500 });
-    if (existing) {
+    if ((siblings ?? []).some((s) => s.name.trim().toLowerCase() === normalized)) {
       throw new Response("A view with that name already exists.", { status: 409 });
     }
+
     const { data: row, error } = await context.supabase
       .from("audit_log_views")
       .update({ name: data.name })
