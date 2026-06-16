@@ -891,7 +891,7 @@ function AuditLogPage() {
                           )}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setDefaultMutation.mutate({ id: v.id, isDefault: !v.is_default });
+                            setDefaultMutation.mutate({ id: v.id, isDefault: !v.is_default, name: v.name });
                           }}
                           aria-label={
                             v.is_default
