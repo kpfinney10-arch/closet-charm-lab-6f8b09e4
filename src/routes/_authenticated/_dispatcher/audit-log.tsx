@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { exportAdminAuditLogs, listAdminAuditLogs } from "@/lib/admin-users.functions";
