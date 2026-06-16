@@ -549,6 +549,25 @@ function AuditLogPage() {
     setTargetPages(1);
   };
 
+  // Auto-apply the user's default saved view on a fresh page load
+  // (only when no filter params are present in the URL).
+  const defaultAppliedRef = useRef(false);
+  useEffect(() => {
+    if (defaultAppliedRef.current) return;
+    if (typeof window === "undefined") return;
+    if (window.location.search.length > 0) {
+      defaultAppliedRef.current = true;
+      return;
+    }
+    const views = viewsQuery.data;
+    if (!views) return;
+    const def = views.find((v) => v.is_default);
+    defaultAppliedRef.current = true;
+    if (def) applyView((def.filters ?? {}) as Record<string, unknown>);
+  }, [viewsQuery.data]);
+
+
+
   // Detect which saved view (if any) matches current filters.
   const currentMatchId = useMemo(() => {
     const current = {
