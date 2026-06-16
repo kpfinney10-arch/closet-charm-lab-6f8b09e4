@@ -474,6 +474,40 @@ function AuditLogPage() {
     queryFn: () => listViewsFn(),
   });
 
+  // Focus management for the saved-views menu after mutations.
+  // Map of view id -> DropdownMenuItem element so we can refocus after re-render.
+  const viewItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const pendingFocusIdRef = useRef<string | null>(null);
+
+  const setViewItemRef = (id: string) => (el: HTMLDivElement | null) => {
+    const map = viewItemRefs.current;
+    if (el) map.set(id, el);
+    else map.delete(id);
+  };
+
+  // After the views list updates, restore focus to the requested item (if any).
+  useEffect(() => {
+    const targetId = pendingFocusIdRef.current;
+    if (!targetId) return;
+    const el = viewItemRefs.current.get(targetId);
+    if (el) {
+      pendingFocusIdRef.current = null;
+      // Defer so Radix finishes mounting the new menu items.
+      requestAnimationFrame(() => el.focus());
+    }
+  }, [viewsQuery.data]);
+
+  // Compute the id of the menu item that should receive focus after `id`
+  // is removed: prefer the next sibling, then the previous one.
+  const focusTargetAfterRemoval = (id: string): string | null => {
+    const list = viewsQuery.data ?? [];
+    const idx = list.findIndex((v) => v.id === id);
+    if (idx === -1) return null;
+    return list[idx + 1]?.id ?? list[idx - 1]?.id ?? null;
+  };
+
+
+
   const saveMutation = useMutation({
     mutationFn: (name: string) =>
       saveViewFn({
