@@ -4,6 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { exportAdminAuditLogs, listAdminAuditLogs } from "@/lib/admin-users.functions";
 import { toast } from "sonner";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -50,7 +52,27 @@ import type { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
+const ACTION_VALUES = [
+  "user_created",
+  "user_disabled",
+  "user_enabled",
+  "user_deleted",
+  "user_approved",
+  "user_unapproved",
+  "role_changed",
+  "password_reset",
+] as const;
+
+const searchSchema = z.object({
+  action: fallback(z.enum(["all", "user_created", "user_disabled", "user_enabled", "user_deleted", "user_approved", "user_unapproved", "role_changed", "password_reset"]), "all").default("all"),
+  q: fallback(z.string(), "").default(""),
+  actor: fallback(z.string(), "").default(""),
+  from: fallback(z.string(), "").default(""),
+  to: fallback(z.string(), "").default(""),
+});
+
 export const Route = createFileRoute("/_authenticated/_dispatcher/audit-log")({
+  validateSearch: zodValidator(searchSchema),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/login" });
@@ -68,16 +90,7 @@ export const Route = createFileRoute("/_authenticated/_dispatcher/audit-log")({
   }),
 });
 
-const ACTIONS = [
-  "user_created",
-  "user_disabled",
-  "user_enabled",
-  "user_deleted",
-  "user_approved",
-  "user_unapproved",
-  "role_changed",
-  "password_reset",
-] as const;
+const ACTIONS = ACTION_VALUES;
 type ActionFilter = (typeof ACTIONS)[number] | "all";
 
 const PAGE_SIZE = 50;
@@ -180,14 +193,40 @@ function useDebounced<T>(value: T, ms = 250): T {
 }
 
 function AuditLogPage() {
-  const [filter, setFilter] = useState<ActionFilter>("all");
-  const [search, setSearch] = useState("");
-  const [actor, setActor] = useState("");
-  const [range, setRange] = useState<DateRange | undefined>(undefined);
+  const urlSearch = Route.useSearch();
+  const navigate = Route.useNavigate();
+
+  const [filter, setFilter] = useState<ActionFilter>(urlSearch.action as ActionFilter);
+  const [search, setSearch] = useState(urlSearch.q);
+  const [actor, setActor] = useState(urlSearch.actor);
+  const [range, setRange] = useState<DateRange | undefined>(() => {
+    const from = urlSearch.from ? new Date(urlSearch.from) : undefined;
+    const to = urlSearch.to ? new Date(urlSearch.to) : undefined;
+    if (!from && !to) return undefined;
+    return { from, to };
+  });
   const [selectedRow, setSelectedRow] = useState<AuditRow | null>(null);
 
   const debouncedSearch = useDebounced(search);
   const debouncedActor = useDebounced(actor);
+
+  // Persist filters in the URL so refresh/share preserves context.
+  useEffect(() => {
+    const next = {
+      action: filter,
+      q: debouncedSearch.trim(),
+      actor: debouncedActor.trim(),
+      from: range?.from ? range.from.toISOString().slice(0, 10) : "",
+      to: (range?.to ?? range?.from)
+        ? (range?.to ?? range?.from)!.toISOString().slice(0, 10)
+        : "",
+    };
+    navigate({
+      search: () => next,
+      replace: true,
+      resetScroll: false,
+    });
+  }, [filter, debouncedSearch, debouncedActor, range, navigate]);
 
   const fromIso = useMemo(
     () => (range?.from ? new Date(new Date(range.from).setHours(0, 0, 0, 0)).toISOString() : null),
