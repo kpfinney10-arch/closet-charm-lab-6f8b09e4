@@ -82,6 +82,17 @@ type ActionFilter = (typeof ACTIONS)[number] | "all";
 
 const PAGE_SIZE = 50;
 
+type AuditRow = {
+  id: string;
+  created_at: string;
+  action: string;
+  target_email: string | null;
+  target_user_id: string | null;
+  actor_email: string | null;
+  actor_id: string;
+  details: Record<string, unknown> | null;
+};
+
 function actionLabel(a: string) {
   switch (a) {
     case "user_created": return "User created";
