@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { exportAdminAuditLogs, listAdminAuditLogs } from "@/lib/admin-users.functions";
@@ -8,6 +8,7 @@ import {
   listAuditViews,
   renameAuditView,
   saveAuditView,
+  setDefaultAuditView,
 } from "@/lib/audit-views.functions";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -46,6 +47,7 @@ import {
   Trash2,
   Pencil,
   Check,
+  Star,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -446,6 +448,8 @@ function AuditLogPage() {
   const saveViewFn = useServerFn(saveAuditView);
   const deleteViewFn = useServerFn(deleteAuditView);
   const renameViewFn = useServerFn(renameAuditView);
+  const setDefaultViewFn = useServerFn(setDefaultAuditView);
+
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
@@ -509,6 +513,20 @@ function AuditLogPage() {
       }),
   });
 
+  const setDefaultMutation = useMutation({
+    mutationFn: ({ id, isDefault }: { id: string; isDefault: boolean }) =>
+      setDefaultViewFn({ data: { id, isDefault } }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
+      toast.success(vars.isDefault ? "Set as default view" : "Cleared default view");
+    },
+    onError: (err) =>
+      toast.error("Couldn't update default", {
+        description: err instanceof Error ? err.message : String(err),
+      }),
+  });
+
+
   const applyView = (filters: Record<string, unknown>) => {
     const f = filters ?? {};
     const action = typeof f.action === "string" ? f.action : "all";
@@ -530,6 +548,25 @@ function AuditLogPage() {
     setPageSize(typeof f.size === "number" ? f.size : 50);
     setTargetPages(1);
   };
+
+  // Auto-apply the user's default saved view on a fresh page load
+  // (only when no filter params are present in the URL).
+  const defaultAppliedRef = useRef(false);
+  useEffect(() => {
+    if (defaultAppliedRef.current) return;
+    if (typeof window === "undefined") return;
+    if (window.location.search.length > 0) {
+      defaultAppliedRef.current = true;
+      return;
+    }
+    const views = viewsQuery.data;
+    if (!views) return;
+    const def = views.find((v) => v.is_default);
+    defaultAppliedRef.current = true;
+    if (def) applyView((def.filters ?? {}) as Record<string, unknown>);
+  }, [viewsQuery.data]);
+
+
 
   // Detect which saved view (if any) matches current filters.
   const currentMatchId = useMemo(() => {
@@ -811,11 +848,44 @@ function AuditLogPage() {
                           <span className="w-3.5" />
                         )}
                         <span className="truncate">{v.name}</span>
+                        {v.is_default && (
+                          <span
+                            className="ml-1 rounded-sm bg-muted px-1 py-px text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                            title="Default view — auto-applies on open"
+                          >
+                            Default
+                          </span>
+                        )}
                       </span>
-                      <span className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+                      <span className="flex items-center gap-1">
                         <button
                           type="button"
-                          className="hover:text-primary"
+                          className={cn(
+                            "transition",
+                            v.is_default
+                              ? "text-amber-500 hover:text-amber-600"
+                              : "opacity-0 hover:text-amber-500 group-hover:opacity-100",
+                          )}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDefaultMutation.mutate({ id: v.id, isDefault: !v.is_default });
+                          }}
+                          aria-label={
+                            v.is_default
+                              ? `Clear default for view ${v.name}`
+                              : `Set view ${v.name} as default`
+                          }
+                          aria-pressed={v.is_default}
+                          title={v.is_default ? "Default view" : "Set as default"}
+                        >
+                          <Star
+                            className="h-3.5 w-3.5"
+                            fill={v.is_default ? "currentColor" : "none"}
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          className="opacity-0 transition hover:text-primary group-hover:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             setRenamingId(v.id);
@@ -827,7 +897,7 @@ function AuditLogPage() {
                         </button>
                         <button
                           type="button"
-                          className="hover:text-destructive"
+                          className="opacity-0 transition hover:text-destructive group-hover:opacity-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate(v.id);
@@ -837,6 +907,7 @@ function AuditLogPage() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </span>
+
                     </DropdownMenuItem>
                   ),
                 )

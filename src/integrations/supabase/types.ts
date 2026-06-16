@@ -52,6 +52,7 @@ export type Database = {
           created_at: string
           filters: Json
           id: string
+          is_default: boolean
           name: string
           updated_at: string
           user_id: string
@@ -60,6 +61,7 @@ export type Database = {
           created_at?: string
           filters?: Json
           id?: string
+          is_default?: boolean
           name: string
           updated_at?: string
           user_id: string
@@ -68,6 +70,7 @@ export type Database = {
           created_at?: string
           filters?: Json
           id?: string
+          is_default?: boolean
           name?: string
           updated_at?: string
           user_id?: string

@@ -1,0 +1,2 @@
+ALTER TABLE public.audit_log_views ADD COLUMN IF NOT EXISTS is_default boolean NOT NULL DEFAULT false;
+CREATE UNIQUE INDEX IF NOT EXISTS audit_log_views_one_default_per_user ON public.audit_log_views (user_id) WHERE is_default;
