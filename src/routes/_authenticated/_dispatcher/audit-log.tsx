@@ -63,12 +63,16 @@ const ACTION_VALUES = [
   "password_reset",
 ] as const;
 
+const PAGE_SIZE_VALUES = [25, 50, 100, 200] as const;
+
 const searchSchema = z.object({
   action: fallback(z.enum(["all", "user_created", "user_disabled", "user_enabled", "user_deleted", "user_approved", "user_unapproved", "role_changed", "password_reset"]), "all").default("all"),
   q: fallback(z.string(), "").default(""),
   actor: fallback(z.string(), "").default(""),
   from: fallback(z.string(), "").default(""),
   to: fallback(z.string(), "").default(""),
+  size: fallback(z.coerce.number().int().refine((n) => (PAGE_SIZE_VALUES as readonly number[]).includes(n)), 50).default(50),
+  pages: fallback(z.coerce.number().int().min(1).max(50), 1).default(1),
 });
 
 export const Route = createFileRoute("/_authenticated/_dispatcher/audit-log")({
@@ -93,7 +97,7 @@ export const Route = createFileRoute("/_authenticated/_dispatcher/audit-log")({
 const ACTIONS = ACTION_VALUES;
 type ActionFilter = (typeof ACTIONS)[number] | "all";
 
-const PAGE_SIZE = 50;
+
 
 type AuditRow = {
   id: string;
@@ -206,11 +210,13 @@ function AuditLogPage() {
     return { from, to };
   });
   const [selectedRow, setSelectedRow] = useState<AuditRow | null>(null);
+  const [pageSize, setPageSize] = useState<number>(urlSearch.size);
+  const [targetPages, setTargetPages] = useState<number>(urlSearch.pages);
 
   const debouncedSearch = useDebounced(search);
   const debouncedActor = useDebounced(actor);
 
-  // Persist filters in the URL so refresh/share preserves context.
+  // Persist filters + pagination in the URL so refresh/share preserves context.
   useEffect(() => {
     const next = {
       action: filter,
@@ -220,13 +226,15 @@ function AuditLogPage() {
       to: (range?.to ?? range?.from)
         ? (range?.to ?? range?.from)!.toISOString().slice(0, 10)
         : "",
+      size: pageSize,
+      pages: targetPages,
     };
     navigate({
       search: () => next,
       replace: true,
       resetScroll: false,
     });
-  }, [filter, debouncedSearch, debouncedActor, range, navigate]);
+  }, [filter, debouncedSearch, debouncedActor, range, pageSize, targetPages, navigate]);
 
   const fromIso = useMemo(
     () => (range?.from ? new Date(new Date(range.from).setHours(0, 0, 0, 0)).toISOString() : null),
@@ -335,6 +343,7 @@ function AuditLogPage() {
     debouncedActor.trim(),
     fromIso,
     toIso,
+    pageSize,
   ] as const;
 
   const {
@@ -356,7 +365,7 @@ function AuditLogPage() {
           actor: debouncedActor.trim() || null,
           from: fromIso,
           to: toIso,
-          limit: PAGE_SIZE,
+          limit: pageSize,
           offset: pageParam,
         },
       }),
@@ -365,6 +374,32 @@ function AuditLogPage() {
       return loaded < (lastPage?.total ?? 0) ? loaded : undefined;
     },
   });
+
+  const loadedPages = data?.pages?.length ?? 0;
+
+  // Restore paginated state on refresh: keep loading next pages until we hit
+  // the target page count from the URL (or run out of results).
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !isFetchingNextPage &&
+      hasNextPage &&
+      loadedPages > 0 &&
+      loadedPages < targetPages
+    ) {
+      fetchNextPage();
+    }
+  }, [isLoading, isFetchingNextPage, hasNextPage, loadedPages, targetPages, fetchNextPage]);
+
+  // Keep targetPages in sync as the user loads more, and reset to 1 when
+  // filters or page size change.
+  useEffect(() => {
+    setTargetPages(1);
+  }, [filter, debouncedSearch, debouncedActor, fromIso, toIso, pageSize]);
+
+  useEffect(() => {
+    if (loadedPages > targetPages) setTargetPages(loadedPages);
+  }, [loadedPages, targetPages]);
 
   const rows = useMemo(
     () => (data?.pages ?? []).flatMap((p) => p?.rows ?? []),
@@ -670,7 +705,25 @@ function AuditLogPage() {
                   </TableBody>
                 </Table>
               </div>
-              <div className="mt-4 flex items-center justify-center">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>Rows per page</span>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(v) => setPageSize(Number(v))}
+                  >
+                    <SelectTrigger className="h-8 w-[80px]" aria-label="Rows per page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_VALUES.map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 {hasNextPage ? (
                   <Button
                     variant="outline"
