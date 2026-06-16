@@ -716,36 +716,98 @@ function AuditLogPage() {
                   No saved views yet.
                 </div>
               ) : (
-                (viewsQuery.data ?? []).map((v) => (
-                  <DropdownMenuItem
-                    key={v.id}
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      applyView((v.filters ?? {}) as Record<string, unknown>);
-                    }}
-                    className="group flex items-center justify-between gap-2"
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      {currentMatchId === v.id ? (
-                        <Check className="h-3.5 w-3.5 text-primary" />
-                      ) : (
-                        <span className="w-3.5" />
-                      )}
-                      <span className="truncate">{v.name}</span>
-                    </span>
-                    <button
-                      type="button"
-                      className="opacity-0 transition group-hover:opacity-100 hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate(v.id);
+                (viewsQuery.data ?? []).map((v) =>
+                  renamingId === v.id ? (
+                    <div key={v.id} className="space-y-1.5 px-2 py-1.5">
+                      <Input
+                        autoFocus
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const name = renameDraft.trim();
+                            if (name && name !== v.name) {
+                              renameMutation.mutate({ id: v.id, name });
+                            } else {
+                              setRenamingId(null);
+                            }
+                          }
+                          if (e.key === "Escape") {
+                            setRenamingId(null);
+                            setRenameDraft("");
+                          }
+                        }}
+                        className="h-8"
+                      />
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => { setRenamingId(null); setRenameDraft(""); }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            const name = renameDraft.trim();
+                            if (name && name !== v.name) {
+                              renameMutation.mutate({ id: v.id, name });
+                            } else {
+                              setRenamingId(null);
+                            }
+                          }}
+                          disabled={!renameDraft.trim() || renameMutation.isPending}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <DropdownMenuItem
+                      key={v.id}
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        applyView((v.filters ?? {}) as Record<string, unknown>);
                       }}
-                      aria-label={`Delete view ${v.name}`}
+                      className="group flex items-center justify-between gap-2"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </DropdownMenuItem>
-                ))
+                      <span className="flex items-center gap-2 truncate">
+                        {currentMatchId === v.id ? (
+                          <Check className="h-3.5 w-3.5 text-primary" />
+                        ) : (
+                          <span className="w-3.5" />
+                        )}
+                        <span className="truncate">{v.name}</span>
+                      </span>
+                      <span className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+                        <button
+                          type="button"
+                          className="hover:text-primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRenamingId(v.id);
+                            setRenameDraft(v.name);
+                          }}
+                          aria-label={`Rename view ${v.name}`}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Delete view "${v.name}"?`)) deleteMutation.mutate(v.id);
+                          }}
+                          aria-label={`Delete view ${v.name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    </DropdownMenuItem>
+                  ),
+                )
               )}
               <DropdownMenuSeparator />
               <div className="space-y-2 px-2 py-2">
