@@ -474,6 +474,40 @@ function AuditLogPage() {
     queryFn: () => listViewsFn(),
   });
 
+  // Focus management for the saved-views menu after mutations.
+  // Map of view id -> DropdownMenuItem element so we can refocus after re-render.
+  const viewItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const pendingFocusIdRef = useRef<string | null>(null);
+
+  const setViewItemRef = (id: string) => (el: HTMLDivElement | null) => {
+    const map = viewItemRefs.current;
+    if (el) map.set(id, el);
+    else map.delete(id);
+  };
+
+  // After the views list updates, restore focus to the requested item (if any).
+  useEffect(() => {
+    const targetId = pendingFocusIdRef.current;
+    if (!targetId) return;
+    const el = viewItemRefs.current.get(targetId);
+    if (el) {
+      pendingFocusIdRef.current = null;
+      // Defer so Radix finishes mounting the new menu items.
+      requestAnimationFrame(() => el.focus());
+    }
+  }, [viewsQuery.data]);
+
+  // Compute the id of the menu item that should receive focus after `id`
+  // is removed: prefer the next sibling, then the previous one.
+  const focusTargetAfterRemoval = (id: string): string | null => {
+    const list = viewsQuery.data ?? [];
+    const idx = list.findIndex((v) => v.id === id);
+    if (idx === -1) return null;
+    return list[idx + 1]?.id ?? list[idx - 1]?.id ?? null;
+  };
+
+
+
   const saveMutation = useMutation({
     mutationFn: (name: string) =>
       saveViewFn({
@@ -503,7 +537,8 @@ function AuditLogPage() {
 
   const deleteMutation = useMutation({
     mutationFn: ({ id }: { id: string; name: string }) => deleteViewFn({ data: { id } }),
-    onMutate: ({ name }) => {
+    onMutate: ({ id, name }) => {
+      pendingFocusIdRef.current = focusTargetAfterRemoval(id);
       const toastId = toast.loading(`Deleting "${name}"…`);
       return { toastId };
     },
@@ -511,17 +546,22 @@ function AuditLogPage() {
       queryClient.invalidateQueries({ queryKey: ["audit-log-views"] });
       toast.success(`Deleted view "${vars.name}"`, { id: ctx?.toastId });
     },
-    onError: (err, vars, ctx) =>
+    onError: (err, vars, ctx) => {
+      pendingFocusIdRef.current = null;
       toast.error(`Couldn't delete "${vars.name}"`, {
         id: ctx?.toastId,
         description: err instanceof Error ? err.message : String(err),
-      }),
+      });
+    },
   });
+
 
   const setDefaultMutation = useMutation({
     mutationFn: ({ id, isDefault }: { id: string; isDefault: boolean; name: string }) =>
       setDefaultViewFn({ data: { id, isDefault } }),
-    onMutate: ({ isDefault, name }) => {
+    onMutate: ({ id, isDefault, name }) => {
+      // Keep focus on the same item after the list re-renders.
+      pendingFocusIdRef.current = id;
       const toastId = toast.loading(
         isDefault ? `Setting "${name}" as default…` : `Clearing default on "${name}"…`,
       );
@@ -858,6 +898,7 @@ function AuditLogPage() {
                   ) : (
                     <DropdownMenuItem
                       key={v.id}
+                      ref={setViewItemRef(v.id)}
                       onSelect={(e) => {
                         e.preventDefault();
                         applyView((v.filters ?? {}) as Record<string, unknown>);
