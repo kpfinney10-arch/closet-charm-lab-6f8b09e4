@@ -448,6 +448,8 @@ function AuditLogPage() {
   const saveViewFn = useServerFn(saveAuditView);
   const deleteViewFn = useServerFn(deleteAuditView);
   const renameViewFn = useServerFn(renameAuditView);
+  const setDefaultViewFn = useServerFn(setDefaultAuditView);
+
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
