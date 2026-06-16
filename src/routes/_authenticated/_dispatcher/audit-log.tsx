@@ -916,7 +916,7 @@ function AuditLogPage() {
                           tabIndex={-1}
                           disabled={v.is_default || setDefaultMutation.isPending}
                           className={cn(
-                            "rounded-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            "inline-flex h-6 w-6 items-center justify-center rounded-sm transition-colors hover:bg-amber-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 dark:hover:bg-amber-500/10",
                             v.is_default
                               ? "cursor-default text-amber-500 opacity-100"
                               : "opacity-0 hover:text-amber-500 group-hover:opacity-100 group-focus-visible:opacity-100",
