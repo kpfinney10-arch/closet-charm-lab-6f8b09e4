@@ -873,9 +873,10 @@ function AuditLogPage() {
                         <span className="truncate">{v.name}</span>
                         {v.is_default && (
                           <span
-                            className="ml-1 rounded-sm bg-muted px-1 py-px text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
-                            title="Default view — auto-applies on open"
+                            className="ml-1 inline-flex items-center gap-1 rounded-sm bg-amber-100 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                            title="Default view — auto-applies when opening the audit log"
                           >
+                            <Star className="h-2.5 w-2.5" fill="currentColor" />
                             Default
                           </span>
                         )}
@@ -883,29 +884,37 @@ function AuditLogPage() {
                       <span className="flex items-center gap-1">
                         <button
                           type="button"
+                          disabled={v.is_default || setDefaultMutation.isPending}
                           className={cn(
                             "transition",
                             v.is_default
-                              ? "text-amber-500 hover:text-amber-600"
+                              ? "cursor-default text-amber-500 opacity-100"
                               : "opacity-0 hover:text-amber-500 group-hover:opacity-100",
+                            "disabled:cursor-default",
                           )}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setDefaultMutation.mutate({ id: v.id, isDefault: !v.is_default, name: v.name });
+                            if (v.is_default) return;
+                            setDefaultMutation.mutate({ id: v.id, isDefault: true, name: v.name });
                           }}
                           aria-label={
                             v.is_default
-                              ? `Clear default for view ${v.name}`
+                              ? `${v.name} is the default view`
                               : `Set view ${v.name} as default`
                           }
                           aria-pressed={v.is_default}
-                          title={v.is_default ? "Default view" : "Set as default"}
+                          title={
+                            v.is_default
+                              ? "This is your default view"
+                              : "Set as default"
+                          }
                         >
                           <Star
                             className="h-3.5 w-3.5"
                             fill={v.is_default ? "currentColor" : "none"}
                           />
                         </button>
+
                         <button
                           type="button"
                           className="opacity-0 transition hover:text-primary group-hover:opacity-100"
