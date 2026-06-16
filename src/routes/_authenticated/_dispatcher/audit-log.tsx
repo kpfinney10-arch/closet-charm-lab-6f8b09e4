@@ -409,6 +409,16 @@ function AuditLogPage() {
 
   const hasAnyFilter =
     filter !== "all" || !!debouncedSearch.trim() || !!debouncedActor.trim() || !!range;
+  const isNonDefault = hasAnyFilter || pageSize !== 50 || targetPages !== 1;
+
+  const resetAll = () => {
+    setFilter("all");
+    setSearch("");
+    setActor("");
+    setRange(undefined);
+    setPageSize(50);
+    setTargetPages(1);
+  };
 
   return (
     <div className="container mx-auto max-w-6xl space-y-6 p-6">
